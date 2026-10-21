@@ -1,0 +1,3333 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Folio API",
+    "version": "1.0.0"
+  },
+  "components": {
+    "schemas": {}
+  },
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 200
+                  },
+                  "locale": {
+                    "default": "en",
+                    "type": "string",
+                    "enum": [
+                      "en",
+                      "zh"
+                    ]
+                  }
+                },
+                "required": [
+                  "email",
+                  "password"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "emailVerified": {
+                          "type": "boolean"
+                        },
+                        "locale": {
+                          "type": "string",
+                          "enum": [
+                            "en",
+                            "zh"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "email",
+                        "emailVerified",
+                        "locale"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "user"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                  },
+                  "password": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "client": {
+                    "default": "web",
+                    "type": "string",
+                    "enum": [
+                      "web",
+                      "desktop"
+                    ]
+                  },
+                  "deviceName": {
+                    "type": "string",
+                    "maxLength": 100
+                  }
+                },
+                "required": [
+                  "email",
+                  "password"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "emailVerified": {
+                          "type": "boolean"
+                        },
+                        "locale": {
+                          "type": "string",
+                          "enum": [
+                            "en",
+                            "zh"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "email",
+                        "emailVerified",
+                        "locale"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "token": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "user"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "responses": {
+          "204": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "nullable": true,
+                  "enum": [
+                    null
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/verify-email": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "pattern": "^\\s*\\d{6}\\s*$"
+                  }
+                },
+                "required": [
+                  "code"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "emailVerified": {
+                          "type": "boolean"
+                        },
+                        "locale": {
+                          "type": "string",
+                          "enum": [
+                            "en",
+                            "zh"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "email",
+                        "emailVerified",
+                        "locale"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "user"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/resend-code": {
+      "post": {
+        "responses": {
+          "204": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "nullable": true,
+                  "enum": [
+                    null
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/password/forgot": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                  }
+                },
+                "required": [
+                  "email"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "nullable": true,
+                  "enum": [
+                    null
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/password/reset": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                  },
+                  "code": {
+                    "type": "string",
+                    "pattern": "^\\s*\\d{6}\\s*$"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "email",
+                  "code",
+                  "password"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "nullable": true,
+                  "enum": [
+                    null
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "emailVerified": {
+                          "type": "boolean"
+                        },
+                        "locale": {
+                          "type": "string",
+                          "enum": [
+                            "en",
+                            "zh"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "email",
+                        "emailVerified",
+                        "locale"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "workspaces": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "role": {
+                            "type": "string",
+                            "enum": [
+                              "owner",
+                              "admin",
+                              "member"
+                            ]
+                          },
+                          "plan": {
+                            "type": "string",
+                            "enum": [
+                              "free",
+                              "studio",
+                              "company"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "active",
+                              "trialing"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "role",
+                          "plan",
+                          "status"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "user",
+                    "workspaces"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "locale": {
+                    "type": "string",
+                    "enum": [
+                      "en",
+                      "zh"
+                    ]
+                  }
+                },
+                "required": [
+                  "locale"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "email": {
+                          "type": "string"
+                        },
+                        "emailVerified": {
+                          "type": "boolean"
+                        },
+                        "locale": {
+                          "type": "string",
+                          "enum": [
+                            "en",
+                            "zh"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "email",
+                        "emailVerified",
+                        "locale"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "user"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string",
+                      "enum": [
+                        "owner",
+                        "admin",
+                        "member"
+                      ]
+                    },
+                    "subscription": {
+                      "type": "object",
+                      "properties": {
+                        "plan": {
+                          "type": "string",
+                          "enum": [
+                            "free",
+                            "studio",
+                            "company"
+                          ]
+                        },
+                        "period": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "monthly",
+                            "yearly"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "trialing"
+                          ]
+                        },
+                        "addonPacks": {
+                          "type": "number"
+                        },
+                        "trialEndsAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "currentPeriodStart": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "currentPeriodEnd": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "cancelAtPeriodEnd": {
+                          "type": "boolean"
+                        },
+                        "scheduledPlan": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "studio",
+                            "company"
+                          ]
+                        },
+                        "scheduledPeriod": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "monthly",
+                            "yearly"
+                          ]
+                        },
+                        "trialAvailable": {
+                          "type": "boolean"
+                        },
+                        "entitlements": {
+                          "type": "object",
+                          "properties": {
+                            "profiles": {
+                              "type": "number"
+                            },
+                            "members": {
+                              "nullable": true,
+                              "type": "number"
+                            },
+                            "logDays": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "profiles",
+                            "members",
+                            "logDays"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "plan",
+                        "period",
+                        "status",
+                        "addonPacks",
+                        "trialEndsAt",
+                        "currentPeriodStart",
+                        "currentPeriodEnd",
+                        "cancelAtPeriodEnd",
+                        "scheduledPlan",
+                        "scheduledPeriod",
+                        "trialAvailable",
+                        "entitlements"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "usage": {
+                      "type": "object",
+                      "properties": {
+                        "profiles": {
+                          "type": "number"
+                        },
+                        "members": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "profiles",
+                        "members"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "role",
+                    "subscription",
+                    "usage"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string",
+                      "enum": [
+                        "owner",
+                        "admin",
+                        "member"
+                      ]
+                    },
+                    "plan": {
+                      "type": "string",
+                      "enum": [
+                        "free",
+                        "studio",
+                        "company"
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "active",
+                        "trialing"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "role",
+                    "plan",
+                    "status"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/plans": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "currency": {
+                      "type": "string",
+                      "enum": [
+                        "usd"
+                      ]
+                    },
+                    "trialDays": {
+                      "type": "number"
+                    },
+                    "refundDays": {
+                      "type": "number"
+                    },
+                    "maxProfiles": {
+                      "type": "number"
+                    },
+                    "plans": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "enum": [
+                              "free",
+                              "studio",
+                              "company"
+                            ]
+                          },
+                          "profiles": {
+                            "type": "number"
+                          },
+                          "members": {
+                            "nullable": true,
+                            "type": "number"
+                          },
+                          "logDays": {
+                            "type": "number"
+                          },
+                          "price": {
+                            "type": "object",
+                            "properties": {
+                              "monthly": {
+                                "type": "number"
+                              },
+                              "yearly": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "monthly",
+                              "yearly"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "profiles",
+                          "members",
+                          "logDays",
+                          "price"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "addon": {
+                      "type": "object",
+                      "properties": {
+                        "profiles": {
+                          "type": "number"
+                        },
+                        "price": {
+                          "type": "object",
+                          "properties": {
+                            "monthly": {
+                              "type": "number"
+                            },
+                            "yearly": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "monthly",
+                            "yearly"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "profiles",
+                        "price"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "currency",
+                    "trialDays",
+                    "refundDays",
+                    "maxProfiles",
+                    "plans",
+                    "addon"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{id}/billing/quote": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "plan": {
+                    "type": "string",
+                    "enum": [
+                      "studio",
+                      "company"
+                    ]
+                  },
+                  "period": {
+                    "type": "string",
+                    "enum": [
+                      "monthly",
+                      "yearly"
+                    ]
+                  },
+                  "addonPacks": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30
+                  }
+                },
+                "required": [
+                  "plan",
+                  "period",
+                  "addonPacks"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "change": {
+                      "type": "string",
+                      "enum": [
+                        "new",
+                        "upgrade",
+                        "addon",
+                        "reduce-addon",
+                        "downgrade"
+                      ]
+                    },
+                    "effective": {
+                      "type": "string",
+                      "enum": [
+                        "now",
+                        "period_end"
+                      ]
+                    },
+                    "lines": {
+                      "type": "array",
+                      "items": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "plan"
+                                ]
+                              },
+                              "plan": {
+                                "type": "string",
+                                "enum": [
+                                  "studio",
+                                  "company"
+                                ]
+                              },
+                              "period": {
+                                "type": "string",
+                                "enum": [
+                                  "monthly",
+                                  "yearly"
+                                ]
+                              },
+                              "amountCents": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "plan",
+                              "period",
+                              "amountCents"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "addon"
+                                ]
+                              },
+                              "period": {
+                                "type": "string",
+                                "enum": [
+                                  "monthly",
+                                  "yearly"
+                                ]
+                              },
+                              "quantity": {
+                                "type": "number"
+                              },
+                              "prorated": {
+                                "type": "boolean"
+                              },
+                              "amountCents": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "period",
+                              "quantity",
+                              "prorated",
+                              "amountCents"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "credit"
+                                ]
+                              },
+                              "plan": {
+                                "type": "string",
+                                "enum": [
+                                  "studio",
+                                  "company"
+                                ]
+                              },
+                              "period": {
+                                "type": "string",
+                                "enum": [
+                                  "monthly",
+                                  "yearly"
+                                ]
+                              },
+                              "amountCents": {
+                                "type": "number"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "plan",
+                              "period",
+                              "amountCents"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      }
+                    },
+                    "totalCents": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "change",
+                    "effective",
+                    "lines",
+                    "totalCents"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{id}/billing/checkout": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "plan": {
+                    "type": "string",
+                    "enum": [
+                      "studio",
+                      "company"
+                    ]
+                  },
+                  "period": {
+                    "type": "string",
+                    "enum": [
+                      "monthly",
+                      "yearly"
+                    ]
+                  },
+                  "addonPacks": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 30
+                  }
+                },
+                "required": [
+                  "plan",
+                  "period",
+                  "addonPacks"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "checkoutId": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "quote": {
+                      "type": "object",
+                      "properties": {
+                        "change": {
+                          "type": "string",
+                          "enum": [
+                            "new",
+                            "upgrade",
+                            "addon",
+                            "reduce-addon",
+                            "downgrade"
+                          ]
+                        },
+                        "effective": {
+                          "type": "string",
+                          "enum": [
+                            "now",
+                            "period_end"
+                          ]
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "plan"
+                                    ]
+                                  },
+                                  "plan": {
+                                    "type": "string",
+                                    "enum": [
+                                      "studio",
+                                      "company"
+                                    ]
+                                  },
+                                  "period": {
+                                    "type": "string",
+                                    "enum": [
+                                      "monthly",
+                                      "yearly"
+                                    ]
+                                  },
+                                  "amountCents": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "plan",
+                                  "period",
+                                  "amountCents"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "addon"
+                                    ]
+                                  },
+                                  "period": {
+                                    "type": "string",
+                                    "enum": [
+                                      "monthly",
+                                      "yearly"
+                                    ]
+                                  },
+                                  "quantity": {
+                                    "type": "number"
+                                  },
+                                  "prorated": {
+                                    "type": "boolean"
+                                  },
+                                  "amountCents": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "period",
+                                  "quantity",
+                                  "prorated",
+                                  "amountCents"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "credit"
+                                    ]
+                                  },
+                                  "plan": {
+                                    "type": "string",
+                                    "enum": [
+                                      "studio",
+                                      "company"
+                                    ]
+                                  },
+                                  "period": {
+                                    "type": "string",
+                                    "enum": [
+                                      "monthly",
+                                      "yearly"
+                                    ]
+                                  },
+                                  "amountCents": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "plan",
+                                  "period",
+                                  "amountCents"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
+                        },
+                        "totalCents": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "change",
+                        "effective",
+                        "lines",
+                        "totalCents"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "subscription": {
+                      "type": "object",
+                      "properties": {
+                        "plan": {
+                          "type": "string",
+                          "enum": [
+                            "free",
+                            "studio",
+                            "company"
+                          ]
+                        },
+                        "period": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "monthly",
+                            "yearly"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "trialing"
+                          ]
+                        },
+                        "addonPacks": {
+                          "type": "number"
+                        },
+                        "trialEndsAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "currentPeriodStart": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "currentPeriodEnd": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "cancelAtPeriodEnd": {
+                          "type": "boolean"
+                        },
+                        "scheduledPlan": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "studio",
+                            "company"
+                          ]
+                        },
+                        "scheduledPeriod": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "monthly",
+                            "yearly"
+                          ]
+                        },
+                        "trialAvailable": {
+                          "type": "boolean"
+                        },
+                        "entitlements": {
+                          "type": "object",
+                          "properties": {
+                            "profiles": {
+                              "type": "number"
+                            },
+                            "members": {
+                              "nullable": true,
+                              "type": "number"
+                            },
+                            "logDays": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "profiles",
+                            "members",
+                            "logDays"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "plan",
+                        "period",
+                        "status",
+                        "addonPacks",
+                        "trialEndsAt",
+                        "currentPeriodStart",
+                        "currentPeriodEnd",
+                        "cancelAtPeriodEnd",
+                        "scheduledPlan",
+                        "scheduledPeriod",
+                        "trialAvailable",
+                        "entitlements"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "checkoutId",
+                    "quote",
+                    "subscription"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/billing/checkouts/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "workspaceId": {
+                      "type": "string"
+                    },
+                    "workspaceName": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "expiresAt": {
+                      "type": "string"
+                    },
+                    "quote": {
+                      "type": "object",
+                      "properties": {
+                        "change": {
+                          "type": "string",
+                          "enum": [
+                            "new",
+                            "upgrade",
+                            "addon",
+                            "reduce-addon",
+                            "downgrade"
+                          ]
+                        },
+                        "effective": {
+                          "type": "string",
+                          "enum": [
+                            "now",
+                            "period_end"
+                          ]
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "plan"
+                                    ]
+                                  },
+                                  "plan": {
+                                    "type": "string",
+                                    "enum": [
+                                      "studio",
+                                      "company"
+                                    ]
+                                  },
+                                  "period": {
+                                    "type": "string",
+                                    "enum": [
+                                      "monthly",
+                                      "yearly"
+                                    ]
+                                  },
+                                  "amountCents": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "plan",
+                                  "period",
+                                  "amountCents"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "addon"
+                                    ]
+                                  },
+                                  "period": {
+                                    "type": "string",
+                                    "enum": [
+                                      "monthly",
+                                      "yearly"
+                                    ]
+                                  },
+                                  "quantity": {
+                                    "type": "number"
+                                  },
+                                  "prorated": {
+                                    "type": "boolean"
+                                  },
+                                  "amountCents": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "period",
+                                  "quantity",
+                                  "prorated",
+                                  "amountCents"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "credit"
+                                    ]
+                                  },
+                                  "plan": {
+                                    "type": "string",
+                                    "enum": [
+                                      "studio",
+                                      "company"
+                                    ]
+                                  },
+                                  "period": {
+                                    "type": "string",
+                                    "enum": [
+                                      "monthly",
+                                      "yearly"
+                                    ]
+                                  },
+                                  "amountCents": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "plan",
+                                  "period",
+                                  "amountCents"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
+                        },
+                        "totalCents": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "change",
+                        "effective",
+                        "lines",
+                        "totalCents"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "workspaceId",
+                    "workspaceName",
+                    "status",
+                    "expiresAt",
+                    "quote"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/billing/checkouts/{id}/pay": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "card": {
+                    "type": "object",
+                    "properties": {
+                      "number": {
+                        "type": "string",
+                        "maxLength": 30
+                      },
+                      "expMonth": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "expYear": {
+                        "type": "integer",
+                        "minimum": 2000,
+                        "maximum": 2100
+                      },
+                      "cvc": {
+                        "type": "string",
+                        "maxLength": 4
+                      }
+                    },
+                    "required": [
+                      "number",
+                      "expMonth",
+                      "expYear",
+                      "cvc"
+                    ]
+                  }
+                },
+                "required": [
+                  "card"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "subscription": {
+                      "type": "object",
+                      "properties": {
+                        "plan": {
+                          "type": "string",
+                          "enum": [
+                            "free",
+                            "studio",
+                            "company"
+                          ]
+                        },
+                        "period": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "monthly",
+                            "yearly"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "trialing"
+                          ]
+                        },
+                        "addonPacks": {
+                          "type": "number"
+                        },
+                        "trialEndsAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "currentPeriodStart": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "currentPeriodEnd": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "cancelAtPeriodEnd": {
+                          "type": "boolean"
+                        },
+                        "scheduledPlan": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "studio",
+                            "company"
+                          ]
+                        },
+                        "scheduledPeriod": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "monthly",
+                            "yearly"
+                          ]
+                        },
+                        "trialAvailable": {
+                          "type": "boolean"
+                        },
+                        "entitlements": {
+                          "type": "object",
+                          "properties": {
+                            "profiles": {
+                              "type": "number"
+                            },
+                            "members": {
+                              "nullable": true,
+                              "type": "number"
+                            },
+                            "logDays": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "profiles",
+                            "members",
+                            "logDays"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "plan",
+                        "period",
+                        "status",
+                        "addonPacks",
+                        "trialEndsAt",
+                        "currentPeriodStart",
+                        "currentPeriodEnd",
+                        "cancelAtPeriodEnd",
+                        "scheduledPlan",
+                        "scheduledPeriod",
+                        "trialAvailable",
+                        "entitlements"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "payment": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "invoiceNumber": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "checkout",
+                            "renewal"
+                          ]
+                        },
+                        "amountCents": {
+                          "type": "number"
+                        },
+                        "currency": {
+                          "type": "string"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "plan"
+                                    ]
+                                  },
+                                  "plan": {
+                                    "type": "string",
+                                    "enum": [
+                                      "studio",
+                                      "company"
+                                    ]
+                                  },
+                                  "period": {
+                                    "type": "string",
+                                    "enum": [
+                                      "monthly",
+                                      "yearly"
+                                    ]
+                                  },
+                                  "amountCents": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "plan",
+                                  "period",
+                                  "amountCents"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "addon"
+                                    ]
+                                  },
+                                  "period": {
+                                    "type": "string",
+                                    "enum": [
+                                      "monthly",
+                                      "yearly"
+                                    ]
+                                  },
+                                  "quantity": {
+                                    "type": "number"
+                                  },
+                                  "prorated": {
+                                    "type": "boolean"
+                                  },
+                                  "amountCents": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "period",
+                                  "quantity",
+                                  "prorated",
+                                  "amountCents"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "credit"
+                                    ]
+                                  },
+                                  "plan": {
+                                    "type": "string",
+                                    "enum": [
+                                      "studio",
+                                      "company"
+                                    ]
+                                  },
+                                  "period": {
+                                    "type": "string",
+                                    "enum": [
+                                      "monthly",
+                                      "yearly"
+                                    ]
+                                  },
+                                  "amountCents": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "plan",
+                                  "period",
+                                  "amountCents"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
+                        },
+                        "cardBrand": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "cardLast4": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "paid",
+                            "refunded"
+                          ]
+                        },
+                        "periodStart": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "periodEnd": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "refundedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "refundable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "invoiceNumber",
+                        "kind",
+                        "amountCents",
+                        "currency",
+                        "lines",
+                        "cardBrand",
+                        "cardLast4",
+                        "status",
+                        "periodStart",
+                        "periodEnd",
+                        "createdAt",
+                        "refundedAt",
+                        "refundable"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "subscription",
+                    "payment"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{id}/billing/trial": {
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "subscription": {
+                      "type": "object",
+                      "properties": {
+                        "plan": {
+                          "type": "string",
+                          "enum": [
+                            "free",
+                            "studio",
+                            "company"
+                          ]
+                        },
+                        "period": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "monthly",
+                            "yearly"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "trialing"
+                          ]
+                        },
+                        "addonPacks": {
+                          "type": "number"
+                        },
+                        "trialEndsAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "currentPeriodStart": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "currentPeriodEnd": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "cancelAtPeriodEnd": {
+                          "type": "boolean"
+                        },
+                        "scheduledPlan": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "studio",
+                            "company"
+                          ]
+                        },
+                        "scheduledPeriod": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "monthly",
+                            "yearly"
+                          ]
+                        },
+                        "trialAvailable": {
+                          "type": "boolean"
+                        },
+                        "entitlements": {
+                          "type": "object",
+                          "properties": {
+                            "profiles": {
+                              "type": "number"
+                            },
+                            "members": {
+                              "nullable": true,
+                              "type": "number"
+                            },
+                            "logDays": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "profiles",
+                            "members",
+                            "logDays"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "plan",
+                        "period",
+                        "status",
+                        "addonPacks",
+                        "trialEndsAt",
+                        "currentPeriodStart",
+                        "currentPeriodEnd",
+                        "cancelAtPeriodEnd",
+                        "scheduledPlan",
+                        "scheduledPeriod",
+                        "trialAvailable",
+                        "entitlements"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "subscription"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{id}/billing/cancel": {
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "subscription": {
+                      "type": "object",
+                      "properties": {
+                        "plan": {
+                          "type": "string",
+                          "enum": [
+                            "free",
+                            "studio",
+                            "company"
+                          ]
+                        },
+                        "period": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "monthly",
+                            "yearly"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "trialing"
+                          ]
+                        },
+                        "addonPacks": {
+                          "type": "number"
+                        },
+                        "trialEndsAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "currentPeriodStart": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "currentPeriodEnd": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "cancelAtPeriodEnd": {
+                          "type": "boolean"
+                        },
+                        "scheduledPlan": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "studio",
+                            "company"
+                          ]
+                        },
+                        "scheduledPeriod": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "monthly",
+                            "yearly"
+                          ]
+                        },
+                        "trialAvailable": {
+                          "type": "boolean"
+                        },
+                        "entitlements": {
+                          "type": "object",
+                          "properties": {
+                            "profiles": {
+                              "type": "number"
+                            },
+                            "members": {
+                              "nullable": true,
+                              "type": "number"
+                            },
+                            "logDays": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "profiles",
+                            "members",
+                            "logDays"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "plan",
+                        "period",
+                        "status",
+                        "addonPacks",
+                        "trialEndsAt",
+                        "currentPeriodStart",
+                        "currentPeriodEnd",
+                        "cancelAtPeriodEnd",
+                        "scheduledPlan",
+                        "scheduledPeriod",
+                        "trialAvailable",
+                        "entitlements"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "subscription"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{id}/billing/resume": {
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "subscription": {
+                      "type": "object",
+                      "properties": {
+                        "plan": {
+                          "type": "string",
+                          "enum": [
+                            "free",
+                            "studio",
+                            "company"
+                          ]
+                        },
+                        "period": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "monthly",
+                            "yearly"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "trialing"
+                          ]
+                        },
+                        "addonPacks": {
+                          "type": "number"
+                        },
+                        "trialEndsAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "currentPeriodStart": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "currentPeriodEnd": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "cancelAtPeriodEnd": {
+                          "type": "boolean"
+                        },
+                        "scheduledPlan": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "studio",
+                            "company"
+                          ]
+                        },
+                        "scheduledPeriod": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "monthly",
+                            "yearly"
+                          ]
+                        },
+                        "trialAvailable": {
+                          "type": "boolean"
+                        },
+                        "entitlements": {
+                          "type": "object",
+                          "properties": {
+                            "profiles": {
+                              "type": "number"
+                            },
+                            "members": {
+                              "nullable": true,
+                              "type": "number"
+                            },
+                            "logDays": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "profiles",
+                            "members",
+                            "logDays"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "plan",
+                        "period",
+                        "status",
+                        "addonPacks",
+                        "trialEndsAt",
+                        "currentPeriodStart",
+                        "currentPeriodEnd",
+                        "cancelAtPeriodEnd",
+                        "scheduledPlan",
+                        "scheduledPeriod",
+                        "trialAvailable",
+                        "entitlements"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "subscription"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{id}/payments": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "payments": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "invoiceNumber": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "checkout",
+                              "renewal"
+                            ]
+                          },
+                          "amountCents": {
+                            "type": "number"
+                          },
+                          "currency": {
+                            "type": "string"
+                          },
+                          "lines": {
+                            "type": "array",
+                            "items": {
+                              "oneOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "plan"
+                                      ]
+                                    },
+                                    "plan": {
+                                      "type": "string",
+                                      "enum": [
+                                        "studio",
+                                        "company"
+                                      ]
+                                    },
+                                    "period": {
+                                      "type": "string",
+                                      "enum": [
+                                        "monthly",
+                                        "yearly"
+                                      ]
+                                    },
+                                    "amountCents": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "plan",
+                                    "period",
+                                    "amountCents"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "addon"
+                                      ]
+                                    },
+                                    "period": {
+                                      "type": "string",
+                                      "enum": [
+                                        "monthly",
+                                        "yearly"
+                                      ]
+                                    },
+                                    "quantity": {
+                                      "type": "number"
+                                    },
+                                    "prorated": {
+                                      "type": "boolean"
+                                    },
+                                    "amountCents": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "period",
+                                    "quantity",
+                                    "prorated",
+                                    "amountCents"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "credit"
+                                      ]
+                                    },
+                                    "plan": {
+                                      "type": "string",
+                                      "enum": [
+                                        "studio",
+                                        "company"
+                                      ]
+                                    },
+                                    "period": {
+                                      "type": "string",
+                                      "enum": [
+                                        "monthly",
+                                        "yearly"
+                                      ]
+                                    },
+                                    "amountCents": {
+                                      "type": "number"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "plan",
+                                    "period",
+                                    "amountCents"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              ]
+                            }
+                          },
+                          "cardBrand": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "cardLast4": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "paid",
+                              "refunded"
+                            ]
+                          },
+                          "periodStart": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "periodEnd": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "refundedAt": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "refundable": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "invoiceNumber",
+                          "kind",
+                          "amountCents",
+                          "currency",
+                          "lines",
+                          "cardBrand",
+                          "cardLast4",
+                          "status",
+                          "periodStart",
+                          "periodEnd",
+                          "createdAt",
+                          "refundedAt",
+                          "refundable"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "payments"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payments/{id}": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "payment": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "invoiceNumber": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "checkout",
+                            "renewal"
+                          ]
+                        },
+                        "amountCents": {
+                          "type": "number"
+                        },
+                        "currency": {
+                          "type": "string"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "plan"
+                                    ]
+                                  },
+                                  "plan": {
+                                    "type": "string",
+                                    "enum": [
+                                      "studio",
+                                      "company"
+                                    ]
+                                  },
+                                  "period": {
+                                    "type": "string",
+                                    "enum": [
+                                      "monthly",
+                                      "yearly"
+                                    ]
+                                  },
+                                  "amountCents": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "plan",
+                                  "period",
+                                  "amountCents"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "addon"
+                                    ]
+                                  },
+                                  "period": {
+                                    "type": "string",
+                                    "enum": [
+                                      "monthly",
+                                      "yearly"
+                                    ]
+                                  },
+                                  "quantity": {
+                                    "type": "number"
+                                  },
+                                  "prorated": {
+                                    "type": "boolean"
+                                  },
+                                  "amountCents": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "period",
+                                  "quantity",
+                                  "prorated",
+                                  "amountCents"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "credit"
+                                    ]
+                                  },
+                                  "plan": {
+                                    "type": "string",
+                                    "enum": [
+                                      "studio",
+                                      "company"
+                                    ]
+                                  },
+                                  "period": {
+                                    "type": "string",
+                                    "enum": [
+                                      "monthly",
+                                      "yearly"
+                                    ]
+                                  },
+                                  "amountCents": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "plan",
+                                  "period",
+                                  "amountCents"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
+                        },
+                        "cardBrand": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "cardLast4": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "paid",
+                            "refunded"
+                          ]
+                        },
+                        "periodStart": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "periodEnd": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "refundedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "refundable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "invoiceNumber",
+                        "kind",
+                        "amountCents",
+                        "currency",
+                        "lines",
+                        "cardBrand",
+                        "cardLast4",
+                        "status",
+                        "periodStart",
+                        "periodEnd",
+                        "createdAt",
+                        "refundedAt",
+                        "refundable"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "workspace": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "billedTo": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "payment",
+                    "workspace",
+                    "billedTo"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payments/{id}/refund": {
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "payment": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "invoiceNumber": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "checkout",
+                            "renewal"
+                          ]
+                        },
+                        "amountCents": {
+                          "type": "number"
+                        },
+                        "currency": {
+                          "type": "string"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "plan"
+                                    ]
+                                  },
+                                  "plan": {
+                                    "type": "string",
+                                    "enum": [
+                                      "studio",
+                                      "company"
+                                    ]
+                                  },
+                                  "period": {
+                                    "type": "string",
+                                    "enum": [
+                                      "monthly",
+                                      "yearly"
+                                    ]
+                                  },
+                                  "amountCents": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "plan",
+                                  "period",
+                                  "amountCents"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "addon"
+                                    ]
+                                  },
+                                  "period": {
+                                    "type": "string",
+                                    "enum": [
+                                      "monthly",
+                                      "yearly"
+                                    ]
+                                  },
+                                  "quantity": {
+                                    "type": "number"
+                                  },
+                                  "prorated": {
+                                    "type": "boolean"
+                                  },
+                                  "amountCents": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "period",
+                                  "quantity",
+                                  "prorated",
+                                  "amountCents"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "credit"
+                                    ]
+                                  },
+                                  "plan": {
+                                    "type": "string",
+                                    "enum": [
+                                      "studio",
+                                      "company"
+                                    ]
+                                  },
+                                  "period": {
+                                    "type": "string",
+                                    "enum": [
+                                      "monthly",
+                                      "yearly"
+                                    ]
+                                  },
+                                  "amountCents": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "plan",
+                                  "period",
+                                  "amountCents"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
+                        },
+                        "cardBrand": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "cardLast4": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "paid",
+                            "refunded"
+                          ]
+                        },
+                        "periodStart": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "periodEnd": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "refundedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "refundable": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "invoiceNumber",
+                        "kind",
+                        "amountCents",
+                        "currency",
+                        "lines",
+                        "cardBrand",
+                        "cardLast4",
+                        "status",
+                        "periodStart",
+                        "periodEnd",
+                        "createdAt",
+                        "refundedAt",
+                        "refundable"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "subscription": {
+                      "type": "object",
+                      "properties": {
+                        "plan": {
+                          "type": "string",
+                          "enum": [
+                            "free",
+                            "studio",
+                            "company"
+                          ]
+                        },
+                        "period": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "monthly",
+                            "yearly"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "trialing"
+                          ]
+                        },
+                        "addonPacks": {
+                          "type": "number"
+                        },
+                        "trialEndsAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "currentPeriodStart": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "currentPeriodEnd": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "cancelAtPeriodEnd": {
+                          "type": "boolean"
+                        },
+                        "scheduledPlan": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "studio",
+                            "company"
+                          ]
+                        },
+                        "scheduledPeriod": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "monthly",
+                            "yearly"
+                          ]
+                        },
+                        "trialAvailable": {
+                          "type": "boolean"
+                        },
+                        "entitlements": {
+                          "type": "object",
+                          "properties": {
+                            "profiles": {
+                              "type": "number"
+                            },
+                            "members": {
+                              "nullable": true,
+                              "type": "number"
+                            },
+                            "logDays": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "profiles",
+                            "members",
+                            "logDays"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "plan",
+                        "period",
+                        "status",
+                        "addonPacks",
+                        "trialEndsAt",
+                        "currentPeriodStart",
+                        "currentPeriodEnd",
+                        "cancelAtPeriodEnd",
+                        "scheduledPlan",
+                        "scheduledPeriod",
+                        "trialAvailable",
+                        "entitlements"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "payment",
+                    "subscription"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sales-inquiries": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                  },
+                  "company": {
+                    "type": "string",
+                    "maxLength": 120
+                  },
+                  "teamSize": {
+                    "type": "string",
+                    "maxLength": 40
+                  },
+                  "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4000
+                  },
+                  "locale": {
+                    "default": "en",
+                    "type": "string",
+                    "enum": [
+                      "en",
+                      "zh"
+                    ]
+                  }
+                },
+                "required": [
+                  "name",
+                  "email",
+                  "message"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean",
+                      "enum": [
+                        true
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
