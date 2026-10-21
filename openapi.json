@@ -5827,6 +5827,9 @@
                         "additionalProperties": false
                       }
                     },
+                    "added": {
+                      "type": "number"
+                    },
                     "errors": {
                       "type": "array",
                       "items": {
@@ -5849,6 +5852,7 @@
                   },
                   "required": [
                     "proxies",
+                    "added",
                     "errors"
                   ],
                   "additionalProperties": false

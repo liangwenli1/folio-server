@@ -34,7 +34,21 @@ describe('proxies', () => {
     const text = ['socks5://a:b@one.example.net:1080', '# comment', '', 'two.example.net:8080:c:d', 'not a proxy', 'three.example.net:3128'].join('\n');
     const res = (await t.app.inject({ method: 'POST', url: `/workspaces/${workspaceId}/proxies/import`, headers, payload: { text, defaultType: 'http' } })).json();
     expect(res.proxies.map((p: { type: string; host: string }) => `${p.type}:${p.host}`)).toEqual(['socks5:one.example.net', 'http:two.example.net', 'http:three.example.net']);
+    expect(res.added).toBe(3);
     expect(res.errors).toEqual([{ line: 5, text: 'not a proxy' }]);
+  });
+
+  it('reuse saved proxies when the same line comes in again', async () => {
+    const { headers, workspaceId } = await signup(t.app);
+    const send = async (text: string) => (await t.app.inject({ method: 'POST', url: `/workspaces/${workspaceId}/proxies/import`, headers, payload: { text, defaultType: 'http' } })).json();
+    const first = await send('one.example.net:8080:a:b\nONE.example.net:8080:a:b');
+    expect(first.added).toBe(1);
+    expect(first.proxies[0].id).toBe(first.proxies[1].id);
+    const again = await send('socks5://x:y@two.example.net:1080\none.example.net:8080:a:b\none.example.net:8080:a:other');
+    expect(again.added).toBe(2);
+    expect(again.proxies[1].id).toBe(first.proxies[0].id);
+    expect(again.proxies[2].id).not.toBe(first.proxies[0].id);
+    expect((await t.app.inject({ url: `/workspaces/${workspaceId}/proxies`, headers })).json().proxies).toHaveLength(3);
   });
 
   it('store the latest check and forget it when the address changes', async () => {

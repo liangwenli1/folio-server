@@ -62,12 +62,14 @@ export function proxyRoutes(app: FastifyInstance, deps: Deps){
     return reply.code(201).send(proxyView(p, 0));
   });
 
-  // One proxy per line; lines that don't parse are reported back and the rest are added.
+  // One proxy per line; lines that don't parse are reported back. A line identical to a saved proxy (type,
+  // address, username and password) reuses it, so pasting a list twice adds nothing. `proxies` has one entry
+  // per readable line, in order; `added` counts the new ones.
   r.post('/workspaces/:id/proxies/import', {
     schema: {
       params: wsParams,
       body: z.object({ text: z.string().max(200_000), defaultType: proxyType.default('http') }),
-      response: { 200: z.object({ proxies: z.array(Proxy), errors: z.array(z.object({ line: z.number(), text: z.string() })) }) }
+      response: { 200: z.object({ proxies: z.array(Proxy), added: z.number(), errors: z.array(z.object({ line: z.number(), text: z.string() })) }) }
     }
   }, async req => {
     const s = await requireSession(req, deps);
@@ -78,10 +80,19 @@ export function proxyRoutes(app: FastifyInstance, deps: Deps){
       try { parsed.push(parseProxyLine(line, req.body.defaultType)); } catch { errors.push({ line: i + 1, text: line.slice(0, 120) }); }
     });
     if (parsed.length > 2000) throw new ApiError(400, 'too_many', 'Import up to 2000 proxies at a time');
+
+    const key = (p: ProxyInput) => JSON.stringify([p.type, p.host.toLowerCase(), p.port, p.username || null, p.password || null]);
+    const keyOf = (p: typeof proxies.$inferSelect) => key({ type: p.type as ProxyInput['type'], host: p.host, port: p.port, username: p.username, password: p.passwordEnc ? open(p.passwordEnc) : null });
+    const known = new Map((await db.select().from(proxies).where(eq(proxies.workspaceId, req.params.id))).map(p => [keyOf(p), p]));
+    const fresh = [...new Map(parsed.filter(p => !known.has(key(p))).map(p => [key(p), p])).values()];
     const now = clock.now();
-    const rows = parsed.length ? await db.insert(proxies).values(parsed.map(p => row(req.params.id, p, now))).returning() : [];
+    const rows = fresh.length ? await db.insert(proxies).values(fresh.map(p => row(req.params.id, p, now))).returning() : [];
+    rows.forEach(p => known.set(keyOf(p), p));
     if (rows.length) publish(req.params.id, { kind: 'proxies' });
-    return { proxies: rows.map(p => proxyView(p, 0)), errors };
+
+    const counts = new Map((await db.select({ id: profiles.proxyId, n: sql<number>`count(*)::int` }).from(profiles)
+      .where(and(eq(profiles.workspaceId, req.params.id), isNull(profiles.deletedAt))).groupBy(profiles.proxyId)).map(c => [c.id, c.n]));
+    return { proxies: parsed.map(p => { const x = known.get(key(p))!; return proxyView(x, counts.get(x.id) ?? 0); }), added: rows.length, errors };
   });
 
   // `password: null` removes it; leaving it out keeps the current one.
