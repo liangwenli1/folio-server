@@ -13,11 +13,21 @@ export const config = {
   mockPayments: env.MOCK_PAYMENTS === '1',
   // Dev-only helpers such as reading the last email code. Never enable in production.
   devTools: env.DEV_TOOLS === '1',
-  authRateLimit: Number(env.AUTH_RATE_LIMIT ?? 20)
+  authRateLimit: Number(env.AUTH_RATE_LIMIT ?? 20),
+  // Which reverse proxies may set X-Forwarded-For (e.g. "10.0.0.5" or "10.0.0.0/8"). Off by default, so the header cannot be forged.
+  trustProxy: env.TRUST_PROXY || false,
+  // 32-byte key, base64, for proxy passwords. Required in production.
+  secretKey: env.SECRET_KEY ?? '',
+  geoipDb: env.GEOIP_DB ?? '',
+  // Dev only: treat private and loopback addresses as this city, so proxy checks work on a local network.
+  devPrivateGeo: env.DEV_PRIVATE_GEO ?? ''
 };
 
 export type Config = typeof config;
 
 if (env.NODE_ENV === 'production' && config.devTools){
   throw new Error('DEV_TOOLS must not be enabled in production');
+}
+if (env.NODE_ENV === 'production' && !config.secretKey){
+  throw new Error('SECRET_KEY is required in production');
 }

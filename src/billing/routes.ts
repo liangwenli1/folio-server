@@ -8,6 +8,7 @@ import { requireSession, type Deps } from '../http.js';
 import { ADDON, MAX_PROFILES, PLANS, REFUND_DAYS, TRIAL_DAYS, DAY, quote } from '../plans.js';
 import { Payment, Quote, Subscription, paymentView, subscriptionView } from '../views.js';
 import { requireRole } from '../workspaces/service.js';
+import { publish } from '../events.js';
 import { latestPaidId, payCheckout, readSub, refundPayment, setCancel, startCheckout, startTrial, toState } from './service.js';
 
 const wsParams = z.object({ id: z.uuid() });
@@ -59,6 +60,7 @@ export function billingRoutes(app: FastifyInstance, deps: Deps){
       throw new ApiError(503, 'payments_unavailable', 'Payments are not available yet');
     }
     const res = await startCheckout(db, { workspaceId: req.params.id, userId: s.userId, req: req.body, now });
+    if (!res.checkoutId) publish(req.params.id, { kind: 'workspace' });
     const { next: _next, ...q } = res.quote;
     return { checkoutId: res.checkoutId, quote: q, subscription: subscriptionView(res.subscription) };
   });
@@ -84,6 +86,7 @@ export function billingRoutes(app: FastifyInstance, deps: Deps){
     const s = await requireSession(req, deps);
     if (!config.mockPayments) throw new ApiError(503, 'payments_unavailable', 'Payments are not available yet');
     const res = await payCheckout(db, { checkoutId: req.params.id, userId: s.userId, card: req.body.card, now: clock.now() });
+    publish(res.payment.workspaceId, { kind: 'workspace' });
     return { subscription: subscriptionView(res.subscription), payment: paymentView(res.payment, true) };
   });
 
@@ -91,14 +94,18 @@ export function billingRoutes(app: FastifyInstance, deps: Deps){
     const s = await requireSession(req, deps);
     await requireRole(db, req.params.id, s.userId, [...managers]);
     await requireVerified(s.userId);
-    return { subscription: subscriptionView(await startTrial(db, req.params.id, clock.now())) };
+    const sub = await startTrial(db, req.params.id, clock.now());
+    publish(req.params.id, { kind: 'workspace' });
+    return { subscription: subscriptionView(sub) };
   });
 
   for (const [path, cancel] of [['cancel', true], ['resume', false]] as const){
     r.post(`/workspaces/:id/billing/${path}`, { schema: { params: wsParams, response: { 200: z.object({ subscription: Subscription }) } } }, async req => {
       const s = await requireSession(req, deps);
       await requireRole(db, req.params.id, s.userId, [...managers]);
-      return { subscription: subscriptionView(await setCancel(db, req.params.id, cancel, clock.now())) };
+      const sub = await setCancel(db, req.params.id, cancel, clock.now());
+      publish(req.params.id, { kind: 'workspace' });
+      return { subscription: subscriptionView(sub) };
     });
   }
 
@@ -130,6 +137,7 @@ export function billingRoutes(app: FastifyInstance, deps: Deps){
     if (!p) throw notFound('Payment');
     await requireRole(db, p.workspaceId, s.userId, [...managers]);
     const res = await refundPayment(db, req.params.id, clock.now());
+    publish(p.workspaceId, { kind: 'workspace' });
     return { payment: paymentView(res.payment, false), subscription: subscriptionView(res.subscription) };
   });
 }

@@ -28,7 +28,7 @@ export async function setup(){
   await runMigrations(db);
   const clock = makeClock();
   const app = await buildApp({
-    db, clock, config: { ...config, devTools: true, mockPayments: true, authRateLimit: 10_000, siteOrigins: [ORIGIN] }
+    db, clock, config: { ...config, devTools: true, mockPayments: true, authRateLimit: 10_000, siteOrigins: [ORIGIN], devPrivateGeo: 'seattle', geoipDb: process.env.GEOIP_DB ?? '' }
   }, { logger: false });
   return { app, db, clock, teardown: async () => { await app.close(); await close(); } };
 }
@@ -66,3 +66,8 @@ export async function buy(app: FastifyInstance, headers: Record<string, string>,
   if (!checkoutId) return co;
   return app.inject({ method: 'POST', url: `/billing/checkouts/${checkoutId}/pay`, headers, payload: { card } });
 }
+
+export const chromiumProfile = (name: string, extra: object = {}) => ({
+  name, kernel: 'chromium', kernelVersion: '150.0.7871.186', os: 'windows',
+  fingerprint: { kind: 'chromium', seed: 1001, hardwareConcurrency: 8 }, ...extra
+});

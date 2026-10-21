@@ -23,6 +23,10 @@ DEV_TOOLS=1 MOCK_PAYMENTS=1 npm run dev     # http://localhost:47110, applies mi
 | `COOKIE_SECURE` / `COOKIE_DOMAIN` | off / unset | Set both in production (e.g. `COOKIE_DOMAIN=.example.com`) |
 | `MOCK_PAYMENTS` | off | Enables the mock card gateway and renewals. There is no real gateway yet |
 | `DEV_TOOLS` | off | `/dev/mail` (latest email code) and `/dev/run-due`. Refused when `NODE_ENV=production` |
+| `SECRET_KEY` | development key | 32 bytes, base64, for encrypting proxy passwords. Required in production |
+| `TRUST_PROXY` | off | Address or CIDR of the reverse proxy allowed to set `X-Forwarded-For`. Leave unset when clients connect directly, or the header can be forged |
+| `GEOIP_DB` | unset | Path to the DB-IP City Lite `.mmdb` file (https://db-ip.com/db/download/ip-to-city-lite, CC BY 4.0; show "IP Geolocation by DB-IP" wherever locations appear). Without it, exit locations are unknown |
+| `DEV_PRIVATE_GEO` | unset | Dev only: `seattle`, `london`, `tokyo` or `frankfurt`, used as the location of private and loopback addresses so proxy checks work on a local network |
 
 Email: no provider is connected yet. Codes are written to the server log; production refuses to start with the development mailer.
 
@@ -42,6 +46,14 @@ Email: no provider is connected yet. Codes are written to the server log; produc
 | `npm run typecheck` | TypeScript check |
 | `npm run db:generate` | New migration from `src/db/schema.ts` |
 | `npm run openapi` | Regenerates `openapi.json` |
+
+## Profiles and proxies
+
+- Profiles are numbered per workspace (`#0001`). Profiles in the trash do not count toward the plan; creating, importing and restoring check the limit inside a transaction that locks the workspace.
+- Edits carry the version the client last saw; a newer version on the server returns `409 stale`.
+- Proxy passwords are encrypted at rest. They are returned only by `GET /profiles/:id/launch` and `GET /proxies/:id/credentials`, which the desktop app keeps out of its renderer.
+- `GET /net/echo` returns the caller's address and location. The desktop calls it through a profile's proxy to learn the exit IP, time zone and language, then reports the result with `POST /proxies/:id/check`.
+- `GET /workspaces/:id/events` is a server-sent event stream: `change` events say which kind of data changed (`profiles`, `proxies`, `groups`, `workspace`). Events are in-process; more than one server instance needs PostgreSQL LISTEN/NOTIFY.
 
 ## Billing rules
 

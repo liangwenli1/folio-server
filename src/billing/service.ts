@@ -7,6 +7,7 @@ import {
   ADDON, PLANS, type ChangeRequest, type PaidPlan, type Period, type Quote, type QuoteLine, type SubState
 } from '../plans.js';
 import { chargeCard, type Card } from './mock-gateway.js';
+import { publish } from '../events.js';
 
 export type SubRow = typeof subscriptions.$inferSelect;
 export type PaymentRow = typeof payments.$inferSelect;
@@ -180,6 +181,7 @@ export async function processDue(db: Db, now: Date, { renew }: { renew: boolean 
       if (s.cancelAtPeriodEnd) await writeSub(tx, id, FREE, now);
       else if (renew) await applyPaymentEvent(tx, { type: 'renewal.paid', workspaceId: id }, now);
     });
+    publish(id, { kind: 'workspace' });
   }
   return due.length;
 }

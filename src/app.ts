@@ -11,9 +11,12 @@ import { workspaceRoutes } from './workspaces/routes.js';
 import { billingRoutes } from './billing/routes.js';
 import { salesRoutes } from './sales/routes.js';
 import { devRoutes } from './dev/routes.js';
+import { profileRoutes } from './profiles/routes.js';
+import { proxyRoutes } from './proxies/routes.js';
+import { netRoutes } from './net/routes.js';
 
 export async function buildApp(deps: Deps, opts: { logger?: boolean } = {}){
-  const app = Fastify({ logger: opts.logger ?? true, trustProxy: true });
+  const app = Fastify({ logger: opts.logger ?? true, trustProxy: deps.config.trustProxy });
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
 
@@ -39,6 +42,9 @@ export async function buildApp(deps: Deps, opts: { logger?: boolean } = {}){
   workspaceRoutes(app, deps);
   billingRoutes(app, deps);
   salesRoutes(app, deps);
+  profileRoutes(app, deps);
+  proxyRoutes(app, deps);
+  netRoutes(app, deps);
   if (deps.config.devTools) devRoutes(app, deps);
 
   app.get('/health', { schema: { hide: true } }, async () => ({ ok: true }));

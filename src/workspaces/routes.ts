@@ -7,6 +7,8 @@ import { requireSession, type Deps } from '../http.js';
 import { readSub } from '../billing/service.js';
 import { Workspace, WorkspaceSummary, subscriptionView } from '../views.js';
 import { createWorkspace, memberCount, requireRole } from './service.js';
+import { activeCount } from '../profiles/service.js';
+import { publish } from '../events.js';
 
 const name = z.string().trim().min(1).max(80);
 const params = z.object({ id: z.uuid() });
@@ -19,8 +21,7 @@ export function workspaceRoutes(app: FastifyInstance, deps: Deps){
     const s = await requireSession(req, deps);
     const role = await requireRole(db, req.params.id, s.userId);
     const [ws] = await db.select().from(workspaces).where(eq(workspaces.id, req.params.id));
-    // Profiles arrive in P2; until then the count is always zero.
-    return { id: ws.id, name: ws.name, role, subscription: subscriptionView(await readSub(db, ws.id)), usage: { profiles: 0, members: await memberCount(db, ws.id) } };
+    return { id: ws.id, name: ws.name, role, subscription: subscriptionView(await readSub(db, ws.id)), usage: { profiles: await activeCount(db, ws.id), members: await memberCount(db, ws.id) } };
   });
 
   r.post('/workspaces', { schema: { body: z.object({ name }), response: { 201: WorkspaceSummary } } }, async (req, reply) => {
@@ -33,6 +34,7 @@ export function workspaceRoutes(app: FastifyInstance, deps: Deps){
     const s = await requireSession(req, deps);
     await requireRole(db, req.params.id, s.userId, ['owner', 'admin']);
     const [ws] = await db.update(workspaces).set({ name: req.body.name }).where(eq(workspaces.id, req.params.id)).returning();
+    publish(ws.id, { kind: 'workspace' });
     return { id: ws.id, name: ws.name };
   });
 }

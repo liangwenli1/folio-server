@@ -1,4 +1,4 @@
-import { pgTable, pgSequence, uuid, text, timestamp, integer, boolean, jsonb, primaryKey, index } from 'drizzle-orm/pg-core';
+import { pgTable, pgSequence, uuid, text, timestamp, integer, boolean, jsonb, primaryKey, index, uniqueIndex, type AnyPgColumn } from 'drizzle-orm/pg-core';
 
 const ts = () => timestamp({ withTimezone: true });
 const createdAt = () => ts().notNull().defaultNow();
@@ -40,6 +40,8 @@ export const sessions = pgTable('sessions', {
 export const workspaces = pgTable('workspaces', {
   id: uuid().primaryKey().defaultRandom(),
   name: text().notNull(),
+  // Last profile number handed out; profiles show as #0001, #0002, ... within a workspace.
+  profileSeq: integer().notNull().default(0),
   createdAt: createdAt()
 });
 
@@ -110,3 +112,52 @@ export const salesInquiries = pgTable('sales_inquiries', {
   locale: text().notNull(),
   createdAt: createdAt()
 });
+
+export const groups = pgTable('groups', {
+  id: uuid().primaryKey().defaultRandom(),
+  workspaceId: uuid().notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  name: text().notNull(),
+  createdAt: createdAt()
+}, t => [uniqueIndex().on(t.workspaceId, t.name)]);
+
+// Passwords are encrypted with SECRET_KEY (see crypto.ts). `backupId` is the line to fall back to.
+export const proxies = pgTable('proxies', {
+  id: uuid().primaryKey().defaultRandom(),
+  workspaceId: uuid().notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  name: text().notNull(),
+  type: text().notNull(),
+  host: text().notNull(),
+  port: integer().notNull(),
+  username: text(),
+  passwordEnc: text(),
+  backupId: uuid().references((): AnyPgColumn => proxies.id, { onDelete: 'set null' }),
+  lastCheck: jsonb(),
+  createdAt: createdAt(),
+  updatedAt: ts().notNull().defaultNow()
+}, t => [index().on(t.workspaceId)]);
+
+// Profiles in the trash have `deletedAt` set and do not count toward the plan.
+export const profiles = pgTable('profiles', {
+  id: uuid().primaryKey().defaultRandom(),
+  workspaceId: uuid().notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  number: integer().notNull(),
+  name: text().notNull(),
+  groupId: uuid().references(() => groups.id, { onDelete: 'set null' }),
+  ownerId: uuid().references(() => users.id, { onDelete: 'set null' }),
+  tags: text().array().notNull().default([]),
+  kernel: text().notNull(),
+  kernelVersion: text().notNull(),
+  os: text().notNull(),
+  fingerprint: jsonb().notNull(),
+  proxyId: uuid().references(() => proxies.id, { onDelete: 'set null' }),
+  timezoneOverride: text(),
+  localeOverride: text(),
+  notes: text(),
+  lastOpenedAt: ts(),
+  lastOpenedBy: uuid().references(() => users.id, { onDelete: 'set null' }),
+  createdBy: uuid().references(() => users.id, { onDelete: 'set null' }),
+  createdAt: createdAt(),
+  updatedAt: ts().notNull().defaultNow(),
+  deletedAt: ts(),
+  version: integer().notNull().default(0)
+}, t => [uniqueIndex().on(t.workspaceId, t.number), index().on(t.workspaceId, t.deletedAt)]);

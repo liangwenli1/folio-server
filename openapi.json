@@ -3328,6 +3328,3153 @@
           }
         }
       }
+    },
+    "/workspaces/{id}/groups": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "groups": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "profiles": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "profiles"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "groups"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "profiles": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "profiles"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/groups/{id}": {
+      "patch": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "nullable": true,
+                  "enum": [
+                    null
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{id}/profiles": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "default": "0",
+              "type": "string",
+              "enum": [
+                "0",
+                "1"
+              ]
+            },
+            "in": "query",
+            "name": "trash",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "profiles": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "number": {
+                            "type": "number"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "groupId": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "ownerId": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "tags": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "kernel": {
+                            "type": "string",
+                            "enum": [
+                              "chromium",
+                              "firefox"
+                            ]
+                          },
+                          "kernelVersion": {
+                            "type": "string"
+                          },
+                          "os": {
+                            "type": "string",
+                            "enum": [
+                              "windows",
+                              "macos",
+                              "linux"
+                            ]
+                          },
+                          "fingerprint": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "chromium"
+                                    ]
+                                  },
+                                  "seed": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 2147483647
+                                  },
+                                  "hardwareConcurrency": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 64
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "seed",
+                                  "hardwareConcurrency"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "firefox"
+                                    ]
+                                  },
+                                  "config": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "config"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          },
+                          "proxyId": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "timezoneOverride": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "localeOverride": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "notes": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "lastOpenedAt": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "lastOpenedBy": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          },
+                          "deletedAt": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "number",
+                          "name",
+                          "groupId",
+                          "ownerId",
+                          "tags",
+                          "kernel",
+                          "kernelVersion",
+                          "os",
+                          "fingerprint",
+                          "proxyId",
+                          "timezoneOverride",
+                          "localeOverride",
+                          "notes",
+                          "lastOpenedAt",
+                          "lastOpenedBy",
+                          "createdAt",
+                          "updatedAt",
+                          "deletedAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "profiles"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "groupId": {
+                    "nullable": true,
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "tags": {
+                    "default": [],
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 24
+                    }
+                  },
+                  "kernel": {
+                    "type": "string",
+                    "enum": [
+                      "chromium",
+                      "firefox"
+                    ]
+                  },
+                  "kernelVersion": {
+                    "type": "string",
+                    "pattern": "^[\\w.-]{1,40}$"
+                  },
+                  "os": {
+                    "type": "string",
+                    "enum": [
+                      "windows",
+                      "macos",
+                      "linux"
+                    ]
+                  },
+                  "fingerprint": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "chromium"
+                            ]
+                          },
+                          "seed": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 2147483647
+                          },
+                          "hardwareConcurrency": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 64
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "seed",
+                          "hardwareConcurrency"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "firefox"
+                            ]
+                          },
+                          "config": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "config"
+                        ]
+                      }
+                    ]
+                  },
+                  "proxyId": {
+                    "nullable": true,
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "timezoneOverride": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 64,
+                    "pattern": "^[A-Za-z_]+(\\/[A-Za-z0-9_+-]+){0,2}$"
+                  },
+                  "localeOverride": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 35,
+                    "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+                  },
+                  "notes": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "name",
+                  "kernel",
+                  "kernelVersion",
+                  "os",
+                  "fingerprint"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "number": {
+                      "type": "number"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "groupId": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "ownerId": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "tags": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "kernel": {
+                      "type": "string",
+                      "enum": [
+                        "chromium",
+                        "firefox"
+                      ]
+                    },
+                    "kernelVersion": {
+                      "type": "string"
+                    },
+                    "os": {
+                      "type": "string",
+                      "enum": [
+                        "windows",
+                        "macos",
+                        "linux"
+                      ]
+                    },
+                    "fingerprint": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "chromium"
+                              ]
+                            },
+                            "seed": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 2147483647
+                            },
+                            "hardwareConcurrency": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 64
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "seed",
+                            "hardwareConcurrency"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "firefox"
+                              ]
+                            },
+                            "config": {
+                              "type": "object",
+                              "additionalProperties": {}
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "config"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "proxyId": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "timezoneOverride": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "localeOverride": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "notes": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "lastOpenedAt": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "lastOpenedBy": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    },
+                    "deletedAt": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "number",
+                    "name",
+                    "groupId",
+                    "ownerId",
+                    "tags",
+                    "kernel",
+                    "kernelVersion",
+                    "os",
+                    "fingerprint",
+                    "proxyId",
+                    "timezoneOverride",
+                    "localeOverride",
+                    "notes",
+                    "lastOpenedAt",
+                    "lastOpenedBy",
+                    "createdAt",
+                    "updatedAt",
+                    "deletedAt",
+                    "version"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{id}/profiles/bulk": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profiles": {
+                    "minItems": 1,
+                    "maxItems": 500,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 80
+                        },
+                        "groupId": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "tags": {
+                          "default": [],
+                          "maxItems": 10,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 24
+                          }
+                        },
+                        "kernel": {
+                          "type": "string",
+                          "enum": [
+                            "chromium",
+                            "firefox"
+                          ]
+                        },
+                        "kernelVersion": {
+                          "type": "string",
+                          "pattern": "^[\\w.-]{1,40}$"
+                        },
+                        "os": {
+                          "type": "string",
+                          "enum": [
+                            "windows",
+                            "macos",
+                            "linux"
+                          ]
+                        },
+                        "fingerprint": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "chromium"
+                                  ]
+                                },
+                                "seed": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 2147483647
+                                },
+                                "hardwareConcurrency": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 64
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "seed",
+                                "hardwareConcurrency"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "firefox"
+                                  ]
+                                },
+                                "config": {
+                                  "type": "object",
+                                  "additionalProperties": {}
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "config"
+                              ]
+                            }
+                          ]
+                        },
+                        "proxyId": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "timezoneOverride": {
+                          "nullable": true,
+                          "type": "string",
+                          "maxLength": 64,
+                          "pattern": "^[A-Za-z_]+(\\/[A-Za-z0-9_+-]+){0,2}$"
+                        },
+                        "localeOverride": {
+                          "nullable": true,
+                          "type": "string",
+                          "maxLength": 35,
+                          "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+                        },
+                        "notes": {
+                          "nullable": true,
+                          "type": "string",
+                          "maxLength": 2000
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "kernel",
+                        "kernelVersion",
+                        "os",
+                        "fingerprint"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "profiles"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "profiles": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "number": {
+                            "type": "number"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "groupId": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "ownerId": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "tags": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "kernel": {
+                            "type": "string",
+                            "enum": [
+                              "chromium",
+                              "firefox"
+                            ]
+                          },
+                          "kernelVersion": {
+                            "type": "string"
+                          },
+                          "os": {
+                            "type": "string",
+                            "enum": [
+                              "windows",
+                              "macos",
+                              "linux"
+                            ]
+                          },
+                          "fingerprint": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "chromium"
+                                    ]
+                                  },
+                                  "seed": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 2147483647
+                                  },
+                                  "hardwareConcurrency": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 64
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "seed",
+                                  "hardwareConcurrency"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "firefox"
+                                    ]
+                                  },
+                                  "config": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "config"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          },
+                          "proxyId": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "timezoneOverride": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "localeOverride": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "notes": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "lastOpenedAt": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "lastOpenedBy": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          },
+                          "deletedAt": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "number",
+                          "name",
+                          "groupId",
+                          "ownerId",
+                          "tags",
+                          "kernel",
+                          "kernelVersion",
+                          "os",
+                          "fingerprint",
+                          "proxyId",
+                          "timezoneOverride",
+                          "localeOverride",
+                          "notes",
+                          "lastOpenedAt",
+                          "lastOpenedBy",
+                          "createdAt",
+                          "updatedAt",
+                          "deletedAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "profiles"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/profiles/{id}": {
+      "patch": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "groupId": {
+                    "nullable": true,
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "tags": {
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 24
+                    }
+                  },
+                  "proxyId": {
+                    "nullable": true,
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "kernelVersion": {
+                    "type": "string",
+                    "pattern": "^[\\w.-]{1,40}$"
+                  },
+                  "os": {
+                    "type": "string",
+                    "enum": [
+                      "windows",
+                      "macos",
+                      "linux"
+                    ]
+                  },
+                  "fingerprint": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "chromium"
+                            ]
+                          },
+                          "seed": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 2147483647
+                          },
+                          "hardwareConcurrency": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 64
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "seed",
+                          "hardwareConcurrency"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "firefox"
+                            ]
+                          },
+                          "config": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "config"
+                        ]
+                      }
+                    ]
+                  },
+                  "timezoneOverride": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 64,
+                    "pattern": "^[A-Za-z_]+(\\/[A-Za-z0-9_+-]+){0,2}$"
+                  },
+                  "localeOverride": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 35,
+                    "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+                  },
+                  "notes": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "version"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "number": {
+                      "type": "number"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "groupId": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "ownerId": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "tags": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "kernel": {
+                      "type": "string",
+                      "enum": [
+                        "chromium",
+                        "firefox"
+                      ]
+                    },
+                    "kernelVersion": {
+                      "type": "string"
+                    },
+                    "os": {
+                      "type": "string",
+                      "enum": [
+                        "windows",
+                        "macos",
+                        "linux"
+                      ]
+                    },
+                    "fingerprint": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "chromium"
+                              ]
+                            },
+                            "seed": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 2147483647
+                            },
+                            "hardwareConcurrency": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 64
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "seed",
+                            "hardwareConcurrency"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "firefox"
+                              ]
+                            },
+                            "config": {
+                              "type": "object",
+                              "additionalProperties": {}
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "config"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "proxyId": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "timezoneOverride": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "localeOverride": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "notes": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "lastOpenedAt": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "lastOpenedBy": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    },
+                    "deletedAt": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "number",
+                    "name",
+                    "groupId",
+                    "ownerId",
+                    "tags",
+                    "kernel",
+                    "kernelVersion",
+                    "os",
+                    "fingerprint",
+                    "proxyId",
+                    "timezoneOverride",
+                    "localeOverride",
+                    "notes",
+                    "lastOpenedAt",
+                    "lastOpenedBy",
+                    "createdAt",
+                    "updatedAt",
+                    "deletedAt",
+                    "version"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{id}/profiles/batch": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ids": {
+                    "minItems": 1,
+                    "maxItems": 2000,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    }
+                  },
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "move",
+                      "tag",
+                      "untag",
+                      "set-proxy",
+                      "trash",
+                      "restore",
+                      "purge"
+                    ]
+                  },
+                  "groupId": {
+                    "nullable": true,
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "tag": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 24
+                  },
+                  "proxyId": {
+                    "nullable": true,
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  }
+                },
+                "required": [
+                  "ids",
+                  "action"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "updated": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "updated"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/profiles/{id}/opened": {
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "number": {
+                      "type": "number"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "groupId": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "ownerId": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "tags": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "kernel": {
+                      "type": "string",
+                      "enum": [
+                        "chromium",
+                        "firefox"
+                      ]
+                    },
+                    "kernelVersion": {
+                      "type": "string"
+                    },
+                    "os": {
+                      "type": "string",
+                      "enum": [
+                        "windows",
+                        "macos",
+                        "linux"
+                      ]
+                    },
+                    "fingerprint": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "chromium"
+                              ]
+                            },
+                            "seed": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 2147483647
+                            },
+                            "hardwareConcurrency": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 64
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "seed",
+                            "hardwareConcurrency"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "firefox"
+                              ]
+                            },
+                            "config": {
+                              "type": "object",
+                              "additionalProperties": {}
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "config"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "proxyId": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "timezoneOverride": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "localeOverride": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "notes": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "lastOpenedAt": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "lastOpenedBy": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    },
+                    "deletedAt": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "number",
+                    "name",
+                    "groupId",
+                    "ownerId",
+                    "tags",
+                    "kernel",
+                    "kernelVersion",
+                    "os",
+                    "fingerprint",
+                    "proxyId",
+                    "timezoneOverride",
+                    "localeOverride",
+                    "notes",
+                    "lastOpenedAt",
+                    "lastOpenedBy",
+                    "createdAt",
+                    "updatedAt",
+                    "deletedAt",
+                    "version"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/profiles/{id}/launch": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "profile": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "number"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "groupId": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "ownerId": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "tags": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "kernel": {
+                          "type": "string",
+                          "enum": [
+                            "chromium",
+                            "firefox"
+                          ]
+                        },
+                        "kernelVersion": {
+                          "type": "string"
+                        },
+                        "os": {
+                          "type": "string",
+                          "enum": [
+                            "windows",
+                            "macos",
+                            "linux"
+                          ]
+                        },
+                        "fingerprint": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "chromium"
+                                  ]
+                                },
+                                "seed": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 2147483647
+                                },
+                                "hardwareConcurrency": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 64
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "seed",
+                                "hardwareConcurrency"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "firefox"
+                                  ]
+                                },
+                                "config": {
+                                  "type": "object",
+                                  "additionalProperties": {}
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "config"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "proxyId": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "timezoneOverride": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "localeOverride": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "notes": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "lastOpenedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "lastOpenedBy": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "deletedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "name",
+                        "groupId",
+                        "ownerId",
+                        "tags",
+                        "kernel",
+                        "kernelVersion",
+                        "os",
+                        "fingerprint",
+                        "proxyId",
+                        "timezoneOverride",
+                        "localeOverride",
+                        "notes",
+                        "lastOpenedAt",
+                        "lastOpenedBy",
+                        "createdAt",
+                        "updatedAt",
+                        "deletedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "proxy": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "http",
+                            "https",
+                            "socks5"
+                          ]
+                        },
+                        "host": {
+                          "type": "string"
+                        },
+                        "port": {
+                          "type": "number"
+                        },
+                        "username": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "password": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "host",
+                        "port",
+                        "username",
+                        "password"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "backup": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "http",
+                            "https",
+                            "socks5"
+                          ]
+                        },
+                        "host": {
+                          "type": "string"
+                        },
+                        "port": {
+                          "type": "number"
+                        },
+                        "username": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "password": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "type",
+                        "host",
+                        "port",
+                        "username",
+                        "password"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "profile",
+                    "proxy",
+                    "backup"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{id}/proxies": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "proxies": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "http",
+                              "https",
+                              "socks5"
+                            ]
+                          },
+                          "host": {
+                            "type": "string"
+                          },
+                          "port": {
+                            "type": "number"
+                          },
+                          "username": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "hasPassword": {
+                            "type": "boolean"
+                          },
+                          "backupId": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "lastCheck": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "ok": {
+                                "type": "boolean"
+                              },
+                              "ms": {
+                                "nullable": true,
+                                "type": "number"
+                              },
+                              "ip": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "geo": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "country": {
+                                    "type": "string"
+                                  },
+                                  "countryName": {
+                                    "type": "string"
+                                  },
+                                  "region": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  },
+                                  "city": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  },
+                                  "lat": {
+                                    "type": "number"
+                                  },
+                                  "lon": {
+                                    "type": "number"
+                                  },
+                                  "timezone": {
+                                    "type": "string"
+                                  },
+                                  "locale": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "country",
+                                  "countryName",
+                                  "region",
+                                  "city",
+                                  "lat",
+                                  "lon",
+                                  "timezone",
+                                  "locale"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "error": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "checkedAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "ok",
+                              "ms",
+                              "ip",
+                              "geo",
+                              "error",
+                              "checkedAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "profiles": {
+                            "type": "number"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "type",
+                          "host",
+                          "port",
+                          "username",
+                          "hasPassword",
+                          "backupId",
+                          "lastCheck",
+                          "profiles",
+                          "createdAt",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "proxies"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "http",
+                      "https",
+                      "socks5"
+                    ]
+                  },
+                  "host": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 253,
+                    "pattern": "^[A-Za-z0-9.:_-]+$"
+                  },
+                  "port": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 65535
+                  },
+                  "username": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 256
+                  },
+                  "password": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 256
+                  },
+                  "backupId": {
+                    "nullable": true,
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  }
+                },
+                "required": [
+                  "type",
+                  "host",
+                  "port"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "http",
+                        "https",
+                        "socks5"
+                      ]
+                    },
+                    "host": {
+                      "type": "string"
+                    },
+                    "port": {
+                      "type": "number"
+                    },
+                    "username": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "hasPassword": {
+                      "type": "boolean"
+                    },
+                    "backupId": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "lastCheck": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "boolean"
+                        },
+                        "ms": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "ip": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "geo": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "country": {
+                              "type": "string"
+                            },
+                            "countryName": {
+                              "type": "string"
+                            },
+                            "region": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "city": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "lat": {
+                              "type": "number"
+                            },
+                            "lon": {
+                              "type": "number"
+                            },
+                            "timezone": {
+                              "type": "string"
+                            },
+                            "locale": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "country",
+                            "countryName",
+                            "region",
+                            "city",
+                            "lat",
+                            "lon",
+                            "timezone",
+                            "locale"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "error": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "checkedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "ok",
+                        "ms",
+                        "ip",
+                        "geo",
+                        "error",
+                        "checkedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "profiles": {
+                      "type": "number"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "type",
+                    "host",
+                    "port",
+                    "username",
+                    "hasPassword",
+                    "backupId",
+                    "lastCheck",
+                    "profiles",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{id}/proxies/import": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "maxLength": 200000
+                  },
+                  "defaultType": {
+                    "default": "http",
+                    "type": "string",
+                    "enum": [
+                      "http",
+                      "https",
+                      "socks5"
+                    ]
+                  }
+                },
+                "required": [
+                  "text"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "proxies": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "http",
+                              "https",
+                              "socks5"
+                            ]
+                          },
+                          "host": {
+                            "type": "string"
+                          },
+                          "port": {
+                            "type": "number"
+                          },
+                          "username": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "hasPassword": {
+                            "type": "boolean"
+                          },
+                          "backupId": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "lastCheck": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "ok": {
+                                "type": "boolean"
+                              },
+                              "ms": {
+                                "nullable": true,
+                                "type": "number"
+                              },
+                              "ip": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "geo": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "country": {
+                                    "type": "string"
+                                  },
+                                  "countryName": {
+                                    "type": "string"
+                                  },
+                                  "region": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  },
+                                  "city": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  },
+                                  "lat": {
+                                    "type": "number"
+                                  },
+                                  "lon": {
+                                    "type": "number"
+                                  },
+                                  "timezone": {
+                                    "type": "string"
+                                  },
+                                  "locale": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "country",
+                                  "countryName",
+                                  "region",
+                                  "city",
+                                  "lat",
+                                  "lon",
+                                  "timezone",
+                                  "locale"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "error": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "checkedAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "ok",
+                              "ms",
+                              "ip",
+                              "geo",
+                              "error",
+                              "checkedAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "profiles": {
+                            "type": "number"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "type",
+                          "host",
+                          "port",
+                          "username",
+                          "hasPassword",
+                          "backupId",
+                          "lastCheck",
+                          "profiles",
+                          "createdAt",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "line": {
+                            "type": "number"
+                          },
+                          "text": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "line",
+                          "text"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "proxies",
+                    "errors"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/proxies/{id}": {
+      "patch": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "http",
+                      "https",
+                      "socks5"
+                    ]
+                  },
+                  "host": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 253,
+                    "pattern": "^[A-Za-z0-9.:_-]+$"
+                  },
+                  "port": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 65535
+                  },
+                  "username": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 256
+                  },
+                  "password": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 256
+                  },
+                  "backupId": {
+                    "nullable": true,
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "http",
+                        "https",
+                        "socks5"
+                      ]
+                    },
+                    "host": {
+                      "type": "string"
+                    },
+                    "port": {
+                      "type": "number"
+                    },
+                    "username": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "hasPassword": {
+                      "type": "boolean"
+                    },
+                    "backupId": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "lastCheck": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "boolean"
+                        },
+                        "ms": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "ip": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "geo": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "country": {
+                              "type": "string"
+                            },
+                            "countryName": {
+                              "type": "string"
+                            },
+                            "region": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "city": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "lat": {
+                              "type": "number"
+                            },
+                            "lon": {
+                              "type": "number"
+                            },
+                            "timezone": {
+                              "type": "string"
+                            },
+                            "locale": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "country",
+                            "countryName",
+                            "region",
+                            "city",
+                            "lat",
+                            "lon",
+                            "timezone",
+                            "locale"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "error": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "checkedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "ok",
+                        "ms",
+                        "ip",
+                        "geo",
+                        "error",
+                        "checkedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "profiles": {
+                      "type": "number"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "type",
+                    "host",
+                    "port",
+                    "username",
+                    "hasPassword",
+                    "backupId",
+                    "lastCheck",
+                    "profiles",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "nullable": true,
+                  "enum": [
+                    null
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/proxies/{id}/check": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ok": {
+                    "type": "boolean"
+                  },
+                  "ms": {
+                    "nullable": true,
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 120000
+                  },
+                  "ip": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 45
+                  },
+                  "geo": {
+                    "nullable": true,
+                    "type": "object",
+                    "properties": {
+                      "country": {
+                        "type": "string"
+                      },
+                      "countryName": {
+                        "type": "string"
+                      },
+                      "region": {
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "city": {
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "lat": {
+                        "type": "number"
+                      },
+                      "lon": {
+                        "type": "number"
+                      },
+                      "timezone": {
+                        "type": "string"
+                      },
+                      "locale": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "country",
+                      "countryName",
+                      "region",
+                      "city",
+                      "lat",
+                      "lon",
+                      "timezone",
+                      "locale"
+                    ]
+                  },
+                  "error": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "ok",
+                  "ms",
+                  "ip",
+                  "geo",
+                  "error"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "http",
+                        "https",
+                        "socks5"
+                      ]
+                    },
+                    "host": {
+                      "type": "string"
+                    },
+                    "port": {
+                      "type": "number"
+                    },
+                    "username": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "hasPassword": {
+                      "type": "boolean"
+                    },
+                    "backupId": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "lastCheck": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "boolean"
+                        },
+                        "ms": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "ip": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "geo": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "country": {
+                              "type": "string"
+                            },
+                            "countryName": {
+                              "type": "string"
+                            },
+                            "region": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "city": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "lat": {
+                              "type": "number"
+                            },
+                            "lon": {
+                              "type": "number"
+                            },
+                            "timezone": {
+                              "type": "string"
+                            },
+                            "locale": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "country",
+                            "countryName",
+                            "region",
+                            "city",
+                            "lat",
+                            "lon",
+                            "timezone",
+                            "locale"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "error": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "checkedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "ok",
+                        "ms",
+                        "ip",
+                        "geo",
+                        "error",
+                        "checkedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "profiles": {
+                      "type": "number"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "type",
+                    "host",
+                    "port",
+                    "username",
+                    "hasPassword",
+                    "backupId",
+                    "lastCheck",
+                    "profiles",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/proxies/{id}/credentials": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "http",
+                        "https",
+                        "socks5"
+                      ]
+                    },
+                    "host": {
+                      "type": "string"
+                    },
+                    "port": {
+                      "type": "number"
+                    },
+                    "username": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "password": {
+                      "nullable": true,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "host",
+                    "port",
+                    "username",
+                    "password"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/net/echo": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ip": {
+                      "type": "string"
+                    },
+                    "geo": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "country": {
+                          "type": "string"
+                        },
+                        "countryName": {
+                          "type": "string"
+                        },
+                        "region": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "city": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "lat": {
+                          "type": "number"
+                        },
+                        "lon": {
+                          "type": "number"
+                        },
+                        "timezone": {
+                          "type": "string"
+                        },
+                        "locale": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "country",
+                        "countryName",
+                        "region",
+                        "city",
+                        "lat",
+                        "lon",
+                        "timezone",
+                        "locale"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ip",
+                    "geo"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }
