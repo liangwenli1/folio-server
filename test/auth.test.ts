@@ -90,7 +90,7 @@ describe('emails', () => {
   });
 
   it('that fail to send keep sign-up and password reset quiet, but a resend says so', async () => {
-    const down = await buildApp({ db: t.db, clock: t.clock, config: t.config, mailer: { send: async () => { throw new Error('SMTP down'); } } }, { logger: false });
+    const down = await buildApp({ db: t.db, clock: t.clock, config: t.config, storage: t.storage, mailer: { send: async () => { throw new Error('SMTP down'); } } }, { logger: false });
     const email = uniqueEmail();
     const reg = await down.inject({ method: 'POST', url: '/auth/register', payload: { email, password: PASSWORD } });
     expect(reg.statusCode).toBe(201);

@@ -2,14 +2,14 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { and, asc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
-import { groups, profiles, proxies } from '../db/schema.js';
+import { groups, profileData, profiles, proxies } from '../db/schema.js';
 import { ApiError, notFound } from '../errors.js';
 import { publish } from '../events.js';
 import { requireSession, type Deps } from '../http.js';
 import { open } from '../crypto.js';
 import { Fingerprint, Group, Profile, ProxySecret, kernel, os, profileView } from '../views.js';
 import { requireRole } from '../workspaces/service.js';
-import { assertOwned, nextNumbers, reserve } from './service.js';
+import { assertOwned, loadProfiles, nextNumbers, profileFor, reserve } from './service.js';
 
 const wsParams = z.object({ id: z.uuid() });
 const name = z.string().trim().min(1).max(80);
@@ -33,18 +33,12 @@ function checkFingerprint(p: { kernel?: string; fingerprint?: z.infer<typeof Fin
 
 export function profileRoutes(app: FastifyInstance, deps: Deps){
   const r = app.withTypeProvider<ZodTypeProvider>();
-  const { db, clock } = deps;
+  const { db, clock, storage } = deps;
 
   async function member(req: Parameters<typeof requireSession>[0], workspaceId: string){
     const s = await requireSession(req, deps);
     await requireRole(db, workspaceId, s.userId);
     return s;
-  }
-  async function profileFor(req: Parameters<typeof requireSession>[0], id: string){
-    const [p] = await db.select().from(profiles).where(eq(profiles.id, id));
-    if (!p) throw notFound('Profile');
-    const s = await member(req, p.workspaceId);
-    return { p, s };
   }
 
   // ---------- groups ----------
@@ -89,11 +83,9 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
   r.get('/workspaces/:id/profiles', {
     schema: { params: wsParams, querystring: z.object({ trash: z.enum(['0', '1']).default('0') }), response: { 200: z.object({ profiles: z.array(Profile) }) } }
   }, async req => {
-    await member(req, req.params.id);
-    const rows = await db.select().from(profiles)
-      .where(and(eq(profiles.workspaceId, req.params.id), req.query.trash === '1' ? isNotNull(profiles.deletedAt) : isNull(profiles.deletedAt)))
-      .orderBy(asc(profiles.number));
-    return { profiles: rows.map(profileView) };
+    const s = await member(req, req.params.id);
+    const where = and(eq(profiles.workspaceId, req.params.id), req.query.trash === '1' ? isNotNull(profiles.deletedAt) : isNull(profiles.deletedAt));
+    return { profiles: await loadProfiles(db, where, s.id, clock.now()) };
   });
 
   async function create(workspaceId: string, userId: string, items: NewProfile[]){
@@ -122,7 +114,7 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
     schema: { params: wsParams, body: z.object({ profiles: z.array(newProfile).min(1).max(500) }), response: { 201: z.object({ profiles: z.array(Profile) }) } }
   }, async (req, reply) => {
     const s = await member(req, req.params.id);
-    return reply.code(201).send({ profiles: (await create(req.params.id, s.userId, req.body.profiles)).map(profileView) });
+    return reply.code(201).send({ profiles: (await create(req.params.id, s.userId, req.body.profiles)).map(p => profileView(p)) });
   });
 
   // Optimistic concurrency: the client sends the version it edited; a newer one on the server is a conflict.
@@ -137,7 +129,7 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
       response: { 200: Profile }
     }
   }, async req => {
-    const { p } = await profileFor(req, req.params.id);
+    const { p, s } = await profileFor(deps, req, req.params.id);
     const { version: v, ...patch } = req.body;
     checkFingerprint({ kernel: p.kernel, fingerprint: patch.fingerprint });
     await assertOwned(db, p.workspaceId, { groupIds: [patch.groupId], proxyIds: [patch.proxyId] });
@@ -145,7 +137,7 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
       .where(and(eq(profiles.id, p.id), eq(profiles.version, v))).returning();
     if (!u) throw new ApiError(409, 'stale', 'Someone changed this profile in the meantime. Reload it and try again.');
     publish(p.workspaceId, { kind: 'profiles', ids: [p.id] });
-    return profileView(u);
+    return (await loadProfiles(db, eq(profiles.id, u.id), s.id, clock.now()))[0];
   });
 
   r.post('/workspaces/:id/profiles/batch', {
@@ -193,20 +185,16 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
           return tx.update(profiles).set({ ...bump, deletedAt: null }).where(and(mine, isNotNull(profiles.deletedAt))).returning({ id: profiles.id });
         });
         break;
-      case 'purge':
+      case 'purge': {
+        const saved = await db.select({ key: profileData.objectKey }).from(profileData).innerJoin(profiles, eq(profiles.id, profileData.profileId)).where(and(mine, isNotNull(profiles.deletedAt)));
         updated = await db.delete(profiles).where(and(mine, isNotNull(profiles.deletedAt))).returning({ id: profiles.id });
+        await Promise.all(saved.map(x => storage.delete(x.key).catch(err => req.log.error(err, 'deleting saved state failed'))));
         break;
+      }
     }
     publish(req.params.id, { kind: 'profiles', ids: updated.map(u => u.id) });
     if (action === 'move') publish(req.params.id, { kind: 'groups' });
     return { updated: updated.length };
-  });
-
-  r.post('/profiles/:id/opened', { schema: { params: wsParams, response: { 200: Profile } } }, async req => {
-    const { p, s } = await profileFor(req, req.params.id);
-    const [u] = await db.update(profiles).set({ lastOpenedAt: clock.now(), lastOpenedBy: s.userId }).where(eq(profiles.id, p.id)).returning();
-    publish(p.workspaceId, { kind: 'profiles', ids: [p.id] });
-    return profileView(u);
   });
 
   // Everything the desktop app needs to launch a profile, including proxy passwords.
@@ -214,13 +202,13 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
   r.get('/profiles/:id/launch', {
     schema: { params: wsParams, response: { 200: z.object({ profile: Profile, proxy: ProxySecret.nullable(), backup: ProxySecret.nullable() }) } }
   }, async req => {
-    const { p } = await profileFor(req, req.params.id);
+    const { p, s } = await profileFor(deps, req, req.params.id);
     if (p.deletedAt) throw new ApiError(409, 'in_trash', 'Restore this profile from the trash before opening it');
     const secret = (x: typeof proxies.$inferSelect | undefined) => x
       ? { id: x.id, type: x.type as 'http' | 'https' | 'socks5', host: x.host, port: x.port, username: x.username, password: x.passwordEnc ? open(x.passwordEnc) : null }
       : null;
     const [proxy] = p.proxyId ? await db.select().from(proxies).where(eq(proxies.id, p.proxyId)) : [];
     const [backup] = proxy?.backupId ? await db.select().from(proxies).where(eq(proxies.id, proxy.backupId)) : [];
-    return { profile: profileView(p), proxy: secret(proxy), backup: secret(backup) };
+    return { profile: (await loadProfiles(db, eq(profiles.id, p.id), s.id, clock.now()))[0], proxy: secret(proxy), backup: secret(backup) };
   });
 }

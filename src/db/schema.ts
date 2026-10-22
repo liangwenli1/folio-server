@@ -161,3 +161,29 @@ export const profiles = pgTable('profiles', {
   deletedAt: ts(),
   version: integer().notNull().default(0)
 }, t => [uniqueIndex().on(t.workspaceId, t.number), index().on(t.workspaceId, t.deletedAt)]);
+
+// The latest saved sign-in state of a profile (cookies, local storage, IndexedDB): a sealed object in object
+// storage, written only by the session that holds the profile's lock.
+export const profileData = pgTable('profile_data', {
+  profileId: uuid().primaryKey().references(() => profiles.id, { onDelete: 'cascade' }),
+  version: integer().notNull(),
+  objectKey: text().notNull(),
+  sha256: text().notNull(),
+  size: integer().notNull(),
+  cookies: integer().notNull(),
+  storageBytes: integer().notNull(),
+  origins: integer().notNull(),
+  savedAt: ts().notNull(),
+  savedBy: uuid().references(() => users.id, { onDelete: 'set null' }),
+  deviceName: text()
+});
+
+// The session that has a profile open. Renewed while the browser runs; a row past expiresAt counts as free.
+export const profileLocks = pgTable('profile_locks', {
+  profileId: uuid().primaryKey().references(() => profiles.id, { onDelete: 'cascade' }),
+  sessionId: uuid().notNull().references(() => sessions.id, { onDelete: 'cascade' }),
+  userId: uuid().notNull().references(() => users.id, { onDelete: 'cascade' }),
+  deviceName: text(),
+  acquiredAt: ts().notNull(),
+  expiresAt: ts().notNull()
+});

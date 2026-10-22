@@ -23,6 +23,9 @@ DEV_TOOLS=1 MOCK_PAYMENTS=1 npm run dev     # http://localhost:47110, applies mi
 | `COOKIE_SECURE` / `COOKIE_DOMAIN` | off / unset | Set both in production (e.g. `COOKIE_DOMAIN=.example.com`) |
 | `MOCK_PAYMENTS` | off | Enables the mock card gateway and renewals. There is no real gateway yet |
 | `DEV_TOOLS` | off | `/dev/run-due` (process trial ends and renewals now). Refused when `NODE_ENV=production` |
+| `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET` | `http://folio-minio:9000`, `us-east-1`, `folio-dev` | Object storage for saved sign-in state: AWS S3, Cloudflare R2, Aliyun OSS or any S3-compatible service. Development creates the bucket; in production it must exist and `S3_BUCKET` is required |
+| `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | development keys | Required in production |
+| `S3_FORCE_PATH_STYLE` | `1` | `0` for services that want bucket-named hosts |
 | `SMTP_URL` | `smtp://folio-mailpit:1025` | Outgoing mail, any SMTP provider (e.g. `smtps://user:pass@smtp.example.com:465`). Required in production |
 | `MAIL_FROM` | `Folio <no-reply@folio.test>` | Sender address; its domain needs SPF and DKIM set up with the provider. Required in production |
 | `SECRET_KEY` | development key | 32 bytes, base64, for encrypting proxy passwords. Required in production |
@@ -34,6 +37,12 @@ Email: verification codes and password resets go out over SMTP (`src/mail.ts`), 
 
 ```sh
 docker run -d --name folio-mailpit --network folio-dev -p 127.0.0.1:47125:8025 axllent/mailpit:v1.27   # inbox at http://127.0.0.1:47125
+```
+
+Object storage in development is a local MinIO container (MinIO no longer publishes images on Docker Hub; this machine uses `quay.io/minio/minio` RELEASE.2025-09-07, and any S3-compatible service works):
+
+```sh
+docker run -d --name folio-minio --network folio-dev -e MINIO_ROOT_USER=folio -e MINIO_ROOT_PASSWORD=folio-dev-secret -v folio-minio-data:/data quay.io/minio/minio server /data
 ```
 
 ## Mock payments
@@ -59,6 +68,8 @@ docker run -d --name folio-mailpit --network folio-dev -p 127.0.0.1:47125:8025 a
 - Edits carry the version the client last saw; a newer version on the server returns `409 stale`.
 - Proxy passwords are encrypted at rest. They are returned only by `GET /profiles/:id/launch` and `GET /proxies/:id/credentials`, which the desktop app keeps out of its renderer.
 - `GET /net/echo` returns the caller's address and location. The desktop calls it through a profile's proxy to learn the exit IP, time zone and language, then reports the result with `POST /proxies/:id/check`.
+- Opening a profile takes its lock (`POST /profiles/:id/lock`), so one computer has it open at a time. The desktop renews it every 30 seconds; a lock not renewed for 90 seconds is free again. Owners and admins can take a profile over (`POST /profiles/:id/lock/takeover`); the computer that had it finds out at its next renewal and closes it. Profile listings show who has each one open (`lock`, with `self` for the asking session).
+- Saved sign-in state (`GET`/`PUT /profiles/:id/data`) is gzip-compressed JSON in Playwright's storage-state format: cookies, local storage and IndexedDB. Only the session holding the lock can upload. It is sealed with `SECRET_KEY` (AES-256-GCM) before it goes to object storage; only the latest version is kept, up to 50 MB.
 - `GET /workspaces/:id/events` is a server-sent event stream: `change` events say which kind of data changed (`profiles`, `proxies`, `groups`, `workspace`). Events are in-process; more than one server instance needs PostgreSQL LISTEN/NOTIFY.
 
 ## Billing rules

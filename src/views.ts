@@ -1,6 +1,6 @@
 // Response shapes. These zod schemas also produce the OpenAPI document the site and desktop generate types from.
 import { z } from 'zod';
-import type { profiles, proxies, users } from './db/schema.js';
+import type { profileData, profileLocks, profiles, proxies, users } from './db/schema.js';
 import { entitlements } from './plans.js';
 import { toState, type PaymentRow, type SubRow } from './billing/service.js';
 
@@ -79,20 +79,35 @@ export const Fingerprint = z.discriminatedUnion('kind', [
 export const kernel = z.enum(['chromium', 'firefox']);
 export const os = z.enum(['windows', 'macos', 'linux']);
 
+// The latest saved sign-in state: counts for display, and which computer saved it.
+export const SavedData = z.object({
+  version: z.number(), size: z.number(), cookies: z.number(), storageBytes: z.number(), origins: z.number(), savedAt: z.string(), deviceName: z.string().nullable()
+});
+export const savedDataView = (d: typeof profileData.$inferSelect): z.infer<typeof SavedData> => ({
+  version: d.version, size: d.size, cookies: d.cookies, storageBytes: d.storageBytes, origins: d.origins, savedAt: d.savedAt.toISOString(), deviceName: d.deviceName
+});
+// Who has the profile open right now; `self` is the session asking.
+export const LockHolder = z.object({ email: z.string(), deviceName: z.string().nullable(), since: z.string(), self: z.boolean() });
+
 export const Profile = z.object({
   id: z.string(), number: z.number(), name: z.string(), groupId: z.string().nullable(), ownerId: z.string().nullable(),
   tags: z.array(z.string()), kernel, kernelVersion: z.string(), os, fingerprint: Fingerprint, proxyId: z.string().nullable(),
   timezoneOverride: z.string().nullable(), localeOverride: z.string().nullable(), notes: z.string().nullable(),
-  lastOpenedAt: iso, lastOpenedBy: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(), deletedAt: iso, version: z.number()
+  lastOpenedAt: iso, lastOpenedBy: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(), deletedAt: iso, version: z.number(),
+  data: SavedData.nullable(), lock: LockHolder.nullable()
 });
-export function profileView(p: typeof profiles.$inferSelect): z.infer<typeof Profile> {
+type LockRow = typeof profileLocks.$inferSelect & { email: string };
+export function profileView(p: typeof profiles.$inferSelect, state: { data: typeof profileData.$inferSelect | null; lock: LockRow | null; sessionId: string } | null = null): z.infer<typeof Profile> {
+  const lock = state?.lock;
   return {
     id: p.id, number: p.number, name: p.name, groupId: p.groupId, ownerId: p.ownerId, tags: p.tags,
     kernel: p.kernel as 'chromium' | 'firefox', kernelVersion: p.kernelVersion, os: p.os as 'windows' | 'macos' | 'linux',
     fingerprint: p.fingerprint as z.infer<typeof Fingerprint>, proxyId: p.proxyId,
     timezoneOverride: p.timezoneOverride, localeOverride: p.localeOverride, notes: p.notes,
     lastOpenedAt: p.lastOpenedAt?.toISOString() ?? null, lastOpenedBy: p.lastOpenedBy,
-    createdAt: p.createdAt.toISOString(), updatedAt: p.updatedAt.toISOString(), deletedAt: p.deletedAt?.toISOString() ?? null, version: p.version
+    createdAt: p.createdAt.toISOString(), updatedAt: p.updatedAt.toISOString(), deletedAt: p.deletedAt?.toISOString() ?? null, version: p.version,
+    data: state?.data ? savedDataView(state.data) : null,
+    lock: lock ? { email: lock.email, deviceName: lock.deviceName, since: lock.acquiredAt.toISOString(), self: lock.sessionId === state.sessionId } : null
   };
 }
 

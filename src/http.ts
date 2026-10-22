@@ -4,8 +4,9 @@ import type { Db } from './db/client.js';
 import { ApiError } from './errors.js';
 import { resolveSession } from './auth/session.js';
 import type { Mailer } from './mail.js';
+import type { Storage } from './storage.js';
 
-export interface Deps { db: Db; config: Config; clock: { now(): Date }; mailer: Mailer }
+export interface Deps { db: Db; config: Config; clock: { now(): Date }; mailer: Mailer; storage: Storage }
 
 export const SESSION_COOKIE = 'folio_session';
 

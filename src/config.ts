@@ -16,6 +16,15 @@ export const config = {
   // Outgoing mail. Development sends to the local Mailpit inbox; production must set both.
   smtpUrl: env.SMTP_URL ?? 'smtp://folio-mailpit:1025',
   mailFrom: env.MAIL_FROM ?? 'Folio <no-reply@folio.test>',
+  // S3-compatible object storage for saved sign-in state. Development uses the local MinIO container.
+  s3: {
+    endpoint: env.S3_ENDPOINT ?? 'http://folio-minio:9000',
+    region: env.S3_REGION ?? 'us-east-1',
+    bucket: env.S3_BUCKET ?? 'folio-dev',
+    accessKeyId: env.S3_ACCESS_KEY_ID ?? 'folio',
+    secretAccessKey: env.S3_SECRET_ACCESS_KEY ?? 'folio-dev-secret',
+    forcePathStyle: (env.S3_FORCE_PATH_STYLE ?? '1') === '1'
+  },
   authRateLimit: Number(env.AUTH_RATE_LIMIT ?? 20),
   // Which reverse proxies may set X-Forwarded-For (e.g. "10.0.0.5" or "10.0.0.0/8"). Off by default, so the header cannot be forged.
   trustProxy: env.TRUST_PROXY || false,
@@ -33,6 +42,9 @@ if (env.NODE_ENV === 'production' && config.devTools){
 }
 if (env.NODE_ENV === 'production' && !config.secretKey){
   throw new Error('SECRET_KEY is required in production');
+}
+if (env.NODE_ENV === 'production' && (!env.S3_BUCKET || !env.S3_ACCESS_KEY_ID || !env.S3_SECRET_ACCESS_KEY)){
+  throw new Error('S3_BUCKET, S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY are required in production');
 }
 if (env.NODE_ENV === 'production' && (!env.SMTP_URL || !env.MAIL_FROM)){
   throw new Error('SMTP_URL and MAIL_FROM are required in production');

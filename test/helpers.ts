@@ -6,6 +6,7 @@ import { config } from '../src/config.js';
 import { createDb } from '../src/db/client.js';
 import { runMigrations } from '../src/db/migrate.js';
 import { createMailer } from '../src/mail.js';
+import { createStorage } from '../src/storage.js';
 
 const MAIN_URL = process.env.DATABASE_URL ?? 'postgres://folio:folio@folio-postgres:5432/folio';
 const TEST_URL = MAIN_URL.replace(/\/[^/]+$/, '/folio_test');
@@ -28,9 +29,10 @@ export async function setup(overrides: Partial<typeof config> = {}){
   await db.execute(sql`create schema public`);
   await runMigrations(db);
   const clock = makeClock();
-  const cfg = { ...config, devTools: true, mockPayments: true, authRateLimit: 10_000, siteOrigins: [ORIGIN], devPrivateGeo: 'seattle', geoipDb: process.env.GEOIP_DB ?? '', ...overrides };
-  const app = await buildApp({ db, clock, config: cfg, mailer: createMailer(cfg) }, { logger: false });
-  return { app, db, clock, config: cfg, teardown: async () => { await app.close(); await close(); } };
+  const cfg = { ...config, devTools: true, mockPayments: true, authRateLimit: 10_000, siteOrigins: [ORIGIN], devPrivateGeo: 'seattle', geoipDb: process.env.GEOIP_DB ?? '', s3: { ...config.s3, bucket: 'folio-test' }, ...overrides };
+  const storage = await createStorage(cfg);
+  const app = await buildApp({ db, clock, config: cfg, mailer: createMailer(cfg), storage }, { logger: false });
+  return { app, db, clock, config: cfg, storage, teardown: async () => { await app.close(); await close(); } };
 }
 
 let seq = 0;

@@ -3708,6 +3708,70 @@
                           },
                           "version": {
                             "type": "number"
+                          },
+                          "data": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "version": {
+                                "type": "number"
+                              },
+                              "size": {
+                                "type": "number"
+                              },
+                              "cookies": {
+                                "type": "number"
+                              },
+                              "storageBytes": {
+                                "type": "number"
+                              },
+                              "origins": {
+                                "type": "number"
+                              },
+                              "savedAt": {
+                                "type": "string"
+                              },
+                              "deviceName": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "version",
+                              "size",
+                              "cookies",
+                              "storageBytes",
+                              "origins",
+                              "savedAt",
+                              "deviceName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "lock": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "email": {
+                                "type": "string"
+                              },
+                              "deviceName": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "since": {
+                                "type": "string"
+                              },
+                              "self": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "email",
+                              "deviceName",
+                              "since",
+                              "self"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -3730,7 +3794,9 @@
                           "createdAt",
                           "updatedAt",
                           "deletedAt",
-                          "version"
+                          "version",
+                          "data",
+                          "lock"
                         ],
                         "additionalProperties": false
                       }
@@ -4026,6 +4092,70 @@
                     },
                     "version": {
                       "type": "number"
+                    },
+                    "data": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "version": {
+                          "type": "number"
+                        },
+                        "size": {
+                          "type": "number"
+                        },
+                        "cookies": {
+                          "type": "number"
+                        },
+                        "storageBytes": {
+                          "type": "number"
+                        },
+                        "origins": {
+                          "type": "number"
+                        },
+                        "savedAt": {
+                          "type": "string"
+                        },
+                        "deviceName": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "version",
+                        "size",
+                        "cookies",
+                        "storageBytes",
+                        "origins",
+                        "savedAt",
+                        "deviceName"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "lock": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "email": {
+                          "type": "string"
+                        },
+                        "deviceName": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "since": {
+                          "type": "string"
+                        },
+                        "self": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "email",
+                        "deviceName",
+                        "since",
+                        "self"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
@@ -4048,7 +4178,9 @@
                     "createdAt",
                     "updatedAt",
                     "deletedAt",
-                    "version"
+                    "version",
+                    "data",
+                    "lock"
                   ],
                   "additionalProperties": false
                 }
@@ -4357,6 +4489,70 @@
                           },
                           "version": {
                             "type": "number"
+                          },
+                          "data": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "version": {
+                                "type": "number"
+                              },
+                              "size": {
+                                "type": "number"
+                              },
+                              "cookies": {
+                                "type": "number"
+                              },
+                              "storageBytes": {
+                                "type": "number"
+                              },
+                              "origins": {
+                                "type": "number"
+                              },
+                              "savedAt": {
+                                "type": "string"
+                              },
+                              "deviceName": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "version",
+                              "size",
+                              "cookies",
+                              "storageBytes",
+                              "origins",
+                              "savedAt",
+                              "deviceName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "lock": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "email": {
+                                "type": "string"
+                              },
+                              "deviceName": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "since": {
+                                "type": "string"
+                              },
+                              "self": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "email",
+                              "deviceName",
+                              "since",
+                              "self"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "required": [
@@ -4379,7 +4575,9 @@
                           "createdAt",
                           "updatedAt",
                           "deletedAt",
-                          "version"
+                          "version",
+                          "data",
+                          "lock"
                         ],
                         "additionalProperties": false
                       }
@@ -4670,6 +4868,70 @@
                     },
                     "version": {
                       "type": "number"
+                    },
+                    "data": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "version": {
+                          "type": "number"
+                        },
+                        "size": {
+                          "type": "number"
+                        },
+                        "cookies": {
+                          "type": "number"
+                        },
+                        "storageBytes": {
+                          "type": "number"
+                        },
+                        "origins": {
+                          "type": "number"
+                        },
+                        "savedAt": {
+                          "type": "string"
+                        },
+                        "deviceName": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "version",
+                        "size",
+                        "cookies",
+                        "storageBytes",
+                        "origins",
+                        "savedAt",
+                        "deviceName"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "lock": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "email": {
+                          "type": "string"
+                        },
+                        "deviceName": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "since": {
+                          "type": "string"
+                        },
+                        "self": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "email",
+                        "deviceName",
+                        "since",
+                        "self"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
@@ -4692,7 +4954,9 @@
                     "createdAt",
                     "updatedAt",
                     "deletedAt",
-                    "version"
+                    "version",
+                    "data",
+                    "lock"
                   ],
                   "additionalProperties": false
                 }
@@ -4785,188 +5049,6 @@
                   },
                   "required": [
                     "updated"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/profiles/{id}/opened": {
-      "post": {
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-            },
-            "in": "path",
-            "name": "id",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string"
-                    },
-                    "number": {
-                      "type": "number"
-                    },
-                    "name": {
-                      "type": "string"
-                    },
-                    "groupId": {
-                      "nullable": true,
-                      "type": "string"
-                    },
-                    "ownerId": {
-                      "nullable": true,
-                      "type": "string"
-                    },
-                    "tags": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "kernel": {
-                      "type": "string",
-                      "enum": [
-                        "chromium",
-                        "firefox"
-                      ]
-                    },
-                    "kernelVersion": {
-                      "type": "string"
-                    },
-                    "os": {
-                      "type": "string",
-                      "enum": [
-                        "windows",
-                        "macos",
-                        "linux"
-                      ]
-                    },
-                    "fingerprint": {
-                      "oneOf": [
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "chromium"
-                              ]
-                            },
-                            "seed": {
-                              "type": "integer",
-                              "minimum": 1,
-                              "maximum": 2147483647
-                            },
-                            "hardwareConcurrency": {
-                              "type": "integer",
-                              "minimum": 1,
-                              "maximum": 64
-                            }
-                          },
-                          "required": [
-                            "kind",
-                            "seed",
-                            "hardwareConcurrency"
-                          ],
-                          "additionalProperties": false
-                        },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "firefox"
-                              ]
-                            },
-                            "config": {
-                              "type": "object",
-                              "additionalProperties": {}
-                            }
-                          },
-                          "required": [
-                            "kind",
-                            "config"
-                          ],
-                          "additionalProperties": false
-                        }
-                      ]
-                    },
-                    "proxyId": {
-                      "nullable": true,
-                      "type": "string"
-                    },
-                    "timezoneOverride": {
-                      "nullable": true,
-                      "type": "string"
-                    },
-                    "localeOverride": {
-                      "nullable": true,
-                      "type": "string"
-                    },
-                    "notes": {
-                      "nullable": true,
-                      "type": "string"
-                    },
-                    "lastOpenedAt": {
-                      "nullable": true,
-                      "type": "string"
-                    },
-                    "lastOpenedBy": {
-                      "nullable": true,
-                      "type": "string"
-                    },
-                    "createdAt": {
-                      "type": "string"
-                    },
-                    "updatedAt": {
-                      "type": "string"
-                    },
-                    "deletedAt": {
-                      "nullable": true,
-                      "type": "string"
-                    },
-                    "version": {
-                      "type": "number"
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "number",
-                    "name",
-                    "groupId",
-                    "ownerId",
-                    "tags",
-                    "kernel",
-                    "kernelVersion",
-                    "os",
-                    "fingerprint",
-                    "proxyId",
-                    "timezoneOverride",
-                    "localeOverride",
-                    "notes",
-                    "lastOpenedAt",
-                    "lastOpenedBy",
-                    "createdAt",
-                    "updatedAt",
-                    "deletedAt",
-                    "version"
                   ],
                   "additionalProperties": false
                 }
@@ -5129,6 +5211,70 @@
                         },
                         "version": {
                           "type": "number"
+                        },
+                        "data": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "version": {
+                              "type": "number"
+                            },
+                            "size": {
+                              "type": "number"
+                            },
+                            "cookies": {
+                              "type": "number"
+                            },
+                            "storageBytes": {
+                              "type": "number"
+                            },
+                            "origins": {
+                              "type": "number"
+                            },
+                            "savedAt": {
+                              "type": "string"
+                            },
+                            "deviceName": {
+                              "nullable": true,
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "version",
+                            "size",
+                            "cookies",
+                            "storageBytes",
+                            "origins",
+                            "savedAt",
+                            "deviceName"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "lock": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "email": {
+                              "type": "string"
+                            },
+                            "deviceName": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "since": {
+                              "type": "string"
+                            },
+                            "self": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "email",
+                            "deviceName",
+                            "since",
+                            "self"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "required": [
@@ -5151,7 +5297,9 @@
                         "createdAt",
                         "updatedAt",
                         "deletedAt",
-                        "version"
+                        "version",
+                        "data",
+                        "lock"
                       ],
                       "additionalProperties": false
                     },
@@ -6471,6 +6619,292 @@
                   "required": [
                     "ip",
                     "geo"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/profiles/{id}/lock": {
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "expiresAt": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "version": {
+                          "type": "number"
+                        },
+                        "size": {
+                          "type": "number"
+                        },
+                        "cookies": {
+                          "type": "number"
+                        },
+                        "storageBytes": {
+                          "type": "number"
+                        },
+                        "origins": {
+                          "type": "number"
+                        },
+                        "savedAt": {
+                          "type": "string"
+                        },
+                        "deviceName": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "version",
+                        "size",
+                        "cookies",
+                        "storageBytes",
+                        "origins",
+                        "savedAt",
+                        "deviceName"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "expiresAt",
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "nullable": true,
+                  "enum": [
+                    null
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/profiles/{id}/lock/renew": {
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "expiresAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "expiresAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/profiles/{id}/lock/takeover": {
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "nullable": true,
+                  "enum": [
+                    null
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/profiles/{id}/data": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "put": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "in": "query",
+            "name": "cookies",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "in": "query",
+            "name": "storageBytes",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            },
+            "in": "query",
+            "name": "origins",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "type": "number"
+                    },
+                    "size": {
+                      "type": "number"
+                    },
+                    "cookies": {
+                      "type": "number"
+                    },
+                    "storageBytes": {
+                      "type": "number"
+                    },
+                    "origins": {
+                      "type": "number"
+                    },
+                    "savedAt": {
+                      "type": "string"
+                    },
+                    "deviceName": {
+                      "nullable": true,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "version",
+                    "size",
+                    "cookies",
+                    "storageBytes",
+                    "origins",
+                    "savedAt",
+                    "deviceName"
                   ],
                   "additionalProperties": false
                 }

@@ -121,8 +121,6 @@ describe('launch details', () => {
     expect(launch.proxy).toMatchObject({ type: 'socks5', host: 'a.example.net', username: 'u1', password: 'p@ss:word' });
     expect(launch.backup).toMatchObject({ host: 'b.example.net', password: null });
 
-    const opened = await post(`/profiles/${p.id}/opened`, headers, {});
-    expect(opened.json().lastOpenedAt).not.toBeNull();
     await batch(headers, workspaceId, { ids: [p.id], action: 'trash' });
     expect((await t.app.inject({ url: `/profiles/${p.id}/launch`, headers })).json().error.code).toBe('in_trash');
   });
