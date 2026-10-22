@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { ORIGIN, PASSWORD, lastCode, setup, signup, uniqueEmail } from './helpers.js';
+import { buildApp } from '../src/app.js';
+import { ORIGIN, PASSWORD, lastCode, lastMail, setup, signup, uniqueEmail } from './helpers.js';
 
 let t: Awaited<ReturnType<typeof setup>>;
 beforeAll(async () => { t = await setup(); });
@@ -60,20 +61,43 @@ describe('email verification', () => {
       const r = await t.app.inject({ method: 'POST', url: '/auth/verify-email', headers, payload: { code: '000000' } });
       if (r.json().error.code !== 'code_invalid') throw new Error(r.body);
     }
-    const locked = await t.app.inject({ method: 'POST', url: '/auth/verify-email', headers, payload: { code: await lastCode(t.app, email) } });
+    const locked = await t.app.inject({ method: 'POST', url: '/auth/verify-email', headers, payload: { code: await lastCode(email) } });
     expect(locked.json().error.code).toBe('too_many_attempts');
 
     expect((await t.app.inject({ method: 'POST', url: '/auth/resend-code', headers })).statusCode).toBe(204);
-    const ok = await t.app.inject({ method: 'POST', url: '/auth/verify-email', headers, payload: { code: await lastCode(t.app, email) } });
+    const ok = await t.app.inject({ method: 'POST', url: '/auth/verify-email', headers, payload: { code: await lastCode(email) } });
     expect(ok.json().user.emailVerified).toBe(true);
   });
 
   it('expires codes after 15 minutes', async () => {
     const { headers, email } = await signup(t.app, { verify: false });
-    const code = await lastCode(t.app, email);
+    const code = await lastCode(email);
     t.clock.advanceDays(16 / 1440);
     const res = await t.app.inject({ method: 'POST', url: '/auth/verify-email', headers, payload: { code } });
     expect(res.json().error.code).toBe('code_expired');
+  });
+});
+
+describe('emails', () => {
+  it('go out over SMTP in the recipient’s language', async () => {
+    const email = uniqueEmail();
+    await t.app.inject({ method: 'POST', url: '/auth/register', payload: { email, password: PASSWORD, locale: 'zh' } });
+    const m = await lastMail(email);
+    expect(m.Subject).toMatch(/^Folio 验证码：\d{6}$/);
+    expect(m.HTML).toContain('确认你的邮箱');
+    await t.app.inject({ method: 'POST', url: '/auth/password/forgot', payload: { email } });
+    expect((await lastMail(email)).Subject).toMatch(/^Folio 重设密码验证码/);
+  });
+
+  it('that fail to send keep sign-up and password reset quiet, but a resend says so', async () => {
+    const down = await buildApp({ db: t.db, clock: t.clock, config: t.config, mailer: { send: async () => { throw new Error('SMTP down'); } } }, { logger: false });
+    const email = uniqueEmail();
+    const reg = await down.inject({ method: 'POST', url: '/auth/register', payload: { email, password: PASSWORD } });
+    expect(reg.statusCode).toBe(201);
+    const headers = { cookie: `folio_session=${reg.cookies.find(c => c.name === 'folio_session')!.value}`, origin: ORIGIN };
+    expect((await down.inject({ method: 'POST', url: '/auth/password/forgot', payload: { email } })).statusCode).toBe(204);
+    expect((await down.inject({ method: 'POST', url: '/auth/resend-code', headers })).json().error.code).toBe('mail_unavailable');
+    await down.close();
   });
 });
 
@@ -85,7 +109,7 @@ describe('password reset', () => {
     const unknown = await t.app.inject({ method: 'POST', url: '/auth/password/forgot', payload: { email: 'nobody@example.com' } });
     expect(unknown.statusCode).toBe(204);
 
-    const reset = await t.app.inject({ method: 'POST', url: '/auth/password/reset', payload: { email, code: await lastCode(t.app, email), password: 'a brand new secret' } });
+    const reset = await t.app.inject({ method: 'POST', url: '/auth/password/reset', payload: { email, code: await lastCode(email), password: 'a brand new secret' } });
     expect(reset.statusCode).toBe(204);
     expect((await t.app.inject({ url: '/me', headers })).statusCode).toBe(401);
     const login = await t.app.inject({ method: 'POST', url: '/auth/login', payload: { email, password: 'a brand new secret' }, headers: { origin: ORIGIN } });

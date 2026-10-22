@@ -9,7 +9,7 @@ import { clearSessionCookie, requireSession, setSessionCookie, type Deps } from 
 import { User, WorkspaceSummary, locale, userView } from '../views.js';
 import { createWorkspace } from '../workspaces/service.js';
 import { consumeCode, issueCode } from './codes.js';
-import { mailer } from './mailer.js';
+import { codeMail, type Locale } from '../mail.js';
 import { createSession, revokeAllSessions, revokeSession } from './session.js';
 
 const password = z.string().min(8).max(200);
@@ -21,6 +21,8 @@ export function authRoutes(app: FastifyInstance, deps: Deps){
   const r = app.withTypeProvider<ZodTypeProvider>();
   const limited = { rateLimit: { max: deps.config.authRateLimit, timeWindow: '1 minute' } };
   const { db, clock } = deps;
+  const sendCode = async (u: { id: string; email: string; locale: string }, purpose: 'verify' | 'reset') =>
+    deps.mailer.send(u.email, codeMail(u.locale as Locale, purpose, await issueCode(db, u.id, purpose, clock.now())));
 
   r.post('/auth/register', {
     config: limited,
@@ -35,8 +37,9 @@ export function authRoutes(app: FastifyInstance, deps: Deps){
       await createWorkspace(tx, u.id, email.split('@')[0], now);
       return u;
     });
-    await mailer.sendCode(req.log, user.email, 'verify', await issueCode(db, user.id, 'verify', now));
     setSessionCookie(reply, await createSession(db, { userId: user.id, client: 'web', deviceName: null, now }), deps.config);
+    // The account exists either way; if the email does not go out, the verify page can send it again.
+    await sendCode(user, 'verify').catch(err => req.log.error(err, 'sending the verification email failed'));
     return reply.code(201).send({ user: userView(user) });
   });
 
@@ -78,14 +81,17 @@ export function authRoutes(app: FastifyInstance, deps: Deps){
     const s = await requireSession(req, deps);
     const [u] = await db.select().from(users).where(eq(users.id, s.userId));
     if (u.emailVerifiedAt) throw new ApiError(409, 'already_verified', 'This email is already verified');
-    await mailer.sendCode(req.log, u.email, 'verify', await issueCode(db, u.id, 'verify', clock.now()));
+    await sendCode(u, 'verify').catch(err => {
+      req.log.error(err, 'sending the verification email failed');
+      throw new ApiError(503, 'mail_unavailable', 'We couldn’t send the email. Try again in a minute.');
+    });
     return reply.code(204).send(null);
   });
 
   // Always 204, so the response does not reveal whether an account exists.
   r.post('/auth/password/forgot', { config: limited, schema: { body: z.object({ email: z.email() }), response: { 204: z.null() } } }, async (req, reply) => {
     const [u] = await db.select().from(users).where(eq(users.email, normalize(req.body.email)));
-    if (u) await mailer.sendCode(req.log, u.email, 'reset', await issueCode(db, u.id, 'reset', clock.now()));
+    if (u) await sendCode(u, 'reset').catch(err => req.log.error(err, 'sending the password reset email failed'));
     return reply.code(204).send(null);
   });
 

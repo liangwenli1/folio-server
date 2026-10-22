@@ -3,11 +3,12 @@ import { config } from './config.js';
 import { createDb } from './db/client.js';
 import { runMigrations } from './db/migrate.js';
 import { processDue } from './billing/service.js';
+import { createMailer } from './mail.js';
 
 const { db } = createDb(config.databaseUrl);
 await runMigrations(db);
 const clock = { now: () => new Date() };
-const app = await buildApp({ db, config, clock });
+const app = await buildApp({ db, config, clock, mailer: createMailer(config) });
 await app.listen({ port: config.port, host: config.host });
 
 // Trial ends, cancellations and renewals.

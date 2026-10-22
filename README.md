@@ -22,13 +22,19 @@ DEV_TOOLS=1 MOCK_PAYMENTS=1 npm run dev     # http://localhost:47110, applies mi
 | `SITE_URL` | `http://localhost:47120` | Public site URL |
 | `COOKIE_SECURE` / `COOKIE_DOMAIN` | off / unset | Set both in production (e.g. `COOKIE_DOMAIN=.example.com`) |
 | `MOCK_PAYMENTS` | off | Enables the mock card gateway and renewals. There is no real gateway yet |
-| `DEV_TOOLS` | off | `/dev/mail` (latest email code) and `/dev/run-due`. Refused when `NODE_ENV=production` |
+| `DEV_TOOLS` | off | `/dev/run-due` (process trial ends and renewals now). Refused when `NODE_ENV=production` |
+| `SMTP_URL` | `smtp://folio-mailpit:1025` | Outgoing mail, any SMTP provider (e.g. `smtps://user:pass@smtp.example.com:465`). Required in production |
+| `MAIL_FROM` | `Folio <no-reply@folio.test>` | Sender address; its domain needs SPF and DKIM set up with the provider. Required in production |
 | `SECRET_KEY` | development key | 32 bytes, base64, for encrypting proxy passwords. Required in production |
 | `TRUST_PROXY` | off | Address or CIDR of the reverse proxy allowed to set `X-Forwarded-For`. Leave unset when clients connect directly, or the header can be forged |
 | `GEOIP_DB` | unset | Path to the DB-IP City Lite `.mmdb` file (https://db-ip.com/db/download/ip-to-city-lite, CC BY 4.0; show "IP Geolocation by DB-IP" wherever locations appear). Without it, exit locations are unknown |
 | `DEV_PRIVATE_GEO` | unset | Dev only: `seattle`, `london`, `tokyo` or `frankfurt`, used as the location of private and loopback addresses so proxy checks work on a local network |
 
-Email: no provider is connected yet. Codes are written to the server log; production refuses to start with the development mailer.
+Email: verification codes and password resets go out over SMTP (`src/mail.ts`), in the recipient's language. If a verification email cannot be sent, sign-up still succeeds and the verify page can send it again; password resets always answer 204 so they do not reveal whether an account exists. In development, mail goes to a local [Mailpit](https://mailpit.axllent.org) inbox:
+
+```sh
+docker run -d --name folio-mailpit --network folio-dev -p 127.0.0.1:47125:8025 axllent/mailpit:v1.27   # inbox at http://127.0.0.1:47125
+```
 
 ## Mock payments
 
@@ -42,7 +48,7 @@ Email: no provider is connected yet. Codes are written to the server log; produc
 
 | Script | What it does |
 |---|---|
-| `npm test` | Integration tests against a real PostgreSQL (`folio_test` database, recreated each run) |
+| `npm test` | Integration tests against a real PostgreSQL (`folio_test` database, recreated each run). Emails go to Mailpit, read back through its API (`MAILPIT_URL`, default `http://folio-mailpit:8025`) |
 | `npm run typecheck` | TypeScript check |
 | `npm run db:generate` | New migration from `src/db/schema.ts` |
 | `npm run openapi` | Regenerates `openapi.json` |

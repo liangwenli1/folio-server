@@ -11,8 +11,11 @@ export const config = {
   cookieDomain: env.COOKIE_DOMAIN || undefined,
   // Mock card payments. Off unless explicitly enabled; there is no real gateway yet.
   mockPayments: env.MOCK_PAYMENTS === '1',
-  // Dev-only helpers such as reading the last email code. Never enable in production.
+  // Dev-only helpers (advancing subscriptions by hand). Never enable in production.
   devTools: env.DEV_TOOLS === '1',
+  // Outgoing mail. Development sends to the local Mailpit inbox; production must set both.
+  smtpUrl: env.SMTP_URL ?? 'smtp://folio-mailpit:1025',
+  mailFrom: env.MAIL_FROM ?? 'Folio <no-reply@folio.test>',
   authRateLimit: Number(env.AUTH_RATE_LIMIT ?? 20),
   // Which reverse proxies may set X-Forwarded-For (e.g. "10.0.0.5" or "10.0.0.0/8"). Off by default, so the header cannot be forged.
   trustProxy: env.TRUST_PROXY || false,
@@ -30,4 +33,7 @@ if (env.NODE_ENV === 'production' && config.devTools){
 }
 if (env.NODE_ENV === 'production' && !config.secretKey){
   throw new Error('SECRET_KEY is required in production');
+}
+if (env.NODE_ENV === 'production' && (!env.SMTP_URL || !env.MAIL_FROM)){
+  throw new Error('SMTP_URL and MAIL_FROM are required in production');
 }

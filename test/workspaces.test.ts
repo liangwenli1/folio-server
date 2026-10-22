@@ -28,6 +28,6 @@ describe('openapi', () => {
   it('describes the public routes', async () => {
     const doc = (await t.app.inject({ url: '/openapi.json' })).json();
     expect(Object.keys(doc.paths)).toEqual(expect.arrayContaining(['/auth/login', '/me', '/plans', '/workspaces/{id}/billing/checkout']));
-    expect(Object.keys(doc.paths)).not.toContain('/dev/mail');
+    expect(Object.keys(doc.paths)).not.toContain('/dev/run-due');
   });
 });

@@ -3,8 +3,9 @@ import type { Config } from './config.js';
 import type { Db } from './db/client.js';
 import { ApiError } from './errors.js';
 import { resolveSession } from './auth/session.js';
+import type { Mailer } from './mail.js';
 
-export interface Deps { db: Db; config: Config; clock: { now(): Date } }
+export interface Deps { db: Db; config: Config; clock: { now(): Date }; mailer: Mailer }
 
 export const SESSION_COOKIE = 'folio_session';
 
