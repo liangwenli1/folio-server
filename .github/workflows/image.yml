@@ -1,0 +1,62 @@
+# Type check on every push and pull request; the image goes to GHCR (ghcr.io/<owner>/folio-server) from main
+# (tag "main") and from version tags (tags "v1.2.3" and "latest"). The integration tests need PostgreSQL, object
+# storage and a mail inbox, so they run on the development machine before each release.
+name: Image
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+
+  image:
+    needs: check
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+      - name: GeoIP database (DB-IP City Lite, CC BY 4.0), this month's or last month's
+        run: |
+          mkdir -p geoip
+          for month in "$(date -u +%Y-%m)" "$(date -u -d '-1 month' +%Y-%m)"; do
+            curl -fsSL "https://download.db-ip.com/free/dbip-city-lite-$month.mmdb.gz" -o dbip.mmdb.gz && break
+          done
+          gunzip -c dbip.mmdb.gz > geoip/dbip-city-lite.mmdb
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/folio-server
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
