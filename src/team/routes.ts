@@ -7,6 +7,7 @@ import { and, asc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import { departmentMembers, departments, invitations, memberships, profiles, users, workspaces } from '../db/schema.js';
 import { ApiError, notFound } from '../errors.js';
 import { publish } from '../events.js';
+import { record } from '../activity/service.js';
 import { requireSession, type Deps } from '../http.js';
 import { inviteMail, type Locale } from '../mail.js';
 import { entitlements } from '../plans.js';
@@ -33,6 +34,8 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
     await requireRole(db, workspaceId, s.userId, MANAGERS);
     return s;
   };
+  const emailOf = async (userId: string) => (await db.select({ e: users.email }).from(users).where(eq(users.id, userId)))[0]?.e ?? null;
+
   // Nobody changes or removes the owner; owners and admins change everyone else.
   async function target(workspaceId: string, userId: string){
     const [m] = await db.select().from(memberships).where(and(eq(memberships.workspaceId, workspaceId), eq(memberships.userId, userId)));
@@ -60,9 +63,10 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
   });
 
   r.patch('/workspaces/:id/members/:userId', { schema: { params: memberParams, body: z.object({ role: assignableRole }), response: { 204: z.null() } } }, async (req, reply) => {
-    await manager(req, req.params.id);
+    const s = await manager(req, req.params.id);
     await target(req.params.id, req.params.userId);
     await db.update(memberships).set({ role: req.body.role }).where(and(eq(memberships.workspaceId, req.params.id), eq(memberships.userId, req.params.userId)));
+    await record(db, { workspaceId: req.params.id, actor: s, at: clock.now(), action: 'member.role', detail: { email: await emailOf(req.params.userId), role: req.body.role } });
     publish(req.params.id, { kind: 'members' }); publish(req.params.id, { kind: 'profiles' });
     return reply.code(204).send(null);
   });
@@ -71,11 +75,12 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
   r.delete('/workspaces/:id/members/:userId', {
     schema: { params: memberParams, querystring: z.object({ transferTo: z.uuid() }), response: { 204: z.null() } }
   }, async (req, reply) => {
-    await manager(req, req.params.id);
+    const s = await manager(req, req.params.id);
     await target(req.params.id, req.params.userId);
     if (req.query.transferTo === req.params.userId) throw new ApiError(400, 'bad_reference', 'Choose someone else to take over the profiles');
     await assertOwned(db, req.params.id, { ownerIds: [req.query.transferTo] });
     await db.transaction(tx => removeMember(tx, req.params.id, req.params.userId, req.query.transferTo));
+    await record(db, { workspaceId: req.params.id, actor: s, at: clock.now(), action: 'member.remove', detail: { email: await emailOf(req.params.userId), to: await emailOf(req.query.transferTo) } });
     publish(req.params.id, { kind: 'removed', userId: req.params.userId }); publish(req.params.id, { kind: 'profiles' });
     return reply.code(204).send(null);
   });
@@ -87,6 +92,7 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
     await target(req.params.id, s.userId);
     const [owner] = await db.select({ id: memberships.userId }).from(memberships).where(and(eq(memberships.workspaceId, req.params.id), eq(memberships.role, 'owner')));
     await db.transaction(tx => removeMember(tx, req.params.id, s.userId, owner.id));
+    await record(db, { workspaceId: req.params.id, actor: s, at: clock.now(), action: 'member.leave', detail: { email: await emailOf(s.userId) } });
     publish(req.params.id, { kind: 'removed', userId: s.userId }); publish(req.params.id, { kind: 'profiles' });
     return reply.code(204).send(null);
   });
@@ -138,6 +144,7 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
     const link = `${deps.config.siteUrl}/${locale}/invite/?token=${token}`;
     const emailed = await deps.mailer.send(email, inviteMail(locale, { workspace: ws.name, inviter: me.email, role: req.body.role, url: link }))
       .then(() => true, err => { req.log.error(err, 'sending the invitation failed'); return false; });
+    await record(db, { workspaceId: req.params.id, actor: s, at: now, action: 'member.invite', detail: { email, role: req.body.role } });
     publish(req.params.id, { kind: 'members' });
     return reply.code(201).send({ invitation: invitationView(inv, me.email), link, emailed });
   });
@@ -145,8 +152,9 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
   r.delete('/invitations/:id', { schema: { params, response: { 204: z.null() } } }, async (req, reply) => {
     const [i] = await db.select().from(invitations).where(eq(invitations.id, req.params.id));
     if (!i) throw notFound('Invitation');
-    await manager(req, i.workspaceId);
+    const s = await manager(req, i.workspaceId);
     await db.update(invitations).set({ revokedAt: clock.now() }).where(eq(invitations.id, i.id));
+    await record(db, { workspaceId: i.workspaceId, actor: s, at: clock.now(), action: 'invitation.withdraw', detail: { email: i.email } });
     publish(i.workspaceId, { kind: 'members' });
     return reply.code(204).send(null);
   });
@@ -180,11 +188,11 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
     const [u] = await db.select().from(users).where(eq(users.id, s.userId));
     if (u.email !== i.email) throw new ApiError(403, 'wrong_account', `This invitation is for ${i.email}`);
     if (i.expiresAt <= now) throw new ApiError(410, 'invitation_expired', 'This invitation has expired. Ask for a new one.');
-    return { i, u, now };
+    return { i, u, s, now };
   }
 
   r.post('/invitations/:id/accept', { schema: { params, response: { 200: WorkspaceSummary } } }, async req => {
-    const { i, u, now } = await mine(req, req.params.id);
+    const { i, u, s, now } = await mine(req, req.params.id);
     if (!u.emailVerifiedAt) throw new ApiError(403, 'email_unverified', 'Verify your email address first');
     await db.transaction(async tx => {
       // The invitation already held a seat; it still has to fit if the plan shrank since.
@@ -196,6 +204,7 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
         ? await tx.select({ id: departments.id }).from(departments).where(and(eq(departments.workspaceId, i.workspaceId), inArray(departments.id, i.departmentIds))) : [];
       if (depts.length) await tx.insert(departmentMembers).values(depts.map(d => ({ departmentId: d.id, userId: u.id }))).onConflictDoNothing();
       await tx.update(invitations).set({ acceptedAt: now }).where(eq(invitations.id, i.id));
+      await record(tx, { workspaceId: i.workspaceId, actor: s, at: now, action: 'member.join', detail: { email: u.email, role: i.role } });
     });
     publish(i.workspaceId, { kind: 'members' });
     const [ws] = await db.select({ name: workspaces.name }).from(workspaces).where(eq(workspaces.id, i.workspaceId));
@@ -227,10 +236,11 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
   });
 
   r.post('/workspaces/:id/departments', { schema: { params, body: z.object({ name }), response: { 201: Department } } }, async (req, reply) => {
-    await manager(req, req.params.id);
+    const s = await manager(req, req.params.id);
     await requireCompany(db, req.params.id);
     const [d] = await db.insert(departments).values({ workspaceId: req.params.id, name: req.body.name, createdAt: clock.now() }).onConflictDoNothing().returning();
     if (!d) throw new ApiError(409, 'department_exists', 'A department with this name already exists');
+    await record(db, { workspaceId: req.params.id, actor: s, at: clock.now(), action: 'department.create', detail: { name: d.name } });
     publish(req.params.id, { kind: 'members' });
     return reply.code(201).send({ id: d.id, name: d.name, memberIds: [], profiles: 0 });
   });
@@ -241,7 +251,7 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
   }, async (req, reply) => {
     const [d] = await db.select().from(departments).where(eq(departments.id, req.params.id));
     if (!d) throw notFound('Department');
-    await manager(req, d.workspaceId);
+    const s = await manager(req, d.workspaceId);
     await requireCompany(db, d.workspaceId);
     const memberIds = req.body.memberIds ? [...new Set(req.body.memberIds)] : undefined;
     if (memberIds) await assertOwned(db, d.workspaceId, { ownerIds: memberIds });
@@ -253,6 +263,7 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
         await tx.delete(departmentMembers).where(eq(departmentMembers.departmentId, d.id));
         if (memberIds.length) await tx.insert(departmentMembers).values(memberIds.map(userId => ({ departmentId: d.id, userId })));
       }
+      await record(tx, { workspaceId: d.workspaceId, actor: s, at: clock.now(), action: 'department.update', detail: { name: req.body.name ?? d.name, ...(req.body.name ? { from: d.name } : {}), ...(memberIds ? { members: memberIds.length } : {}) } });
     });
     publish(d.workspaceId, { kind: 'members' }); publish(d.workspaceId, { kind: 'profiles' });
     return reply.code(204).send(null);
@@ -262,8 +273,9 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
   r.delete('/departments/:id', { schema: { params, response: { 204: z.null() } } }, async (req, reply) => {
     const [d] = await db.select().from(departments).where(eq(departments.id, req.params.id));
     if (!d) throw notFound('Department');
-    await manager(req, d.workspaceId);
+    const s = await manager(req, d.workspaceId);
     await db.delete(departments).where(eq(departments.id, d.id));
+    await record(db, { workspaceId: d.workspaceId, actor: s, at: clock.now(), action: 'department.delete', detail: { name: d.name } });
     publish(d.workspaceId, { kind: 'members' }); publish(d.workspaceId, { kind: 'profiles' });
     return reply.code(204).send(null);
   });

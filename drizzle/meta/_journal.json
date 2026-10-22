@@ -29,6 +29,13 @@
       "when": 1792635655325,
       "tag": "0003_team",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792637269683,
+      "tag": "0004_activity",
+      "breakpoints": true
     }
   ]
 }

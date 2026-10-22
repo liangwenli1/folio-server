@@ -6,7 +6,8 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { and, eq, lte, or } from 'drizzle-orm';
-import { profileData, profileLocks, profiles } from '../db/schema.js';
+import { profileData, profileLocks, profiles, users } from '../db/schema.js';
+import { record } from '../activity/service.js';
 import { ApiError, notFound } from '../errors.js';
 import { publish } from '../events.js';
 import type { Deps } from '../http.js';
@@ -30,12 +31,15 @@ export function syncRoutes(app: FastifyInstance, deps: Deps){
     if (p.deletedAt) throw new ApiError(409, 'in_trash', 'Restore this profile from the trash before opening it');
     const now = clock.now(), expiresAt = new Date(now.getTime() + LOCK_MS);
     const holder = { sessionId: s.id, userId: s.userId, deviceName: s.deviceName, acquiredAt: now, expiresAt };
+    const [before] = await db.select().from(profileLocks).where(eq(profileLocks.profileId, p.id));
     // Taken when free, expired, or already this session's.
     const [l] = await db.insert(profileLocks).values({ profileId: p.id, ...holder })
       .onConflictDoUpdate({ target: profileLocks.profileId, set: holder, setWhere: or(eq(profileLocks.sessionId, s.id), lte(profileLocks.expiresAt, now)) })
       .returning();
     if (!l) throw new ApiError(409, 'locked', 'This profile is open on another computer');
     await db.update(profiles).set({ lastOpenedAt: now, lastOpenedBy: s.userId }).where(eq(profiles.id, p.id));
+    // Taking the lock again from the same open browser is not a new opening.
+    if (!(before && before.sessionId === s.id && before.expiresAt > now)) await record(db, { workspaceId: p.workspaceId, actor: s, at: now, action: 'profile.open', profiles: [p] });
     changed(p);
     const [d] = await db.select().from(profileData).where(eq(profileData.profileId, p.id));
     return { expiresAt: expiresAt.toISOString(), data: d ? savedDataView(d) : null };
@@ -53,7 +57,10 @@ export function syncRoutes(app: FastifyInstance, deps: Deps){
   r.delete('/profiles/:id/lock', { schema: { params, response: { 204: z.null() } } }, async (req, reply) => {
     const { p, s } = await profileFor(deps, req, req.params.id);
     const gone = await db.delete(profileLocks).where(and(eq(profileLocks.profileId, p.id), eq(profileLocks.sessionId, s.id))).returning();
-    if (gone.length) changed(p);
+    if (gone.length){
+      await record(db, { workspaceId: p.workspaceId, actor: s, at: clock.now(), action: 'profile.close', profiles: [p] });
+      changed(p);
+    }
     return reply.code(204).send(null);
   });
 
@@ -62,7 +69,11 @@ export function syncRoutes(app: FastifyInstance, deps: Deps){
     const { p, s } = await profileFor(deps, req, req.params.id);
     await requireRole(db, p.workspaceId, s.userId, ['owner', 'admin']);
     const gone = await db.delete(profileLocks).where(eq(profileLocks.profileId, p.id)).returning();
-    if (gone.length) changed(p);
+    if (gone.length){
+      const [from] = await db.select({ email: users.email }).from(users).where(eq(users.id, gone[0].userId));
+      await record(db, { workspaceId: p.workspaceId, actor: s, at: clock.now(), action: 'profile.takeover', profiles: [p], detail: { from: from?.email ?? null, device: gone[0].deviceName } });
+      changed(p);
+    }
     return reply.code(204).send(null);
   });
 

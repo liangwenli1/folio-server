@@ -2,7 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { and, asc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
-import { groups, profileData, profiles, proxies } from '../db/schema.js';
+import { departments, groups, profileData, profiles, proxies, users } from '../db/schema.js';
+import { record } from '../activity/service.js';
 import { ApiError, forbidden, notFound } from '../errors.js';
 import { publish } from '../events.js';
 import { requireSession, type Deps } from '../http.js';
@@ -66,9 +67,10 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
   });
 
   r.post('/workspaces/:id/groups', { schema: { params: wsParams, body: z.object({ name }), response: { 201: Group } } }, async (req, reply) => {
-    await manager(req, req.params.id);
+    const s = await manager(req, req.params.id);
     const [g] = await db.insert(groups).values({ workspaceId: req.params.id, name: req.body.name, createdAt: clock.now() }).onConflictDoNothing().returning();
     if (!g) throw new ApiError(409, 'group_exists', 'A group with this name already exists');
+    await record(db, { workspaceId: req.params.id, actor: s, at: clock.now(), action: 'group.create', detail: { name: g.name } });
     publish(req.params.id, { kind: 'groups' });
     return reply.code(201).send({ id: g.id, name: g.name, profiles: 0 });
   });
@@ -76,10 +78,11 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
   r.patch('/groups/:id', { schema: { params: wsParams, body: z.object({ name }), response: { 200: z.object({ id: z.string(), name: z.string() }) } } }, async req => {
     const [g] = await db.select().from(groups).where(eq(groups.id, req.params.id));
     if (!g) throw notFound('Group');
-    await manager(req, g.workspaceId);
+    const s = await manager(req, g.workspaceId);
     const [u] = await db.update(groups).set({ name: req.body.name }).where(eq(groups.id, g.id)).returning().catch(() => {
       throw new ApiError(409, 'group_exists', 'A group with this name already exists');
     });
+    await record(db, { workspaceId: g.workspaceId, actor: s, at: clock.now(), action: 'group.rename', detail: { name: u.name, from: g.name } });
     publish(g.workspaceId, { kind: 'groups' });
     return { id: u.id, name: u.name };
   });
@@ -88,8 +91,9 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
   r.delete('/groups/:id', { schema: { params: wsParams, response: { 204: z.null() } } }, async (req, reply) => {
     const [g] = await db.select().from(groups).where(eq(groups.id, req.params.id));
     if (!g) throw notFound('Group');
-    await manager(req, g.workspaceId);
+    const s = await manager(req, g.workspaceId);
     await db.delete(groups).where(eq(groups.id, g.id));
+    await record(db, { workspaceId: g.workspaceId, actor: s, at: clock.now(), action: 'group.delete', detail: { name: g.name } });
     publish(g.workspaceId, { kind: 'groups' }); publish(g.workspaceId, { kind: 'profiles' });
     return reply.code(204).send(null);
   });
@@ -103,7 +107,8 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
     return { profiles: await loadProfiles(db, where, s.id, clock.now()) };
   });
 
-  async function create(workspaceId: string, userId: string, role: Role, items: NewProfile[]){
+  async function create(workspaceId: string, s: { userId: string; deviceName: string | null }, role: Role, items: NewProfile[]){
+    const userId = s.userId;
     items.forEach(checkFingerprint);
     await checkAssignment(workspaceId, role, items);
     await assertOwned(db, workspaceId, { groupIds: items.map(i => i.groupId), proxyIds: items.map(i => i.proxyId) });
@@ -115,13 +120,14 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
         ...i, ownerId: i.ownerId === undefined ? userId : i.ownerId, workspaceId, number: numbers[k], createdBy: userId, createdAt: now, updatedAt: now
       }))).returning();
     });
+    await record(db, { workspaceId, actor: s, at: now, action: 'profile.create', profiles: rows });
     publish(workspaceId, { kind: 'profiles', ids: rows.map(p => p.id) });
     return rows;
   }
 
   r.post('/workspaces/:id/profiles', { schema: { params: wsParams, body: newProfile, response: { 201: Profile } } }, async (req, reply) => {
     const { s, role } = await member(req, req.params.id);
-    const [p] = await create(req.params.id, s.userId, role, [req.body]);
+    const [p] = await create(req.params.id, s, role, [req.body]);
     return reply.code(201).send(profileView(p));
   });
 
@@ -130,7 +136,7 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
     schema: { params: wsParams, body: z.object({ profiles: z.array(newProfile).min(1).max(500) }), response: { 201: z.object({ profiles: z.array(Profile) }) } }
   }, async (req, reply) => {
     const { s, role } = await member(req, req.params.id);
-    return reply.code(201).send({ profiles: (await create(req.params.id, s.userId, role, req.body.profiles)).map(p => profileView(p)) });
+    return reply.code(201).send({ profiles: (await create(req.params.id, s, role, req.body.profiles)).map(p => profileView(p)) });
   });
 
   // Optimistic concurrency: the client sends the version it edited; a newer one on the server is a conflict.
@@ -154,6 +160,9 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
     const [u] = await db.update(profiles).set({ ...patch, version: sql`${profiles.version} + 1`, updatedAt: clock.now() })
       .where(and(eq(profiles.id, p.id), eq(profiles.version, v))).returning();
     if (!u) throw new ApiError(409, 'stale', 'Someone changed this profile in the meantime. Reload it and try again.');
+    // Clients send whole forms; the entry names only what actually changed.
+    const fields = (Object.keys(patch) as (keyof typeof patch)[]).filter(k => JSON.stringify(patch[k] ?? null) !== JSON.stringify(p[k] ?? null));
+    if (fields.length) await record(db, { workspaceId: p.workspaceId, actor: s, at: u.updatedAt, action: 'profile.update', profiles: [u], detail: { fields } });
     publish(p.workspaceId, { kind: 'profiles', ids: [p.id] });
     return (await loadProfiles(db, eq(profiles.id, u.id), s.id, clock.now()))[0];
   });
@@ -170,31 +179,32 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
       response: { 200: z.object({ updated: z.number() }) }
     }
   }, async req => {
-    const { role, scope } = await member(req, req.params.id);
+    const { s, role, scope } = await member(req, req.params.id);
     const { ids, action } = req.body;
     // Members change their own profiles' group, tags and proxy; the rest is for owners and admins.
     if (role === 'member' && !['move', 'tag', 'untag', 'set-proxy'].includes(action)) throw forbidden();
     const now = clock.now();
     const mine = and(eq(profiles.workspaceId, req.params.id), inArray(profiles.id, ids), scope);
     const bump = { version: sql`${profiles.version} + 1`, updatedAt: now };
-    let updated: { id: string }[];
+    const ref = { id: profiles.id, name: profiles.name, number: profiles.number };
+    let updated: { id: string; name: string; number: number }[];
     switch (action){
       case 'move':
         await assertOwned(db, req.params.id, { groupIds: [req.body.groupId] });
-        updated = await db.update(profiles).set({ ...bump, groupId: req.body.groupId ?? null }).where(and(mine, isNull(profiles.deletedAt))).returning({ id: profiles.id });
+        updated = await db.update(profiles).set({ ...bump, groupId: req.body.groupId ?? null }).where(and(mine, isNull(profiles.deletedAt))).returning(ref);
         break;
       case 'set-proxy':
         await assertOwned(db, req.params.id, { proxyIds: [req.body.proxyId] });
-        updated = await db.update(profiles).set({ ...bump, proxyId: req.body.proxyId ?? null }).where(and(mine, isNull(profiles.deletedAt))).returning({ id: profiles.id });
+        updated = await db.update(profiles).set({ ...bump, proxyId: req.body.proxyId ?? null }).where(and(mine, isNull(profiles.deletedAt))).returning(ref);
         break;
       case 'assign':
         await assertOwned(db, req.params.id, { ownerIds: [req.body.ownerId] });
-        updated = await db.update(profiles).set({ ...bump, ownerId: req.body.ownerId ?? null }).where(and(mine, isNull(profiles.deletedAt))).returning({ id: profiles.id });
+        updated = await db.update(profiles).set({ ...bump, ownerId: req.body.ownerId ?? null }).where(and(mine, isNull(profiles.deletedAt))).returning(ref);
         break;
       case 'set-department':
         if (req.body.departmentId) await requireCompany(db, req.params.id);
         await assertOwned(db, req.params.id, { departmentIds: [req.body.departmentId] });
-        updated = await db.update(profiles).set({ ...bump, departmentId: req.body.departmentId ?? null }).where(and(mine, isNull(profiles.deletedAt))).returning({ id: profiles.id });
+        updated = await db.update(profiles).set({ ...bump, departmentId: req.body.departmentId ?? null }).where(and(mine, isNull(profiles.deletedAt))).returning(ref);
         break;
       case 'tag': case 'untag': {
         const t = req.body.tag;
@@ -202,26 +212,38 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
         const tags = action === 'tag'
           ? sql`case when ${t} = any(${profiles.tags}) or cardinality(${profiles.tags}) >= 10 then ${profiles.tags} else array_append(${profiles.tags}, ${t}) end`
           : sql`array_remove(${profiles.tags}, ${t})`;
-        updated = await db.update(profiles).set({ ...bump, tags }).where(and(mine, isNull(profiles.deletedAt))).returning({ id: profiles.id });
+        updated = await db.update(profiles).set({ ...bump, tags }).where(and(mine, isNull(profiles.deletedAt))).returning(ref);
         break;
       }
       case 'trash':
-        updated = await db.update(profiles).set({ ...bump, deletedAt: now }).where(and(mine, isNull(profiles.deletedAt))).returning({ id: profiles.id });
+        updated = await db.update(profiles).set({ ...bump, deletedAt: now }).where(and(mine, isNull(profiles.deletedAt))).returning(ref);
         break;
       case 'restore':
         updated = await db.transaction(async tx => {
           const trashed = await tx.select({ id: profiles.id }).from(profiles).where(and(mine, isNotNull(profiles.deletedAt)));
           await reserve(tx, req.params.id, trashed.length);
-          return tx.update(profiles).set({ ...bump, deletedAt: null }).where(and(mine, isNotNull(profiles.deletedAt))).returning({ id: profiles.id });
+          return tx.update(profiles).set({ ...bump, deletedAt: null }).where(and(mine, isNotNull(profiles.deletedAt))).returning(ref);
         });
         break;
       case 'purge': {
         const saved = await db.select({ key: profileData.objectKey }).from(profileData).innerJoin(profiles, eq(profiles.id, profileData.profileId)).where(and(mine, isNotNull(profiles.deletedAt)));
-        updated = await db.delete(profiles).where(and(mine, isNotNull(profiles.deletedAt))).returning({ id: profiles.id });
+        // Written before the rows go; deleting them then clears the entries' link but keeps name and number.
+        await record(db, { workspaceId: req.params.id, actor: s, at: now, action: 'profile.purge', profiles: await db.select(ref).from(profiles).where(and(mine, isNotNull(profiles.deletedAt))) });
+        updated = await db.delete(profiles).where(and(mine, isNotNull(profiles.deletedAt))).returning(ref);
         await Promise.all(saved.map(x => storage.delete(x.key).catch(err => req.log.error(err, 'deleting saved state failed'))));
         break;
       }
     }
+    // What the entry says about the change, in names rather than ids.
+    const name = async (table: typeof groups | typeof proxies | typeof departments, id: string | null | undefined) =>
+      id ? (await db.select({ n: table.name }).from(table).where(eq(table.id, id)))[0]?.n ?? null : null;
+    const detail: Record<string, unknown> =
+      action === 'move' ? { group: await name(groups, req.body.groupId) }
+      : action === 'set-proxy' ? { proxy: await name(proxies, req.body.proxyId) }
+      : action === 'set-department' ? { department: await name(departments, req.body.departmentId) }
+      : action === 'assign' ? { to: req.body.ownerId ? (await db.select({ e: users.email }).from(users).where(eq(users.id, req.body.ownerId)))[0]?.e ?? null : null }
+      : action === 'tag' || action === 'untag' ? { tag: req.body.tag } : {};
+    if (action !== 'purge') await record(db, { workspaceId: req.params.id, actor: s, at: now, action: `profile.${action}`, profiles: updated, detail });
     publish(req.params.id, { kind: 'profiles', ids: updated.map(u => u.id) });
     if (action === 'move') publish(req.params.id, { kind: 'groups' });
     return { updated: updated.length };

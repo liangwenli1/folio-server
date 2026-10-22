@@ -6,6 +6,7 @@ import { profiles, proxies } from '../db/schema.js';
 import { ApiError, notFound } from '../errors.js';
 import { open, seal } from '../crypto.js';
 import { publish } from '../events.js';
+import { record } from '../activity/service.js';
 import { requireSession, type Deps } from '../http.js';
 import { Geo, Proxy, ProxySecret, proxyType, proxyView } from '../views.js';
 import { requireRole, type Role } from '../workspaces/service.js';
@@ -31,7 +32,7 @@ export function proxyRoutes(app: FastifyInstance, deps: Deps){
     if (!p) throw notFound('Proxy');
     const s = await requireSession(req, deps);
     await requireRole(db, p.workspaceId, s.userId, roles);
-    return p;
+    return { p, s };
   }
   async function assertBackup(workspaceId: string, backupId: string | null | undefined, self?: string){
     if (!backupId) return;
@@ -60,6 +61,7 @@ export function proxyRoutes(app: FastifyInstance, deps: Deps){
     await requireRole(db, req.params.id, s.userId, MANAGERS);
     await assertBackup(req.params.id, req.body.backupId);
     const [p] = await db.insert(proxies).values(row(req.params.id, req.body, clock.now())).returning();
+    await record(db, { workspaceId: req.params.id, actor: s, at: p.createdAt, action: 'proxy.create', detail: { name: p.name } });
     publish(req.params.id, { kind: 'proxies', ids: [p.id] });
     return reply.code(201).send(proxyView(p, 0));
   });
@@ -90,7 +92,10 @@ export function proxyRoutes(app: FastifyInstance, deps: Deps){
     const now = clock.now();
     const rows = fresh.length ? await db.insert(proxies).values(fresh.map(p => row(req.params.id, p, now))).returning() : [];
     rows.forEach(p => known.set(keyOf(p), p));
-    if (rows.length) publish(req.params.id, { kind: 'proxies' });
+    if (rows.length){
+      await record(db, { workspaceId: req.params.id, actor: s, at: now, action: 'proxy.import', detail: { added: rows.length } });
+      publish(req.params.id, { kind: 'proxies' });
+    }
 
     const counts = new Map((await db.select({ id: profiles.proxyId, n: sql<number>`count(*)::int` }).from(profiles)
       .where(and(eq(profiles.workspaceId, req.params.id), isNull(profiles.deletedAt))).groupBy(profiles.proxyId)).map(c => [c.id, c.n]));
@@ -101,7 +106,7 @@ export function proxyRoutes(app: FastifyInstance, deps: Deps){
   r.patch('/proxies/:id', {
     schema: { params: wsParams, body: z.object({ ...fields, type: proxyType.optional(), host: host.optional(), port: port.optional() }), response: { 200: Proxy } }
   }, async req => {
-    const p = await proxyFor(req, req.params.id, MANAGERS);
+    const { p, s } = await proxyFor(req, req.params.id, MANAGERS);
     await assertBackup(p.workspaceId, req.body.backupId, p.id);
     const { password, ...rest } = req.body;
     const [u] = await db.update(proxies).set({
@@ -109,14 +114,16 @@ export function proxyRoutes(app: FastifyInstance, deps: Deps){
       // A changed address invalidates the last check.
       ...(rest.host || rest.port || rest.type ? { lastCheck: null } : {})
     }).where(eq(proxies.id, p.id)).returning();
+    await record(db, { workspaceId: p.workspaceId, actor: s, at: u.updatedAt, action: 'proxy.update', detail: { name: u.name, fields: Object.keys(req.body) } });
     publish(p.workspaceId, { kind: 'proxies', ids: [p.id] });
     return proxyView(u, await count(p.id));
   });
 
   // Profiles using a deleted proxy keep working without one (they show "no proxy").
   r.delete('/proxies/:id', { schema: { params: wsParams, response: { 204: z.null() } } }, async (req, reply) => {
-    const p = await proxyFor(req, req.params.id, MANAGERS);
+    const { p, s } = await proxyFor(req, req.params.id, MANAGERS);
     await db.delete(proxies).where(eq(proxies.id, p.id));
+    await record(db, { workspaceId: p.workspaceId, actor: s, at: clock.now(), action: 'proxy.delete', detail: { name: p.name } });
     publish(p.workspaceId, { kind: 'proxies' }); publish(p.workspaceId, { kind: 'profiles' });
     return reply.code(204).send(null);
   });
@@ -129,7 +136,7 @@ export function proxyRoutes(app: FastifyInstance, deps: Deps){
       response: { 200: Proxy }
     }
   }, async req => {
-    const p = await proxyFor(req, req.params.id);
+    const { p } = await proxyFor(req, req.params.id);
     const [u] = await db.update(proxies).set({ lastCheck: { ...req.body, checkedAt: clock.now().toISOString() } }).where(eq(proxies.id, p.id)).returning();
     publish(p.workspaceId, { kind: 'proxies', ids: [p.id] });
     return proxyView(u, await count(p.id));
@@ -137,7 +144,7 @@ export function proxyRoutes(app: FastifyInstance, deps: Deps){
 
   // Connection details with the password. The desktop refuses to pass this route through to its renderer.
   r.get('/proxies/:id/credentials', { schema: { params: wsParams, response: { 200: ProxySecret } } }, async req => {
-    const p = await proxyFor(req, req.params.id, MANAGERS);
+    const { p } = await proxyFor(req, req.params.id, MANAGERS);
     return { id: p.id, type: p.type as 'http' | 'https' | 'socks5', host: p.host, port: p.port, username: p.username, password: p.passwordEnc ? open(p.passwordEnc) : null };
   });
 }

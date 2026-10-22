@@ -1,4 +1,4 @@
-import { pgTable, pgSequence, uuid, text, timestamp, integer, boolean, jsonb, primaryKey, index, uniqueIndex, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { pgTable, pgSequence, uuid, text, timestamp, integer, bigserial, boolean, jsonb, primaryKey, index, uniqueIndex, type AnyPgColumn } from 'drizzle-orm/pg-core';
 
 const ts = () => timestamp({ withTimezone: true });
 const createdAt = () => ts().notNull().defaultNow();
@@ -218,3 +218,19 @@ export const departmentMembers = pgTable('department_members', {
   departmentId: uuid().notNull().references(() => departments.id, { onDelete: 'cascade' }),
   userId: uuid().notNull().references(() => users.id, { onDelete: 'cascade' })
 }, t => [primaryKey({ columns: [t.departmentId, t.userId] }), index().on(t.userId)]);
+
+// What people did in a workspace. The profile's name and number are copied in, so entries still read right
+// after renames and deletions. Kept for as long as the plan says (see activity.ts).
+export const activityLog = pgTable('activity_log', {
+  // Insertion order: entries written in the same instant (a bulk change) still read in the order they happened.
+  seq: bigserial({ mode: 'number' }).primaryKey(),
+  workspaceId: uuid().notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  at: ts().notNull(),
+  actorId: uuid().references(() => users.id, { onDelete: 'set null' }),
+  deviceName: text(),
+  action: text().notNull(),
+  profileId: uuid().references(() => profiles.id, { onDelete: 'set null' }),
+  profileName: text(),
+  profileNumber: integer(),
+  detail: jsonb().notNull().default({})
+}, t => [index().on(t.workspaceId, t.seq), index().on(t.profileId, t.seq)]);

@@ -80,6 +80,12 @@ docker run -d --name folio-minio --network folio-dev -e MINIO_ROOT_USER=folio -e
 - Removing someone (`DELETE /workspaces/:id/members/:userId?transferTo=…`) hands their profiles to `transferTo`, drops their department memberships and open locks, and ends their change stream with a `removed` event. Leaving (`POST /workspaces/:id/leave`) hands them to the owner.
 - Departments are a Company feature; deleting one leaves its profiles without a department.
 
+## Activity log
+
+- `src/activity/service.ts` writes every entry: profile changes (only the fields that actually changed), moving to and from the Trash, opening, closing and takeovers, proxies, groups, invitations, members and departments. Each entry keeps who, on which computer, when, and the profile's name and number at the time, so entries still read right after renames and deletions.
+- `GET /workspaces/:id/activity` pages back by `seq` (`before=`), filtered by profile, person or kind. Members see entries about the profiles they see and their own actions. Entries older than the plan's retention (Free 7 days, Studio 30, Company 365) are not returned and are deleted once a day.
+- `GET /workspaces/:id/activity.csv` exports the retained log on Company, for owners and admins.
+
 ## Billing rules
 
 - Plans: Free (5 profiles, 1 member), Studio ($29/mo, 100 profiles), Company ($99/mo, 500 profiles). Yearly is 20% off. Extra profiles come in packs of 100 ($15/mo), up to 2,000 profiles.
