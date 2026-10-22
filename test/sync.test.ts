@@ -59,6 +59,7 @@ describe('profile locks', () => {
     const { owner, p, a } = await profileWithTwoComputers();
     const member = await signup(t.app);
     await t.db.insert(memberships).values({ workspaceId: owner.workspaceId, userId: member.userId, role: 'member' });
+    await req('POST', `/workspaces/${owner.workspaceId}/profiles/batch`, owner.headers, { ids: [p.id], action: 'assign', ownerId: member.userId });
     await req('POST', `/profiles/${p.id}/lock`, a);
     expect((await req('POST', `/profiles/${p.id}/lock/takeover`, member.headers)).json().error.code).toBe('forbidden');
     expect((await req('POST', `/profiles/${p.id}/lock/takeover`, owner.headers)).statusCode).toBe(204);

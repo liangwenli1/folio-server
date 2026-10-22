@@ -8,7 +8,7 @@ import { open, seal } from '../crypto.js';
 import { publish } from '../events.js';
 import { requireSession, type Deps } from '../http.js';
 import { Geo, Proxy, ProxySecret, proxyType, proxyView } from '../views.js';
-import { requireRole } from '../workspaces/service.js';
+import { requireRole, type Role } from '../workspaces/service.js';
 import { parseProxyLine, type ProxyInput } from './service.js';
 
 const wsParams = z.object({ id: z.uuid() });
@@ -24,11 +24,13 @@ export function proxyRoutes(app: FastifyInstance, deps: Deps){
   const r = app.withTypeProvider<ZodTypeProvider>();
   const { db, clock } = deps;
 
-  async function proxyFor(req: Parameters<typeof requireSession>[0], id: string){
+  // Members use the library's proxies in their profiles; changing it is for owners and admins.
+  const MANAGERS: Role[] = ['owner', 'admin'];
+  async function proxyFor(req: Parameters<typeof requireSession>[0], id: string, roles?: Role[]){
     const [p] = await db.select().from(proxies).where(eq(proxies.id, id));
     if (!p) throw notFound('Proxy');
     const s = await requireSession(req, deps);
-    await requireRole(db, p.workspaceId, s.userId);
+    await requireRole(db, p.workspaceId, s.userId, roles);
     return p;
   }
   async function assertBackup(workspaceId: string, backupId: string | null | undefined, self?: string){
@@ -55,7 +57,7 @@ export function proxyRoutes(app: FastifyInstance, deps: Deps){
 
   r.post('/workspaces/:id/proxies', { schema: { params: wsParams, body: z.object(fields), response: { 201: Proxy } } }, async (req, reply) => {
     const s = await requireSession(req, deps);
-    await requireRole(db, req.params.id, s.userId);
+    await requireRole(db, req.params.id, s.userId, MANAGERS);
     await assertBackup(req.params.id, req.body.backupId);
     const [p] = await db.insert(proxies).values(row(req.params.id, req.body, clock.now())).returning();
     publish(req.params.id, { kind: 'proxies', ids: [p.id] });
@@ -73,7 +75,7 @@ export function proxyRoutes(app: FastifyInstance, deps: Deps){
     }
   }, async req => {
     const s = await requireSession(req, deps);
-    await requireRole(db, req.params.id, s.userId);
+    await requireRole(db, req.params.id, s.userId, MANAGERS);
     const parsed: ProxyInput[] = [], errors: { line: number; text: string }[] = [];
     req.body.text.split(/\r?\n/).forEach((line, i) => {
       if (!line.trim() || line.trim().startsWith('#')) return;
@@ -99,7 +101,7 @@ export function proxyRoutes(app: FastifyInstance, deps: Deps){
   r.patch('/proxies/:id', {
     schema: { params: wsParams, body: z.object({ ...fields, type: proxyType.optional(), host: host.optional(), port: port.optional() }), response: { 200: Proxy } }
   }, async req => {
-    const p = await proxyFor(req, req.params.id);
+    const p = await proxyFor(req, req.params.id, MANAGERS);
     await assertBackup(p.workspaceId, req.body.backupId, p.id);
     const { password, ...rest } = req.body;
     const [u] = await db.update(proxies).set({
@@ -113,7 +115,7 @@ export function proxyRoutes(app: FastifyInstance, deps: Deps){
 
   // Profiles using a deleted proxy keep working without one (they show "no proxy").
   r.delete('/proxies/:id', { schema: { params: wsParams, response: { 204: z.null() } } }, async (req, reply) => {
-    const p = await proxyFor(req, req.params.id);
+    const p = await proxyFor(req, req.params.id, MANAGERS);
     await db.delete(proxies).where(eq(proxies.id, p.id));
     publish(p.workspaceId, { kind: 'proxies' }); publish(p.workspaceId, { kind: 'profiles' });
     return reply.code(204).send(null);
@@ -135,7 +137,7 @@ export function proxyRoutes(app: FastifyInstance, deps: Deps){
 
   // Connection details with the password. The desktop refuses to pass this route through to its renderer.
   r.get('/proxies/:id/credentials', { schema: { params: wsParams, response: { 200: ProxySecret } } }, async req => {
-    const p = await proxyFor(req, req.params.id);
+    const p = await proxyFor(req, req.params.id, MANAGERS);
     return { id: p.id, type: p.type as 'http' | 'https' | 'socks5', host: p.host, port: p.port, username: p.username, password: p.passwordEnc ? open(p.passwordEnc) : null };
   });
 }

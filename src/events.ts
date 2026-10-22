@@ -2,8 +2,9 @@
 // In-process for now; with more than one server instance this becomes PostgreSQL LISTEN/NOTIFY.
 import { EventEmitter } from 'node:events';
 
-export type ChangeKind = 'profiles' | 'proxies' | 'groups' | 'workspace';
-export interface Change { kind: ChangeKind; ids?: string[] }
+// `removed` names a person taken out of the workspace: their own stream gets it and is then closed.
+export type ChangeKind = 'profiles' | 'proxies' | 'groups' | 'workspace' | 'members' | 'removed';
+export interface Change { kind: ChangeKind; ids?: string[]; userId?: string }
 
 const bus = new EventEmitter();
 bus.setMaxListeners(0);

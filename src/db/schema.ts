@@ -143,7 +143,9 @@ export const profiles = pgTable('profiles', {
   number: integer().notNull(),
   name: text().notNull(),
   groupId: uuid().references(() => groups.id, { onDelete: 'set null' }),
+  // The person it is assigned to. Members see only their own profiles (and, on Company, their departments').
   ownerId: uuid().references(() => users.id, { onDelete: 'set null' }),
+  departmentId: uuid().references((): AnyPgColumn => departments.id, { onDelete: 'set null' }),
   tags: text().array().notNull().default([]),
   kernel: text().notNull(),
   kernelVersion: text().notNull(),
@@ -187,3 +189,32 @@ export const profileLocks = pgTable('profile_locks', {
   acquiredAt: ts().notNull(),
   expiresAt: ts().notNull()
 });
+
+// An invitation to a workspace, sent by email. Only the token's sha256 is stored; accepting needs a session
+// whose verified email matches.
+export const invitations = pgTable('invitations', {
+  id: uuid().primaryKey().defaultRandom(),
+  workspaceId: uuid().notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  email: text().notNull(),
+  role: text().notNull(),
+  departmentIds: uuid().array().notNull().default([]),
+  tokenHash: text().notNull().unique(),
+  invitedBy: uuid().references(() => users.id, { onDelete: 'set null' }),
+  createdAt: createdAt(),
+  expiresAt: ts().notNull(),
+  acceptedAt: ts(),
+  revokedAt: ts()
+}, t => [index().on(t.workspaceId), index().on(t.email)]);
+
+// Company plan: departments scope which profiles their members see.
+export const departments = pgTable('departments', {
+  id: uuid().primaryKey().defaultRandom(),
+  workspaceId: uuid().notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  name: text().notNull(),
+  createdAt: createdAt()
+}, t => [uniqueIndex().on(t.workspaceId, t.name)]);
+
+export const departmentMembers = pgTable('department_members', {
+  departmentId: uuid().notNull().references(() => departments.id, { onDelete: 'cascade' }),
+  userId: uuid().notNull().references(() => users.id, { onDelete: 'cascade' })
+}, t => [primaryKey({ columns: [t.departmentId, t.userId] }), index().on(t.userId)]);

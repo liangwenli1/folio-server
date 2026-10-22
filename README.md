@@ -72,6 +72,14 @@ docker run -d --name folio-minio --network folio-dev -e MINIO_ROOT_USER=folio -e
 - Saved sign-in state (`GET`/`PUT /profiles/:id/data`) is gzip-compressed JSON in Playwright's storage-state format: cookies, local storage and IndexedDB. Only the session holding the lock can upload. It is sealed with `SECRET_KEY` (AES-256-GCM) before it goes to object storage; only the latest version is kept, up to 50 MB.
 - `GET /workspaces/:id/events` is a server-sent event stream: `change` events say which kind of data changed (`profiles`, `proxies`, `groups`, `workspace`). Events are in-process; more than one server instance needs PostgreSQL LISTEN/NOTIFY.
 
+## Teams
+
+- Roles: the owner (one per workspace), admins and members. Owners and admins see and manage everything. Members see the profiles assigned to them (`ownerId`, set to whoever creates a profile) and, on Company, those of their departments; anyone else's profile answers 404. Members can create and edit profiles and use the proxy library, but cannot delete, assign, manage groups or proxies, or take over a lock.
+- Seats: Free has one (the owner); Studio and Company have no limit. Open invitations hold a seat.
+- Invitations (`POST /workspaces/:id/invitations`) are emailed with a link to the site's `/invite/` page and also returned, so they can be passed on another way. Only the invited address, verified, can accept. Inviting the same address again replaces the earlier invitation; they expire after 7 days.
+- Removing someone (`DELETE /workspaces/:id/members/:userId?transferTo=…`) hands their profiles to `transferTo`, drops their department memberships and open locks, and ends their change stream with a `removed` event. Leaving (`POST /workspaces/:id/leave`) hands them to the owner.
+- Departments are a Company feature; deleting one leaves its profiles without a department.
+
 ## Billing rules
 
 - Plans: Free (5 profiles, 1 member), Studio ($29/mo, 100 profiles), Company ($99/mo, 500 profiles). Yearly is 20% off. Extra profiles come in packs of 100 ($15/mo), up to 2,000 profiles.

@@ -14,12 +14,14 @@ export function createMailer(config: Config): Mailer {
 
 const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
-// One layout for every message: the name, a heading, what to do, the code, and a closing note.
-function layout(locale: Locale, heading: string, lead: string, code: string, note: string): Pick<Mail, 'text' | 'html'> {
+// One layout for every message: the name, a heading, what to do, a code or a button, and a closing note.
+function layout(locale: Locale, heading: string, lead: string, action: { code: string } | { label: string; url: string }, note: string): Pick<Mail, 'text' | 'html'> {
   const foot = locale === 'zh' ? '这封邮件由 Folio 自动发送。' : 'Folio sent this email automatically.';
-  const text = [heading, '', lead, '', code, '', note, '', foot].join('\n');
+  const text = [heading, '', lead, '', 'code' in action ? action.code : `${action.label}: ${action.url}`, '', note, '', foot].join('\n');
   const p = (s: string, color = '#13212F') => `<p style="margin:0 0 14px;font-size:15px;line-height:1.55;color:${color}">${esc(s)}</p>`;
-  const middle = `<p style="margin:4px 0 18px;font-family:Menlo,Consolas,monospace;font-size:30px;letter-spacing:8px;color:#13212F">${esc(code)}</p>`;
+  const middle = 'code' in action
+    ? `<p style="margin:4px 0 18px;font-family:Menlo,Consolas,monospace;font-size:30px;letter-spacing:8px;color:#13212F">${esc(action.code)}</p>`
+    : `<p style="margin:4px 0 18px"><a href="${esc(action.url)}" style="display:inline-block;padding:11px 18px;border-radius:6px;background:#B23468;color:#ffffff;text-decoration:none;font-size:15px">${esc(action.label)}</a></p>`;
   const html = `<!doctype html><html lang="${locale}"><body style="margin:0;padding:24px;background:#F1F3EF;font-family:-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif">
 <div style="max-width:520px;margin:0 auto;padding:28px;background:#FBFCFA;border:1px solid #D5DCD6;border-radius:10px">
 <p style="margin:0 0 18px;font-family:Georgia,serif;font-weight:700;font-size:22px;color:#B23468">Folio</p>
@@ -33,10 +35,19 @@ ${p(lead)}${middle}${p(note, '#56636F')}
 export function codeMail(locale: Locale, purpose: 'verify' | 'reset', code: string): Mail {
   if (locale === 'zh'){
     return purpose === 'verify'
-      ? { subject: `Folio 验证码：${code}`, ...layout(locale, '确认你的邮箱', '在 Folio 页面上输入下面的验证码，完成邮箱验证。验证码 15 分钟内有效。', code, '如果你没有注册 Folio，忽略这封邮件即可。') }
-      : { subject: `Folio 重设密码验证码：${code}`, ...layout(locale, '重设密码', '在 Folio 页面上输入下面的验证码，然后设置新密码。验证码 15 分钟内有效。', code, '如果不是你本人操作，忽略这封邮件即可，密码不会改变。') };
+      ? { subject: `Folio 验证码：${code}`, ...layout(locale, '确认你的邮箱', '在 Folio 页面上输入下面的验证码，完成邮箱验证。验证码 15 分钟内有效。', { code }, '如果你没有注册 Folio，忽略这封邮件即可。') }
+      : { subject: `Folio 重设密码验证码：${code}`, ...layout(locale, '重设密码', '在 Folio 页面上输入下面的验证码，然后设置新密码。验证码 15 分钟内有效。', { code }, '如果不是你本人操作，忽略这封邮件即可，密码不会改变。') };
   }
   return purpose === 'verify'
-    ? { subject: `${code} is your Folio code`, ...layout(locale, 'Confirm your email', 'Enter this code on the Folio page to confirm your email address. It expires in 15 minutes.', code, 'If you didn’t sign up for Folio, ignore this email.') }
-    : { subject: `${code} is your Folio password reset code`, ...layout(locale, 'Reset your password', 'Enter this code on the Folio page, then choose a new password. It expires in 15 minutes.', code, 'If you didn’t ask for this, ignore this email; your password stays the same.') };
+    ? { subject: `${code} is your Folio code`, ...layout(locale, 'Confirm your email', 'Enter this code on the Folio page to confirm your email address. It expires in 15 minutes.', { code }, 'If you didn’t sign up for Folio, ignore this email.') }
+    : { subject: `${code} is your Folio password reset code`, ...layout(locale, 'Reset your password', 'Enter this code on the Folio page, then choose a new password. It expires in 15 minutes.', { code }, 'If you didn’t ask for this, ignore this email; your password stays the same.') };
+}
+
+export function inviteMail(locale: Locale, a: { workspace: string; inviter: string; role: 'admin' | 'member'; url: string }): Mail {
+  if (locale === 'zh'){
+    const role = a.role === 'admin' ? '管理员' : '成员';
+    return { subject: `${a.inviter} 邀请你加入 ${a.workspace}（Folio）`, ...layout(locale, `加入 ${a.workspace}`, `${a.inviter} 邀请你以${role}身份加入 Folio 上的团队「${a.workspace}」。`, { label: '接受邀请', url: a.url }, '邀请 7 天内有效。如果你不认识对方，忽略这封邮件即可。') };
+  }
+  const role = a.role === 'admin' ? 'an admin' : 'a member';
+  return { subject: `${a.inviter} invited you to ${a.workspace} on Folio`, ...layout(locale, `Join ${a.workspace}`, `${a.inviter} invited you to join the ${a.workspace} workspace on Folio as ${role}.`, { label: 'Accept the invitation', url: a.url }, 'The invitation expires in 7 days. If you weren’t expecting it, ignore this email.') };
 }

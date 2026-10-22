@@ -15,6 +15,7 @@ import { profileRoutes } from './profiles/routes.js';
 import { proxyRoutes } from './proxies/routes.js';
 import { netRoutes } from './net/routes.js';
 import { syncRoutes } from './sync/routes.js';
+import { teamRoutes } from './team/routes.js';
 
 export async function buildApp(deps: Deps, opts: { logger?: boolean } = {}){
   const app = Fastify({ logger: opts.logger ?? true, trustProxy: deps.config.trustProxy });
@@ -47,6 +48,7 @@ export async function buildApp(deps: Deps, opts: { logger?: boolean } = {}){
   proxyRoutes(app, deps);
   netRoutes(app, deps);
   syncRoutes(app, deps);
+  teamRoutes(app, deps);
   if (deps.config.devTools) devRoutes(app, deps);
 
   app.get('/health', { schema: { hide: true } }, async () => ({ ok: true }));

@@ -24,8 +24,14 @@ export function netRoutes(app: FastifyInstance, deps: Deps){
     const res = reply.raw;
     res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache', connection: 'keep-alive', 'x-accel-buffering': 'no' });
     res.write('retry: 3000\n\n');
-    const off = subscribe(req.params.id, change => res.write(`event: change\ndata: ${JSON.stringify(change)}\n\n`));
+    // Someone taken out of the workspace gets one last event, then their stream ends.
+    const stop = () => { off(); clearInterval(beat); };
+    const off = subscribe(req.params.id, change => {
+      if (change.kind === 'removed' && change.userId !== s.userId) change = { kind: 'members' };
+      res.write(`event: change\ndata: ${JSON.stringify(change)}\n\n`);
+      if (change.kind === 'removed'){ stop(); res.end(); }
+    });
     const beat = setInterval(() => res.write(': keep-alive\n\n'), 25_000);
-    req.raw.on('close', () => { off(); clearInterval(beat); });
+    req.raw.on('close', stop);
   });
 }

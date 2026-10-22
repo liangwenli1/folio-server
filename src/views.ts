@@ -90,8 +90,8 @@ export const savedDataView = (d: typeof profileData.$inferSelect): z.infer<typeo
 export const LockHolder = z.object({ email: z.string(), deviceName: z.string().nullable(), since: z.string(), self: z.boolean() });
 
 export const Profile = z.object({
-  id: z.string(), number: z.number(), name: z.string(), groupId: z.string().nullable(), ownerId: z.string().nullable(),
-  tags: z.array(z.string()), kernel, kernelVersion: z.string(), os, fingerprint: Fingerprint, proxyId: z.string().nullable(),
+  id: z.string(), workspaceId: z.string(), number: z.number(), name: z.string(), groupId: z.string().nullable(),
+  ownerId: z.string().nullable(), departmentId: z.string().nullable(), tags: z.array(z.string()), kernel, kernelVersion: z.string(), os, fingerprint: Fingerprint, proxyId: z.string().nullable(),
   timezoneOverride: z.string().nullable(), localeOverride: z.string().nullable(), notes: z.string().nullable(),
   lastOpenedAt: iso, lastOpenedBy: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(), deletedAt: iso, version: z.number(),
   data: SavedData.nullable(), lock: LockHolder.nullable()
@@ -100,7 +100,7 @@ type LockRow = typeof profileLocks.$inferSelect & { email: string };
 export function profileView(p: typeof profiles.$inferSelect, state: { data: typeof profileData.$inferSelect | null; lock: LockRow | null; sessionId: string } | null = null): z.infer<typeof Profile> {
   const lock = state?.lock;
   return {
-    id: p.id, number: p.number, name: p.name, groupId: p.groupId, ownerId: p.ownerId, tags: p.tags,
+    id: p.id, workspaceId: p.workspaceId, number: p.number, name: p.name, groupId: p.groupId, ownerId: p.ownerId, departmentId: p.departmentId, tags: p.tags,
     kernel: p.kernel as 'chromium' | 'firefox', kernelVersion: p.kernelVersion, os: p.os as 'windows' | 'macos' | 'linux',
     fingerprint: p.fingerprint as z.infer<typeof Fingerprint>, proxyId: p.proxyId,
     timezoneOverride: p.timezoneOverride, localeOverride: p.localeOverride, notes: p.notes,
@@ -131,3 +131,20 @@ export function proxyView(p: typeof proxies.$inferSelect, profileCount: number):
 }
 // Full connection details, including the password. Served only to the desktop app's main process.
 export const ProxySecret = z.object({ id: z.string(), type: proxyType, host: z.string(), port: z.number(), username: z.string().nullable(), password: z.string().nullable() });
+
+// ---------- team (P3) ----------
+export const assignableRole = z.enum(['admin', 'member']);
+export const Member = z.object({
+  userId: z.string(), email: z.string(), role, joinedAt: z.string(), departmentIds: z.array(z.string()), profiles: z.number()
+});
+export const Invitation = z.object({
+  id: z.string(), email: z.string(), role: assignableRole, departmentIds: z.array(z.string()), invitedBy: z.string().nullable(), createdAt: z.string(), expiresAt: z.string()
+});
+// What the invitation link shows before anyone logs in, and what a person sees of invitations to their email.
+export const InvitationPreview = z.object({
+  id: z.string(), workspaceName: z.string(), inviter: z.string().nullable(), email: z.string(), role: assignableRole, expired: z.boolean()
+});
+export const MyInvitation = z.object({
+  id: z.string(), workspaceId: z.string(), workspaceName: z.string(), inviter: z.string().nullable(), role: assignableRole, expiresAt: z.string()
+});
+export const Department = z.object({ id: z.string(), name: z.string(), memberIds: z.array(z.string()), profiles: z.number() });
