@@ -118,3 +118,54 @@ describe('saved sign-in state', () => {
     expect((await upload(p.id, a, Buffer.alloc(0))).statusCode).toBe(400);
   });
 });
+
+describe('cookies', () => {
+  const cookie = (name: string, value: string, extra: object = {}) => ({ name, value, domain: '.shop.example', path: '/', expires: -1, httpOnly: true, secure: true, sameSite: 'Lax', ...extra });
+  const importing = (id: string, headers: H, cookies: object[]) => t.app.inject({ method: 'POST', url: `/profiles/${id}/cookies`, headers, payload: { cookies } });
+
+  it('are exported by owners and admins only, from the saved state', async () => {
+    const { owner, p, a } = await profileWithTwoComputers();
+    expect((await req('GET', `/profiles/${p.id}/cookies`, owner.headers)).statusCode).toBe(404);
+    await req('POST', `/profiles/${p.id}/lock`, a);
+    await upload(p.id, a, state('one'));
+    const got = (await req('GET', `/profiles/${p.id}/cookies`, owner.headers)).json();
+    expect(got.cookies).toMatchObject([{ name: 'sid', value: 'one', domain: 'shop.example' }]);
+    const member = await signup(t.app);
+    await t.db.insert(memberships).values({ workspaceId: owner.workspaceId, userId: member.userId, role: 'member' });
+    await req('POST', `/workspaces/${owner.workspaceId}/profiles/batch`, owner.headers, { ids: [p.id], action: 'assign', ownerId: member.userId });
+    expect((await req('GET', `/profiles/${p.id}/cookies`, member.headers)).json().error.code).toBe('forbidden');
+    const log = (await req('GET', `/workspaces/${owner.workspaceId}/activity?kind=cookies`, owner.headers)).json().entries;
+    expect(log.map((e: { action: string; detail: object }) => [e.action, e.detail])).toEqual([['cookies.export', { count: 1 }]]);
+  });
+
+  it('are merged into the saved state on import, unless another computer has the profile open', async () => {
+    const { owner, p, a, b } = await profileWithTwoComputers();
+    const first = await importing(p.id, owner.headers, [cookie('sid', 'one'), cookie('pref', 'dark')]);
+    expect(first.json()).toMatchObject({ version: 1, cookies: 2 });
+    const second = await importing(p.id, owner.headers, [cookie('sid', 'two'), cookie('sid', 'other-path', { path: '/x' })]);
+    expect(second.json()).toMatchObject({ version: 2, cookies: 3 });
+    const values = (await req('GET', `/profiles/${p.id}/cookies`, owner.headers)).json().cookies.map((c: { name: string; path: string; value: string }) => `${c.name}${c.path}=${c.value}`);
+    expect(values.sort()).toEqual(['pref/=dark', 'sid/=two', 'sid/x=other-path']);
+
+    await req('POST', `/profiles/${p.id}/lock`, a);
+    expect((await importing(p.id, b, [cookie('sid', 'three')])).json().error.code).toBe('locked');
+    expect((await importing(p.id, a, [cookie('sid', 'three')])).statusCode).toBe(200);
+  });
+});
+
+describe('profiles kept on one computer', () => {
+  it('drop the saved state, refuse uploads and cookie transfers, and sync again when switched back', async () => {
+    const { owner, p, a } = await profileWithTwoComputers();
+    await req('POST', `/profiles/${p.id}/lock`, a);
+    await upload(p.id, a, state('one'));
+    const local = (await t.app.inject({ method: 'PATCH', url: `/profiles/${p.id}`, headers: owner.headers, payload: { version: p.version, syncMode: 'local' } })).json();
+    expect(local).toMatchObject({ syncMode: 'local', data: null });
+    expect((await upload(p.id, a, state('two'))).json().error.code).toBe('local_only');
+    expect((await req('GET', `/profiles/${p.id}/cookies`, owner.headers)).json().error.code).toBe('local_only');
+    expect((await t.app.inject({ method: 'POST', url: `/profiles/${p.id}/cookies`, headers: owner.headers, payload: { cookies: [{ name: 'a', value: 'b', domain: 'x.example' }] } })).json().error.code).toBe('local_only');
+    await expect(t.storage.get(`${owner.workspaceId}/${p.id}/1`)).rejects.toThrow();
+
+    await t.app.inject({ method: 'PATCH', url: `/profiles/${p.id}`, headers: owner.headers, payload: { version: local.version, syncMode: 'cloud' } });
+    expect((await upload(p.id, a, state('three'))).json()).toMatchObject({ version: 1 });
+  });
+});

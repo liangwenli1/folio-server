@@ -1,0 +1,1 @@
+ALTER TABLE "profiles" ADD COLUMN "sync_mode" text DEFAULT 'cloud' NOT NULL;

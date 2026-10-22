@@ -3716,6 +3716,13 @@
                           "version": {
                             "type": "number"
                           },
+                          "syncMode": {
+                            "type": "string",
+                            "enum": [
+                              "cloud",
+                              "local"
+                            ]
+                          },
                           "data": {
                             "nullable": true,
                             "type": "object",
@@ -3804,6 +3811,7 @@
                           "updatedAt",
                           "deletedAt",
                           "version",
+                          "syncMode",
                           "data",
                           "lock"
                         ],
@@ -4121,6 +4129,13 @@
                     "version": {
                       "type": "number"
                     },
+                    "syncMode": {
+                      "type": "string",
+                      "enum": [
+                        "cloud",
+                        "local"
+                      ]
+                    },
                     "data": {
                       "nullable": true,
                       "type": "object",
@@ -4209,6 +4224,7 @@
                     "updatedAt",
                     "deletedAt",
                     "version",
+                    "syncMode",
                     "data",
                     "lock"
                   ],
@@ -4539,6 +4555,13 @@
                           "version": {
                             "type": "number"
                           },
+                          "syncMode": {
+                            "type": "string",
+                            "enum": [
+                              "cloud",
+                              "local"
+                            ]
+                          },
                           "data": {
                             "nullable": true,
                             "type": "object",
@@ -4627,6 +4650,7 @@
                           "updatedAt",
                           "deletedAt",
                           "version",
+                          "syncMode",
                           "data",
                           "lock"
                         ],
@@ -4774,6 +4798,13 @@
                     "nullable": true,
                     "type": "string",
                     "maxLength": 2000
+                  },
+                  "syncMode": {
+                    "type": "string",
+                    "enum": [
+                      "cloud",
+                      "local"
+                    ]
                   }
                 },
                 "required": [
@@ -4939,6 +4970,13 @@
                     "version": {
                       "type": "number"
                     },
+                    "syncMode": {
+                      "type": "string",
+                      "enum": [
+                        "cloud",
+                        "local"
+                      ]
+                    },
                     "data": {
                       "nullable": true,
                       "type": "object",
@@ -5027,6 +5065,7 @@
                     "updatedAt",
                     "deletedAt",
                     "version",
+                    "syncMode",
                     "data",
                     "lock"
                   ],
@@ -5305,6 +5344,13 @@
                         "version": {
                           "type": "number"
                         },
+                        "syncMode": {
+                          "type": "string",
+                          "enum": [
+                            "cloud",
+                            "local"
+                          ]
+                        },
                         "data": {
                           "nullable": true,
                           "type": "object",
@@ -5393,6 +5439,7 @@
                         "updatedAt",
                         "deletedAt",
                         "version",
+                        "syncMode",
                         "data",
                         "lock"
                       ],
@@ -7009,6 +7056,231 @@
         }
       }
     },
+    "/profiles/{id}/cookies": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "cookies": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "maxLength": 4096
+                          },
+                          "value": {
+                            "type": "string",
+                            "maxLength": 16384
+                          },
+                          "domain": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 253
+                          },
+                          "path": {
+                            "default": "/",
+                            "type": "string",
+                            "maxLength": 1024
+                          },
+                          "expires": {
+                            "default": -1,
+                            "type": "number"
+                          },
+                          "httpOnly": {
+                            "default": false,
+                            "type": "boolean"
+                          },
+                          "secure": {
+                            "default": false,
+                            "type": "boolean"
+                          },
+                          "sameSite": {
+                            "default": "Lax",
+                            "type": "string",
+                            "enum": [
+                              "Strict",
+                              "Lax",
+                              "None"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "value",
+                          "domain",
+                          "path",
+                          "expires",
+                          "httpOnly",
+                          "secure",
+                          "sameSite"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "savedAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "cookies",
+                    "savedAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "cookies": {
+                    "minItems": 1,
+                    "maxItems": 5000,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "maxLength": 4096
+                        },
+                        "value": {
+                          "type": "string",
+                          "maxLength": 16384
+                        },
+                        "domain": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 253
+                        },
+                        "path": {
+                          "default": "/",
+                          "type": "string",
+                          "maxLength": 1024
+                        },
+                        "expires": {
+                          "default": -1,
+                          "type": "number"
+                        },
+                        "httpOnly": {
+                          "default": false,
+                          "type": "boolean"
+                        },
+                        "secure": {
+                          "default": false,
+                          "type": "boolean"
+                        },
+                        "sameSite": {
+                          "default": "Lax",
+                          "type": "string",
+                          "enum": [
+                            "Strict",
+                            "Lax",
+                            "None"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "value",
+                        "domain"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "cookies"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "type": "number"
+                    },
+                    "size": {
+                      "type": "number"
+                    },
+                    "cookies": {
+                      "type": "number"
+                    },
+                    "storageBytes": {
+                      "type": "number"
+                    },
+                    "origins": {
+                      "type": "number"
+                    },
+                    "savedAt": {
+                      "type": "string"
+                    },
+                    "deviceName": {
+                      "nullable": true,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "version",
+                    "size",
+                    "cookies",
+                    "storageBytes",
+                    "origins",
+                    "savedAt",
+                    "deviceName"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/workspaces/{id}/members": {
       "get": {
         "parameters": [
@@ -7942,6 +8214,7 @@
                 "profiles",
                 "trash",
                 "proxies",
+                "cookies",
                 "team"
               ]
             },
@@ -8040,7 +8313,9 @@
                               "invitation.withdraw",
                               "department.create",
                               "department.update",
-                              "department.delete"
+                              "department.delete",
+                              "cookies.export",
+                              "cookies.import"
                             ]
                           },
                           "profile": {
@@ -8129,6 +8404,7 @@
                 "profiles",
                 "trash",
                 "proxies",
+                "cookies",
                 "team"
               ]
             },

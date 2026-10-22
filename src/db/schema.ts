@@ -155,6 +155,8 @@ export const profiles = pgTable('profiles', {
   timezoneOverride: text(),
   localeOverride: text(),
   notes: text(),
+  // 'cloud': sign-in state is saved to Folio and follows the profile; 'local': it stays on the computer that uses it.
+  syncMode: text().notNull().default('cloud'),
   lastOpenedAt: ts(),
   lastOpenedBy: uuid().references(() => users.id, { onDelete: 'set null' }),
   createdBy: uuid().references(() => users.id, { onDelete: 'set null' }),

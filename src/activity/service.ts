@@ -11,7 +11,7 @@ export const ACTIONS = [
   'profile.trash', 'profile.restore', 'profile.purge', 'profile.open', 'profile.close', 'profile.takeover',
   'proxy.create', 'proxy.import', 'proxy.update', 'proxy.delete', 'group.create', 'group.rename', 'group.delete',
   'member.invite', 'member.join', 'member.role', 'member.remove', 'member.leave', 'invitation.withdraw',
-  'department.create', 'department.update', 'department.delete'
+  'department.create', 'department.update', 'department.delete', 'cookies.export', 'cookies.import'
 ] as const;
 export type Action = typeof ACTIONS[number];
 // Filters in the log page.
@@ -20,6 +20,7 @@ export const KINDS = {
   profiles: ['profile.create', 'profile.update', 'profile.move', 'profile.tag', 'profile.untag', 'profile.set-proxy', 'profile.assign', 'profile.set-department'],
   trash: ['profile.trash', 'profile.restore', 'profile.purge'],
   proxies: ['proxy.create', 'proxy.import', 'proxy.update', 'proxy.delete', 'group.create', 'group.rename', 'group.delete'],
+  cookies: ['cookies.export', 'cookies.import'],
   team: ['member.invite', 'member.join', 'member.role', 'member.remove', 'member.leave', 'invitation.withdraw', 'department.create', 'department.update', 'department.delete']
 } satisfies Record<string, Action[]>;
 

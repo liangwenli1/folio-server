@@ -147,7 +147,8 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
         version: z.number().int(), name: name.optional(), groupId: z.uuid().nullable().optional(), tags: z.array(tag).max(10).optional(),
         ownerId: z.uuid().nullable().optional(), departmentId: z.uuid().nullable().optional(),
         proxyId: z.uuid().nullable().optional(), kernelVersion: version.optional(), os: os.optional(), fingerprint: Fingerprint.optional(),
-        timezoneOverride: tz.nullable().optional(), localeOverride: locale.nullable().optional(), notes: z.string().max(2000).nullable().optional()
+        timezoneOverride: tz.nullable().optional(), localeOverride: locale.nullable().optional(), notes: z.string().max(2000).nullable().optional(),
+        syncMode: z.enum(['cloud', 'local']).optional()
       }),
       response: { 200: Profile }
     }
@@ -160,6 +161,11 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
     const [u] = await db.update(profiles).set({ ...patch, version: sql`${profiles.version} + 1`, updatedAt: clock.now() })
       .where(and(eq(profiles.id, p.id), eq(profiles.version, v))).returning();
     if (!u) throw new ApiError(409, 'stale', 'Someone changed this profile in the meantime. Reload it and try again.');
+    // Keeping sign-ins on the computer means Folio no longer holds a copy.
+    if (u.syncMode === 'local' && p.syncMode !== 'local'){
+      const [gone] = await db.delete(profileData).where(eq(profileData.profileId, p.id)).returning();
+      if (gone) await storage.delete(gone.objectKey).catch(err => req.log.error(err, 'deleting saved state failed'));
+    }
     // Clients send whole forms; the entry names only what actually changed.
     const fields = (Object.keys(patch) as (keyof typeof patch)[]).filter(k => JSON.stringify(patch[k] ?? null) !== JSON.stringify(p[k] ?? null));
     if (fields.length) await record(db, { workspaceId: p.workspaceId, actor: s, at: u.updatedAt, action: 'profile.update', profiles: [u], detail: { fields } });

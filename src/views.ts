@@ -94,7 +94,7 @@ export const Profile = z.object({
   ownerId: z.string().nullable(), departmentId: z.string().nullable(), tags: z.array(z.string()), kernel, kernelVersion: z.string(), os, fingerprint: Fingerprint, proxyId: z.string().nullable(),
   timezoneOverride: z.string().nullable(), localeOverride: z.string().nullable(), notes: z.string().nullable(),
   lastOpenedAt: iso, lastOpenedBy: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(), deletedAt: iso, version: z.number(),
-  data: SavedData.nullable(), lock: LockHolder.nullable()
+  syncMode: z.enum(['cloud', 'local']), data: SavedData.nullable(), lock: LockHolder.nullable()
 });
 type LockRow = typeof profileLocks.$inferSelect & { email: string };
 export function profileView(p: typeof profiles.$inferSelect, state: { data: typeof profileData.$inferSelect | null; lock: LockRow | null; sessionId: string } | null = null): z.infer<typeof Profile> {
@@ -106,7 +106,7 @@ export function profileView(p: typeof profiles.$inferSelect, state: { data: type
     timezoneOverride: p.timezoneOverride, localeOverride: p.localeOverride, notes: p.notes,
     lastOpenedAt: p.lastOpenedAt?.toISOString() ?? null, lastOpenedBy: p.lastOpenedBy,
     createdAt: p.createdAt.toISOString(), updatedAt: p.updatedAt.toISOString(), deletedAt: p.deletedAt?.toISOString() ?? null, version: p.version,
-    data: state?.data ? savedDataView(state.data) : null,
+    syncMode: p.syncMode as 'cloud' | 'local', data: state?.data ? savedDataView(state.data) : null,
     lock: lock ? { email: lock.email, deviceName: lock.deviceName, since: lock.acquiredAt.toISOString(), self: lock.sessionId === state.sessionId } : null
   };
 }
