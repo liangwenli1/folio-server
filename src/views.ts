@@ -1,7 +1,8 @@
 // Response shapes. These zod schemas also produce the OpenAPI document the site and desktop generate types from.
 import { z } from 'zod';
-import type { profileData, profileLocks, profiles, proxies, users } from './db/schema.js';
+import type { flows, profileData, profileLocks, profiles, proxies, users } from './db/schema.js';
 import { entitlements } from './plans.js';
+import { Step } from './flows/steps.js';
 import { toState, type PaymentRow, type SubRow } from './billing/service.js';
 
 const iso = z.string().nullable();
@@ -148,3 +149,14 @@ export const MyInvitation = z.object({
   id: z.string(), workspaceId: z.string(), workspaceName: z.string(), inviter: z.string().nullable(), role: assignableRole, expiresAt: z.string()
 });
 export const Department = z.object({ id: z.string(), name: z.string(), memberIds: z.array(z.string()), profiles: z.number() });
+
+// ---------- automation (P4) ----------
+// `canEdit`: the asker created it, or is an owner or admin.
+export const Flow = z.object({
+  id: z.string(), name: z.string(), steps: z.array(Step), version: z.number(), createdBy: z.string().nullable(),
+  createdAt: z.string(), updatedAt: z.string(), canEdit: z.boolean()
+});
+export const flowView = (f: typeof flows.$inferSelect, canEdit: boolean): z.infer<typeof Flow> => ({
+  id: f.id, name: f.name, steps: f.steps as Step[], version: f.version, createdBy: f.createdBy,
+  createdAt: f.createdAt.toISOString(), updatedAt: f.updatedAt.toISOString(), canEdit
+});

@@ -3,7 +3,7 @@ import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import swagger from '@fastify/swagger';
-import { hasZodFastifySchemaValidationErrors, jsonSchemaTransform, serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
+import { hasZodFastifySchemaValidationErrors, jsonSchemaTransform, jsonSchemaTransformObject, serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 import { ApiError } from './errors.js';
 import type { Deps } from './http.js';
 import { authRoutes } from './auth/routes.js';
@@ -18,6 +18,7 @@ import { syncRoutes } from './sync/routes.js';
 import { teamRoutes } from './team/routes.js';
 import { activityRoutes } from './activity/routes.js';
 import { transferRoutes } from './transfer/routes.js';
+import { flowRoutes } from './flows/routes.js';
 
 export async function buildApp(deps: Deps, opts: { logger?: boolean } = {}){
   const app = Fastify({ logger: opts.logger ?? true, trustProxy: deps.config.trustProxy });
@@ -27,7 +28,7 @@ export async function buildApp(deps: Deps, opts: { logger?: boolean } = {}){
   await app.register(cookie);
   await app.register(cors, { origin: deps.config.siteOrigins, credentials: true });
   await app.register(rateLimit, { global: false });
-  await app.register(swagger, { openapi: { info: { title: 'Folio API', version: '1.0.0' } }, transform: jsonSchemaTransform });
+  await app.register(swagger, { openapi: { info: { title: 'Folio API', version: '1.0.0' } }, transform: jsonSchemaTransform, transformObject: jsonSchemaTransformObject });
 
   // Every error leaves as { error: { code, message } }.
   app.setErrorHandler((err, req, reply) => {
@@ -53,6 +54,7 @@ export async function buildApp(deps: Deps, opts: { logger?: boolean } = {}){
   teamRoutes(app, deps);
   activityRoutes(app, deps);
   transferRoutes(app, deps);
+  flowRoutes(app, deps);
   if (deps.config.devTools) devRoutes(app, deps);
 
   app.get('/health', { schema: { hide: true } }, async () => ({ ok: true }));

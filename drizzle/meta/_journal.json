@@ -43,6 +43,13 @@
       "when": 1792637748798,
       "tag": "0005_sync_mode",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792650718497,
+      "tag": "0006_flows",
+      "breakpoints": true
     }
   ]
 }

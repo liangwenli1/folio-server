@@ -221,6 +221,19 @@ export const departmentMembers = pgTable('department_members', {
   userId: uuid().notNull().references(() => users.id, { onDelete: 'cascade' })
 }, t => [primaryKey({ columns: [t.departmentId, t.userId] }), index().on(t.userId)]);
 
+// An automation flow: a list of steps (see flows/steps.ts), shared by the workspace. Anyone may create one; its
+// creator, admins and the owner may change it.
+export const flows = pgTable('flows', {
+  id: uuid().primaryKey().defaultRandom(),
+  workspaceId: uuid().notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  name: text().notNull(),
+  steps: jsonb().notNull(),
+  createdBy: uuid().references(() => users.id, { onDelete: 'set null' }),
+  createdAt: createdAt(),
+  updatedAt: ts().notNull().defaultNow(),
+  version: integer().notNull().default(0)
+}, t => [index().on(t.workspaceId)]);
+
 // What people did in a workspace. The profile's name and number are copied in, so entries still read right
 // after renames and deletions. Kept for as long as the plan says (see activity.ts).
 export const activityLog = pgTable('activity_log', {

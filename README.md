@@ -72,7 +72,7 @@ docker run -d --name folio-minio --network folio-dev -e MINIO_ROOT_USER=folio -e
 - Saved sign-in state (`GET`/`PUT /profiles/:id/data`) is gzip-compressed JSON in Playwright's storage-state format: cookies, local storage and IndexedDB. Only the session holding the lock can upload. It is sealed with `SECRET_KEY` (AES-256-GCM) before it goes to object storage; only the latest version is kept, up to 50 MB.
 - Cookies: `GET /profiles/:id/cookies` returns the saved cookies for export, to owners and admins only (members open signed-in profiles without being able to take the sign-ins away). `POST /profiles/:id/cookies` merges cookies into the saved state (same name, domain and path replaces) for anyone who sees the profile, unless another computer has it open. Both are logged.
 - A profile with `syncMode: 'local'` keeps its sign-ins on the computer that uses it: switching to it deletes the saved state, and uploads and cookie transfers answer `409 local_only`.
-- `GET /workspaces/:id/events` is a server-sent event stream: `change` events say which kind of data changed (`profiles`, `proxies`, `groups`, `workspace`). Events are in-process; more than one server instance needs PostgreSQL LISTEN/NOTIFY.
+- `GET /workspaces/:id/events` is a server-sent event stream: `change` events say which kind of data changed (`profiles`, `proxies`, `groups`, `workspace`, `members`, `flows`). Events are in-process; more than one server instance needs PostgreSQL LISTEN/NOTIFY.
 
 ## Teams
 
@@ -92,6 +92,11 @@ docker run -d --name folio-minio --network folio-dev -e MINIO_ROOT_USER=folio -e
 
 - `GET /workspaces/:id/export` (owners and admins) lists every profile outside the Trash with its fingerprint and settings, the groups, and the proxies with their passwords. The desktop adds each profile's saved state and encrypts the file with a passphrase the server never sees.
 - `POST /workspaces/:id/import` (owners and admins) recreates such a list in a workspace: groups by name, identical proxies reused, profiles numbered anew and assigned to the importer, after checking the plan has room for all of them. It returns each profile's new id; the saved states go up as each profile's first save, which needs no lock when nobody has the profile open.
+
+## Automation flows
+
+- A flow is a list of steps (`src/flows/steps.ts`): open, click, type, press, wait, scroll, extract, set, if, loop, screenshot and script. `if` and `loop` hold steps of their own, up to four levels deep and 300 steps in all. The desktop app runs them.
+- Flows belong to the workspace: everyone in it sees them and can create one. The creator, admins and the owner change and delete it (`canEdit` in the listing). Edits carry the version, like profiles. Changes are logged and pushed as `flows` change events.
 
 ## Billing rules
 
