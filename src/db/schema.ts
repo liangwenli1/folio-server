@@ -234,6 +234,57 @@ export const flows = pgTable('flows', {
   version: integer().notNull().default(0)
 }, t => [index().on(t.workspaceId)]);
 
+// A flow to run on a set of profiles. `variablesEnc` is per-profile values ({ profileId: { name: value } }) sealed
+// with SECRET_KEY, since they may hold passwords. A flow used by a task cannot be deleted.
+export const tasks = pgTable('tasks', {
+  id: uuid().primaryKey().defaultRandom(),
+  workspaceId: uuid().notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  name: text().notNull(),
+  flowId: uuid().notNull().references(() => flows.id, { onDelete: 'restrict' }),
+  profileIds: uuid().array().notNull().default([]),
+  variablesEnc: text(),
+  concurrency: integer().notNull().default(3),
+  retries: integer().notNull().default(1),
+  timeoutMin: integer().notNull().default(5),
+  createdBy: uuid().references(() => users.id, { onDelete: 'set null' }),
+  createdAt: createdAt(),
+  updatedAt: ts().notNull().defaultNow(),
+  version: integer().notNull().default(0)
+}, t => [index().on(t.workspaceId), index().on(t.flowId)]);
+
+// One run of a task, made by the desktop app that runs it. `updatedAt` moves with every report, so a run whose
+// app went away can be told apart from one still under way.
+export const taskRuns = pgTable('task_runs', {
+  id: uuid().primaryKey().defaultRandom(),
+  workspaceId: uuid().notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  taskId: uuid().notNull().references(() => tasks.id, { onDelete: 'cascade' }),
+  flowVersion: integer().notNull(),
+  trigger: text().notNull(),
+  status: text().notNull(),
+  startedBy: uuid().references(() => users.id, { onDelete: 'set null' }),
+  deviceName: text(),
+  startedAt: ts().notNull(),
+  updatedAt: ts().notNull(),
+  finishedAt: ts()
+}, t => [index().on(t.taskId, t.startedAt), index().on(t.workspaceId, t.startedAt)]);
+
+// How a run went on one profile. The profile's name and number are copied in, like the activity log.
+export const taskRunItems = pgTable('task_run_items', {
+  id: uuid().primaryKey().defaultRandom(),
+  runId: uuid().notNull().references(() => taskRuns.id, { onDelete: 'cascade' }),
+  profileId: uuid().references(() => profiles.id, { onDelete: 'set null' }),
+  profileName: text().notNull(),
+  profileNumber: integer().notNull(),
+  status: text().notNull().default('pending'),
+  attempts: integer().notNull().default(0),
+  startedAt: ts(),
+  finishedAt: ts(),
+  error: jsonb(),
+  log: jsonb().notNull().default([]),
+  data: jsonb().notNull().default({}),
+  screenshots: text().array().notNull().default([])
+}, t => [uniqueIndex().on(t.runId, t.profileId)]);
+
 // What people did in a workspace. The profile's name and number are copied in, so entries still read right
 // after renames and deletions. Kept for as long as the plan says (see activity.ts).
 export const activityLog = pgTable('activity_log', {

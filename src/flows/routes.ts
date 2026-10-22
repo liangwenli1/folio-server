@@ -4,7 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { and, asc, eq, sql } from 'drizzle-orm';
-import { flows } from '../db/schema.js';
+import { flows, tasks } from '../db/schema.js';
 import { ApiError, forbidden, notFound } from '../errors.js';
 import { publish } from '../events.js';
 import { record } from '../activity/service.js';
@@ -61,8 +61,11 @@ export function flowRoutes(app: FastifyInstance, deps: Deps){
     return flowView(u, true);
   });
 
+  // A flow that tasks use stays until they use another one or are deleted.
   r.delete('/flows/:id', { schema: { params, response: { 204: z.null() } } }, async (req, reply) => {
     const { f, s } = await flowFor(req, req.params.id, true);
+    const used = await db.select({ name: tasks.name }).from(tasks).where(eq(tasks.flowId, f.id));
+    if (used.length) throw new ApiError(409, 'flow_in_use', `Used by ${used.map(t => t.name).join(', ')}`);
     await db.delete(flows).where(eq(flows.id, f.id));
     await record(db, { workspaceId: f.workspaceId, actor: s, at: clock.now(), action: 'flow.delete', detail: { name: f.name } });
     publish(f.workspaceId, { kind: 'flows' });

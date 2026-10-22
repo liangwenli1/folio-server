@@ -1,8 +1,8 @@
-// The activity log: one place that writes entries, reads them as a person may see them, and forgets them after
-// the plan's retention.
+// The activity log: one place that writes entries, reads them as a person may see them, and forgets them (and task
+// runs) after the plan's retention.
 import { and, desc, eq, gte, inArray, lt, or, type SQL } from 'drizzle-orm';
 import type { Db, Tx } from '../db/client.js';
-import { activityLog, profiles, users } from '../db/schema.js';
+import { activityLog, profiles, taskRuns, users } from '../db/schema.js';
 import { entitlements } from '../plans.js';
 import { readSub, toState } from '../billing/service.js';
 
@@ -12,7 +12,7 @@ export const ACTIONS = [
   'proxy.create', 'proxy.import', 'proxy.update', 'proxy.delete', 'group.create', 'group.rename', 'group.delete',
   'member.invite', 'member.join', 'member.role', 'member.remove', 'member.leave', 'invitation.withdraw',
   'department.create', 'department.update', 'department.delete', 'cookies.export', 'cookies.import', 'workspace.export', 'workspace.import',
-  'flow.create', 'flow.update', 'flow.delete'
+  'flow.create', 'flow.update', 'flow.delete', 'task.create', 'task.update', 'task.delete', 'run.start', 'run.finish'
 ] as const;
 export type Action = typeof ACTIONS[number];
 // Filters in the log page.
@@ -23,7 +23,7 @@ export const KINDS = {
   proxies: ['proxy.create', 'proxy.import', 'proxy.update', 'proxy.delete', 'group.create', 'group.rename', 'group.delete'],
   cookies: ['cookies.export', 'cookies.import', 'workspace.export', 'workspace.import'],
   team: ['member.invite', 'member.join', 'member.role', 'member.remove', 'member.leave', 'invitation.withdraw', 'department.create', 'department.update', 'department.delete'],
-  automation: ['flow.create', 'flow.update', 'flow.delete']
+  automation: ['flow.create', 'flow.update', 'flow.delete', 'task.create', 'task.update', 'task.delete', 'run.start', 'run.finish']
 } satisfies Record<string, Action[]>;
 
 export interface Actor { userId: string; deviceName: string | null }
@@ -61,13 +61,17 @@ export async function readLog(db: Db, workspaceId: string, now: Date, q: { scope
   })) };
 }
 
-// Daily: entries older than each workspace's retention go.
+// Daily: entries and task runs older than each workspace's retention go.
 export async function forgetOld(db: Db, now: Date){
-  const shortest = 7 * 86_400_000;
-  const stale = await db.selectDistinct({ id: activityLog.workspaceId }).from(activityLog).where(lt(activityLog.at, new Date(now.getTime() - shortest)));
-  for (const { id } of stale){
-    const days = await retentionDays(db, id);
-    await db.delete(activityLog).where(and(eq(activityLog.workspaceId, id), lt(activityLog.at, new Date(now.getTime() - days * 86_400_000))));
+  const shortest = new Date(now.getTime() - 7 * 86_400_000);
+  const stale = new Set([
+    ...(await db.selectDistinct({ id: activityLog.workspaceId }).from(activityLog).where(lt(activityLog.at, shortest))),
+    ...(await db.selectDistinct({ id: taskRuns.workspaceId }).from(taskRuns).where(lt(taskRuns.startedAt, shortest)))
+  ].map(x => x.id));
+  for (const id of stale){
+    const cutoff = new Date(now.getTime() - (await retentionDays(db, id)) * 86_400_000);
+    await db.delete(activityLog).where(and(eq(activityLog.workspaceId, id), lt(activityLog.at, cutoff)));
+    await db.delete(taskRuns).where(and(eq(taskRuns.workspaceId, id), lt(taskRuns.startedAt, cutoff)));
   }
 }
 

@@ -50,6 +50,13 @@
       "when": 1792650718497,
       "tag": "0006_flows",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792652013537,
+      "tag": "0007_tasks",
+      "breakpoints": true
     }
   ]
 }

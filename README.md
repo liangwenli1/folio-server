@@ -72,7 +72,7 @@ docker run -d --name folio-minio --network folio-dev -e MINIO_ROOT_USER=folio -e
 - Saved sign-in state (`GET`/`PUT /profiles/:id/data`) is gzip-compressed JSON in Playwright's storage-state format: cookies, local storage and IndexedDB. Only the session holding the lock can upload. It is sealed with `SECRET_KEY` (AES-256-GCM) before it goes to object storage; only the latest version is kept, up to 50 MB.
 - Cookies: `GET /profiles/:id/cookies` returns the saved cookies for export, to owners and admins only (members open signed-in profiles without being able to take the sign-ins away). `POST /profiles/:id/cookies` merges cookies into the saved state (same name, domain and path replaces) for anyone who sees the profile, unless another computer has it open. Both are logged.
 - A profile with `syncMode: 'local'` keeps its sign-ins on the computer that uses it: switching to it deletes the saved state, and uploads and cookie transfers answer `409 local_only`.
-- `GET /workspaces/:id/events` is a server-sent event stream: `change` events say which kind of data changed (`profiles`, `proxies`, `groups`, `workspace`, `members`, `flows`). Events are in-process; more than one server instance needs PostgreSQL LISTEN/NOTIFY.
+- `GET /workspaces/:id/events` is a server-sent event stream: `change` events say which kind of data changed (`profiles`, `proxies`, `groups`, `workspace`, `members`, `flows`, `tasks`, `runs`). Events are in-process; more than one server instance needs PostgreSQL LISTEN/NOTIFY.
 
 ## Teams
 
@@ -97,6 +97,8 @@ docker run -d --name folio-minio --network folio-dev -e MINIO_ROOT_USER=folio -e
 
 - A flow is a list of steps (`src/flows/steps.ts`): open, click, type, press, wait, scroll, extract, set, if, loop, screenshot and script. `if` and `loop` hold steps of their own, up to four levels deep and 300 steps in all. The desktop app runs them.
 - Flows belong to the workspace: everyone in it sees them and can create one. The creator, admins and the owner change and delete it (`canEdit` in the listing). Edits carry the version, like profiles. Changes are logged and pushed as `flows` change events.
+- A task runs a flow on a set of profiles, a few at a time (`concurrency`), with `retries` and a time limit per profile. Everyone creates tasks; members only with profiles they see, and edits keep the task's profiles they no longer see. Per-profile variables are sealed with `SECRET_KEY` and returned only to people who may edit the task (`GET /tasks/:id/variables`) or, for the profiles they see, to whoever starts a run. A flow used by a task cannot be deleted (`409 flow_in_use`).
+- `POST /tasks/:id/runs` starts a run in the caller's desktop app: it returns the task's settings, the flow's steps and each profile with its variables. One run of a task at a time (`409 task_running`). The app reports each profile (`POST /runs/:id/items/:profileId`), sends a heartbeat every minute and finishes the run; a run with no report for 15 minutes counts as interrupted and no longer blocks the task. Runs and their results are listed for everyone, rows limited to the profiles each person sees, kept for the plan's log retention, and pushed as `tasks` and `runs` change events.
 
 ## Billing rules
 

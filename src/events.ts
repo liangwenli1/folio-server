@@ -3,7 +3,7 @@
 import { EventEmitter } from 'node:events';
 
 // `removed` names a person taken out of the workspace: their own stream gets it and is then closed.
-export type ChangeKind = 'profiles' | 'proxies' | 'groups' | 'workspace' | 'members' | 'removed' | 'flows';
+export type ChangeKind = 'profiles' | 'proxies' | 'groups' | 'workspace' | 'members' | 'removed' | 'flows' | 'tasks' | 'runs';
 export interface Change { kind: ChangeKind; ids?: string[]; userId?: string }
 
 const bus = new EventEmitter();
