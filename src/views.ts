@@ -161,8 +161,10 @@ export const flowView = (f: typeof flows.$inferSelect, canEdit: boolean): z.infe
   createdAt: f.createdAt.toISOString(), updatedAt: f.updatedAt.toISOString(), canEdit
 });
 
-export const runStatus = z.enum(['running', 'done', 'stopped', 'interrupted']);
-export const itemStatus = z.enum(['pending', 'running', 'ok', 'failed', 'skipped', 'canceled']);
+// `missed`: a scheduled time that passed while its computer was off, asleep or logged out; `busy`: a scheduled time
+// that came while the last run was still going. Nothing ran for either.
+export const runStatus = z.enum(['running', 'done', 'stopped', 'interrupted', 'missed', 'busy']);
+export const itemStatus = z.enum(['pending', 'running', 'ok', 'failed', 'signed_out', 'skipped', 'canceled']);
 export const RunError = z.object({ code: z.string().max(40), message: z.string().max(500) });
 // A line of a run's log, as the desktop's flow runner writes it, with the attempt it belongs to.
 export const LogLine = z.object({
@@ -171,16 +173,24 @@ export const LogLine = z.object({
 });
 const counts = z.object(Object.fromEntries(itemStatus.options.map(s => [s, z.number()])) as Record<z.infer<typeof itemStatus>, z.ZodNumber>);
 export const Run = z.object({
-  id: z.string(), taskId: z.string(), trigger: z.enum(['manual', 'rerun']), status: runStatus, flowVersion: z.number(),
-  startedBy: z.string().nullable(), deviceName: z.string().nullable(), startedAt: z.string(), finishedAt: iso, counts
+  id: z.string(), taskId: z.string(), trigger: z.enum(['manual', 'rerun', 'schedule']), status: runStatus, flowVersion: z.number(),
+  startedBy: z.string().nullable(), deviceName: z.string().nullable(), scheduledFor: iso, startedAt: z.string(), finishedAt: iso, counts
 });
+// When a task runs by itself, in the local time of the computer it runs on (`tz` is that computer's time zone,
+// for showing the time to others). `days` are ISO weekdays, Monday = 1.
+export const Schedule = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('once'), at: z.iso.datetime({ offset: true }), tz: z.string().max(64) }),
+  z.object({ kind: z.literal('daily'), time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/), days: z.array(z.number().int().min(1).max(7)).min(1).max(7), tz: z.string().max(64) })
+]).meta({ id: 'Schedule' });
 export const RunItem = z.object({
   profileId: z.string().nullable(), profileName: z.string(), profileNumber: z.number(), status: itemStatus, attempts: z.number(),
   startedAt: iso, finishedAt: iso, error: RunError.nullable(), log: z.array(LogLine), data: z.record(z.string(), z.string()), screenshots: z.array(z.string())
 });
-// `profileIds` lists the ones the asker sees; `profiles` counts them all.
+// `profileIds` lists the ones the asker sees; `profiles` counts them all. `runner` is the computer a scheduled task
+// runs on (`self` when it is the asker's).
 export const Task = z.object({
   id: z.string(), name: z.string(), flowId: z.string(), profileIds: z.array(z.string()), profiles: z.number(),
   concurrency: z.number(), retries: z.number(), timeoutMin: z.number(), hasVariables: z.boolean(),
+  schedule: Schedule.nullable(), runner: z.object({ email: z.string().nullable(), deviceName: z.string().nullable(), self: z.boolean() }).nullable(),
   createdBy: z.string().nullable(), canEdit: z.boolean(), version: z.number(), createdAt: z.string(), updatedAt: z.string(), lastRun: Run.nullable()
 });

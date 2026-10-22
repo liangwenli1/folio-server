@@ -286,6 +286,46 @@
               "type": {
                 "type": "string",
                 "enum": [
+                  "signedIn"
+                ]
+              },
+              "url": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "present",
+                  "absent"
+                ]
+              },
+              "selector": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "seconds": {
+                "type": "number",
+                "minimum": 1,
+                "maximum": 120
+              }
+            },
+            "required": [
+              "type",
+              "url",
+              "mode",
+              "selector",
+              "seconds"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
                   "if"
                 ]
               },
@@ -423,6 +463,70 @@
               "times",
               "selector",
               "steps"
+            ]
+          }
+        ]
+      },
+      "ScheduleInput": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "once"
+                ]
+              },
+              "at": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              "tz": {
+                "type": "string",
+                "maxLength": 64
+              }
+            },
+            "required": [
+              "kind",
+              "at",
+              "tz"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "daily"
+                ]
+              },
+              "time": {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+              },
+              "days": {
+                "minItems": 1,
+                "maxItems": 7,
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 7
+                }
+              },
+              "tz": {
+                "type": "string",
+                "maxLength": 64
+              }
+            },
+            "required": [
+              "kind",
+              "time",
+              "days",
+              "tz"
             ]
           }
         ]
@@ -717,6 +821,47 @@
               "type": {
                 "type": "string",
                 "enum": [
+                  "signedIn"
+                ]
+              },
+              "url": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "present",
+                  "absent"
+                ]
+              },
+              "selector": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "seconds": {
+                "type": "number",
+                "minimum": 1,
+                "maximum": 120
+              }
+            },
+            "required": [
+              "type",
+              "url",
+              "mode",
+              "selector",
+              "seconds"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
                   "if"
                 ]
               },
@@ -862,6 +1007,72 @@
             "additionalProperties": false
           }
         ]
+      },
+      "Schedule": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "once"
+                ]
+              },
+              "at": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              "tz": {
+                "type": "string",
+                "maxLength": 64
+              }
+            },
+            "required": [
+              "kind",
+              "at",
+              "tz"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "daily"
+                ]
+              },
+              "time": {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+              },
+              "days": {
+                "minItems": 1,
+                "maxItems": 7,
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 7
+                }
+              },
+              "tz": {
+                "type": "string",
+                "maxLength": 64
+              }
+            },
+            "required": [
+              "kind",
+              "time",
+              "days",
+              "tz"
+            ],
+            "additionalProperties": false
+          }
+        ]
       }
     }
   },
@@ -979,6 +1190,11 @@
                   "deviceName": {
                     "type": "string",
                     "maxLength": 100
+                  },
+                  "deviceId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                   }
                 },
                 "required": [
@@ -10256,6 +10472,37 @@
                           "hasVariables": {
                             "type": "boolean"
                           },
+                          "schedule": {
+                            "nullable": true,
+                            "allOf": [
+                              {
+                                "$ref": "#/components/schemas/Schedule"
+                              }
+                            ]
+                          },
+                          "runner": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "email": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "deviceName": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "self": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "email",
+                              "deviceName",
+                              "self"
+                            ],
+                            "additionalProperties": false
+                          },
                           "createdBy": {
                             "nullable": true,
                             "type": "string"
@@ -10286,7 +10533,8 @@
                                 "type": "string",
                                 "enum": [
                                   "manual",
-                                  "rerun"
+                                  "rerun",
+                                  "schedule"
                                 ]
                               },
                               "status": {
@@ -10295,7 +10543,9 @@
                                   "running",
                                   "done",
                                   "stopped",
-                                  "interrupted"
+                                  "interrupted",
+                                  "missed",
+                                  "busy"
                                 ]
                               },
                               "flowVersion": {
@@ -10306,6 +10556,10 @@
                                 "type": "string"
                               },
                               "deviceName": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "scheduledFor": {
                                 "nullable": true,
                                 "type": "string"
                               },
@@ -10331,6 +10585,9 @@
                                   "failed": {
                                     "type": "number"
                                   },
+                                  "signed_out": {
+                                    "type": "number"
+                                  },
                                   "skipped": {
                                     "type": "number"
                                   },
@@ -10343,6 +10600,7 @@
                                   "running",
                                   "ok",
                                   "failed",
+                                  "signed_out",
                                   "skipped",
                                   "canceled"
                                 ],
@@ -10357,6 +10615,7 @@
                               "flowVersion",
                               "startedBy",
                               "deviceName",
+                              "scheduledFor",
                               "startedAt",
                               "finishedAt",
                               "counts"
@@ -10374,6 +10633,8 @@
                           "retries",
                           "timeoutMin",
                           "hasVariables",
+                          "schedule",
+                          "runner",
                           "createdBy",
                           "canEdit",
                           "version",
@@ -10447,6 +10708,14 @@
                     "type": "integer",
                     "minimum": 1,
                     "maximum": 60
+                  },
+                  "schedule": {
+                    "nullable": true,
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/ScheduleInput"
+                      }
+                    ]
                   }
                 },
                 "required": [
@@ -10511,6 +10780,37 @@
                     "hasVariables": {
                       "type": "boolean"
                     },
+                    "schedule": {
+                      "nullable": true,
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/Schedule"
+                        }
+                      ]
+                    },
+                    "runner": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "email": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "deviceName": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "self": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "email",
+                        "deviceName",
+                        "self"
+                      ],
+                      "additionalProperties": false
+                    },
                     "createdBy": {
                       "nullable": true,
                       "type": "string"
@@ -10541,7 +10841,8 @@
                           "type": "string",
                           "enum": [
                             "manual",
-                            "rerun"
+                            "rerun",
+                            "schedule"
                           ]
                         },
                         "status": {
@@ -10550,7 +10851,9 @@
                             "running",
                             "done",
                             "stopped",
-                            "interrupted"
+                            "interrupted",
+                            "missed",
+                            "busy"
                           ]
                         },
                         "flowVersion": {
@@ -10561,6 +10864,10 @@
                           "type": "string"
                         },
                         "deviceName": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "scheduledFor": {
                           "nullable": true,
                           "type": "string"
                         },
@@ -10586,6 +10893,9 @@
                             "failed": {
                               "type": "number"
                             },
+                            "signed_out": {
+                              "type": "number"
+                            },
                             "skipped": {
                               "type": "number"
                             },
@@ -10598,6 +10908,7 @@
                             "running",
                             "ok",
                             "failed",
+                            "signed_out",
                             "skipped",
                             "canceled"
                           ],
@@ -10612,6 +10923,7 @@
                         "flowVersion",
                         "startedBy",
                         "deviceName",
+                        "scheduledFor",
                         "startedAt",
                         "finishedAt",
                         "counts"
@@ -10629,6 +10941,8 @@
                     "retries",
                     "timeoutMin",
                     "hasVariables",
+                    "schedule",
+                    "runner",
                     "createdBy",
                     "canEdit",
                     "version",
@@ -10657,6 +10971,9 @@
                     "type": "integer",
                     "minimum": -9007199254740991,
                     "maximum": 9007199254740991
+                  },
+                  "runHere": {
+                    "type": "boolean"
                   },
                   "name": {
                     "type": "string",
@@ -10702,6 +11019,14 @@
                     "type": "integer",
                     "minimum": 1,
                     "maximum": 60
+                  },
+                  "schedule": {
+                    "nullable": true,
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/ScheduleInput"
+                      }
+                    ]
                   }
                 },
                 "required": [
@@ -10761,6 +11086,37 @@
                     "hasVariables": {
                       "type": "boolean"
                     },
+                    "schedule": {
+                      "nullable": true,
+                      "allOf": [
+                        {
+                          "$ref": "#/components/schemas/Schedule"
+                        }
+                      ]
+                    },
+                    "runner": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "email": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "deviceName": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "self": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "email",
+                        "deviceName",
+                        "self"
+                      ],
+                      "additionalProperties": false
+                    },
                     "createdBy": {
                       "nullable": true,
                       "type": "string"
@@ -10791,7 +11147,8 @@
                           "type": "string",
                           "enum": [
                             "manual",
-                            "rerun"
+                            "rerun",
+                            "schedule"
                           ]
                         },
                         "status": {
@@ -10800,7 +11157,9 @@
                             "running",
                             "done",
                             "stopped",
-                            "interrupted"
+                            "interrupted",
+                            "missed",
+                            "busy"
                           ]
                         },
                         "flowVersion": {
@@ -10811,6 +11170,10 @@
                           "type": "string"
                         },
                         "deviceName": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "scheduledFor": {
                           "nullable": true,
                           "type": "string"
                         },
@@ -10836,6 +11199,9 @@
                             "failed": {
                               "type": "number"
                             },
+                            "signed_out": {
+                              "type": "number"
+                            },
                             "skipped": {
                               "type": "number"
                             },
@@ -10848,6 +11214,7 @@
                             "running",
                             "ok",
                             "failed",
+                            "signed_out",
                             "skipped",
                             "canceled"
                           ],
@@ -10862,6 +11229,7 @@
                         "flowVersion",
                         "startedBy",
                         "deviceName",
+                        "scheduledFor",
                         "startedAt",
                         "finishedAt",
                         "counts"
@@ -10879,6 +11247,8 @@
                     "retries",
                     "timeoutMin",
                     "hasVariables",
+                    "schedule",
+                    "runner",
                     "createdBy",
                     "canEdit",
                     "version",
@@ -10981,7 +11351,8 @@
                     "type": "string",
                     "enum": [
                       "manual",
-                      "rerun"
+                      "rerun",
+                      "schedule"
                     ]
                   },
                   "profileIds": {
@@ -10992,6 +11363,11 @@
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     }
+                  },
+                  "scheduledFor": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
                   }
                 },
                 "required": [
@@ -11034,7 +11410,8 @@
                           "type": "string",
                           "enum": [
                             "manual",
-                            "rerun"
+                            "rerun",
+                            "schedule"
                           ]
                         },
                         "status": {
@@ -11043,7 +11420,9 @@
                             "running",
                             "done",
                             "stopped",
-                            "interrupted"
+                            "interrupted",
+                            "missed",
+                            "busy"
                           ]
                         },
                         "flowVersion": {
@@ -11054,6 +11433,10 @@
                           "type": "string"
                         },
                         "deviceName": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "scheduledFor": {
                           "nullable": true,
                           "type": "string"
                         },
@@ -11079,6 +11462,9 @@
                             "failed": {
                               "type": "number"
                             },
+                            "signed_out": {
+                              "type": "number"
+                            },
                             "skipped": {
                               "type": "number"
                             },
@@ -11091,6 +11477,7 @@
                             "running",
                             "ok",
                             "failed",
+                            "signed_out",
                             "skipped",
                             "canceled"
                           ],
@@ -11105,9 +11492,34 @@
                         "flowVersion",
                         "startedBy",
                         "deviceName",
+                        "scheduledFor",
                         "startedAt",
                         "finishedAt",
                         "counts"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "task": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "concurrency": {
+                          "type": "number"
+                        },
+                        "retries": {
+                          "type": "number"
+                        },
+                        "timeoutMin": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "concurrency",
+                        "retries",
+                        "timeoutMin"
                       ],
                       "additionalProperties": false
                     },
@@ -11150,6 +11562,7 @@
                   },
                   "required": [
                     "run",
+                    "task",
                     "steps",
                     "items"
                   ],
@@ -11176,6 +11589,7 @@
                       "running",
                       "ok",
                       "failed",
+                      "signed_out",
                       "skipped",
                       "canceled"
                     ]
@@ -11413,7 +11827,8 @@
                       "type": "string",
                       "enum": [
                         "manual",
-                        "rerun"
+                        "rerun",
+                        "schedule"
                       ]
                     },
                     "status": {
@@ -11422,7 +11837,9 @@
                         "running",
                         "done",
                         "stopped",
-                        "interrupted"
+                        "interrupted",
+                        "missed",
+                        "busy"
                       ]
                     },
                     "flowVersion": {
@@ -11433,6 +11850,10 @@
                       "type": "string"
                     },
                     "deviceName": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "scheduledFor": {
                       "nullable": true,
                       "type": "string"
                     },
@@ -11458,6 +11879,9 @@
                         "failed": {
                           "type": "number"
                         },
+                        "signed_out": {
+                          "type": "number"
+                        },
                         "skipped": {
                           "type": "number"
                         },
@@ -11470,6 +11894,7 @@
                         "running",
                         "ok",
                         "failed",
+                        "signed_out",
                         "skipped",
                         "canceled"
                       ],
@@ -11484,9 +11909,120 @@
                     "flowVersion",
                     "startedBy",
                     "deviceName",
+                    "scheduledFor",
                     "startedAt",
                     "finishedAt",
                     "counts"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tasks/{id}/missed": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "slots": {
+                    "minItems": 1,
+                    "maxItems": 7,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                    }
+                  }
+                },
+                "required": [
+                  "slots"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "nullable": true,
+                  "enum": [
+                    null
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/schedules": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "tasks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "workspaceId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "schedule": {
+                            "$ref": "#/components/schemas/Schedule"
+                          },
+                          "since": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "workspaceId",
+                          "name",
+                          "schedule",
+                          "since"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "tasks"
                   ],
                   "additionalProperties": false
                 }
@@ -11564,7 +12100,8 @@
                             "type": "string",
                             "enum": [
                               "manual",
-                              "rerun"
+                              "rerun",
+                              "schedule"
                             ]
                           },
                           "status": {
@@ -11573,7 +12110,9 @@
                               "running",
                               "done",
                               "stopped",
-                              "interrupted"
+                              "interrupted",
+                              "missed",
+                              "busy"
                             ]
                           },
                           "flowVersion": {
@@ -11584,6 +12123,10 @@
                             "type": "string"
                           },
                           "deviceName": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "scheduledFor": {
                             "nullable": true,
                             "type": "string"
                           },
@@ -11609,6 +12152,9 @@
                               "failed": {
                                 "type": "number"
                               },
+                              "signed_out": {
+                                "type": "number"
+                              },
                               "skipped": {
                                 "type": "number"
                               },
@@ -11621,6 +12167,7 @@
                               "running",
                               "ok",
                               "failed",
+                              "signed_out",
                               "skipped",
                               "canceled"
                             ],
@@ -11635,6 +12182,7 @@
                           "flowVersion",
                           "startedBy",
                           "deviceName",
+                          "scheduledFor",
                           "startedAt",
                           "finishedAt",
                           "counts"
@@ -11689,7 +12237,8 @@
                           "type": "string",
                           "enum": [
                             "manual",
-                            "rerun"
+                            "rerun",
+                            "schedule"
                           ]
                         },
                         "status": {
@@ -11698,7 +12247,9 @@
                             "running",
                             "done",
                             "stopped",
-                            "interrupted"
+                            "interrupted",
+                            "missed",
+                            "busy"
                           ]
                         },
                         "flowVersion": {
@@ -11709,6 +12260,10 @@
                           "type": "string"
                         },
                         "deviceName": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "scheduledFor": {
                           "nullable": true,
                           "type": "string"
                         },
@@ -11734,6 +12289,9 @@
                             "failed": {
                               "type": "number"
                             },
+                            "signed_out": {
+                              "type": "number"
+                            },
                             "skipped": {
                               "type": "number"
                             },
@@ -11746,6 +12304,7 @@
                             "running",
                             "ok",
                             "failed",
+                            "signed_out",
                             "skipped",
                             "canceled"
                           ],
@@ -11760,6 +12319,7 @@
                         "flowVersion",
                         "startedBy",
                         "deviceName",
+                        "scheduledFor",
                         "startedAt",
                         "finishedAt",
                         "counts"
@@ -11788,6 +12348,7 @@
                               "running",
                               "ok",
                               "failed",
+                              "signed_out",
                               "skipped",
                               "canceled"
                             ]

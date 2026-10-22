@@ -31,6 +31,8 @@ export const sessions = pgTable('sessions', {
   userId: uuid().notNull().references(() => users.id, { onDelete: 'cascade' }),
   client: text().notNull(),
   deviceName: text(),
+  // The desktop app's install id, so scheduled tasks know which computer is theirs.
+  deviceId: text(),
   createdAt: createdAt(),
   lastUsedAt: ts().notNull().defaultNow(),
   expiresAt: ts().notNull(),
@@ -235,7 +237,9 @@ export const flows = pgTable('flows', {
 }, t => [index().on(t.workspaceId)]);
 
 // A flow to run on a set of profiles. `variablesEnc` is per-profile values ({ profileId: { name: value } }) sealed
-// with SECRET_KEY, since they may hold passwords. A flow used by a task cannot be deleted.
+// with SECRET_KEY, since they may hold passwords. A flow used by a task cannot be deleted. A scheduled task runs on
+// one computer (`runner*`); `scheduleSince` is when its schedule or computer last changed, so times before it are
+// never counted as missed.
 export const tasks = pgTable('tasks', {
   id: uuid().primaryKey().defaultRandom(),
   workspaceId: uuid().notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
@@ -246,6 +250,11 @@ export const tasks = pgTable('tasks', {
   concurrency: integer().notNull().default(3),
   retries: integer().notNull().default(1),
   timeoutMin: integer().notNull().default(5),
+  schedule: jsonb(),
+  scheduleSince: ts(),
+  runnerUserId: uuid().references(() => users.id, { onDelete: 'set null' }),
+  runnerDeviceId: text(),
+  runnerDeviceName: text(),
   createdBy: uuid().references(() => users.id, { onDelete: 'set null' }),
   createdAt: createdAt(),
   updatedAt: ts().notNull().defaultNow(),
@@ -263,10 +272,12 @@ export const taskRuns = pgTable('task_runs', {
   status: text().notNull(),
   startedBy: uuid().references(() => users.id, { onDelete: 'set null' }),
   deviceName: text(),
+  // The scheduled time a run (or a missed one) belongs to; each time is run once.
+  scheduledFor: ts(),
   startedAt: ts().notNull(),
   updatedAt: ts().notNull(),
   finishedAt: ts()
-}, t => [index().on(t.taskId, t.startedAt), index().on(t.workspaceId, t.startedAt)]);
+}, t => [index().on(t.taskId, t.startedAt), index().on(t.workspaceId, t.startedAt), uniqueIndex().on(t.taskId, t.scheduledFor)]);
 
 // How a run went on one profile. The profile's name and number are copied in, like the activity log.
 export const taskRunItems = pgTable('task_run_items', {

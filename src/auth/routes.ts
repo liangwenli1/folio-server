@@ -46,14 +46,14 @@ export function authRoutes(app: FastifyInstance, deps: Deps){
   r.post('/auth/login', {
     config: limited,
     schema: {
-      body: z.object({ email: z.email(), password: z.string().max(200), client: z.enum(['web', 'desktop']).default('web'), deviceName: z.string().max(100).optional() }),
+      body: z.object({ email: z.email(), password: z.string().max(200), client: z.enum(['web', 'desktop']).default('web'), deviceName: z.string().max(100).optional(), deviceId: z.uuid().optional() }),
       response: { 200: z.object({ user: User, token: z.string().optional() }) }
     }
   }, async (req, reply) => {
     const [u] = await db.select().from(users).where(eq(users.email, normalize(req.body.email)));
     const ok = await verify(u?.passwordHash ?? DUMMY_HASH, req.body.password);
     if (!u || !ok) throw new ApiError(401, 'invalid_credentials', 'The email or password is not right');
-    const token = await createSession(db, { userId: u.id, client: req.body.client, deviceName: req.body.deviceName ?? null, now: clock.now() });
+    const token = await createSession(db, { userId: u.id, client: req.body.client, deviceName: req.body.deviceName ?? null, deviceId: req.body.deviceId ?? null, now: clock.now() });
     if (req.body.client === 'desktop') return { user: userView(u), token };
     setSessionCookie(reply, token, deps.config);
     return { user: userView(u) };

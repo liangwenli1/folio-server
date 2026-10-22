@@ -29,7 +29,11 @@ const leaf = [
   z.object({ type: z.literal('set'), variable, value: text }),
   z.object({ type: z.literal('screenshot'), selector: selector.nullable() }),
   // JavaScript run in the page; what it returns can go into a variable.
-  z.object({ type: z.literal('script'), code: z.string().min(1).max(20_000), variable: variable.nullable() })
+  z.object({ type: z.literal('script'), code: z.string().min(1).max(20_000), variable: variable.nullable() }),
+  // Opens a page and decides whether the profile is still signed in: by an element only signed-in visitors see
+  // (`present`), or one only signed-out visitors see, like a log-in button (`absent`). Signed out ends the run
+  // on that profile and is reported apart from failures.
+  z.object({ type: z.literal('signedIn'), url: z.string().trim().min(1).max(2000), mode: z.enum(['present', 'absent']), selector, seconds: z.number().min(1).max(120) })
 ] as const;
 
 export type Step = z.infer<(typeof leaf)[number]>

@@ -9,10 +9,10 @@ const TOUCH_EVERY_MS = 3_600_000;
 
 export const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
 
-export async function createSession(db: Db, a: { userId: string; client: 'web' | 'desktop'; deviceName: string | null; now: Date }){
+export async function createSession(db: Db, a: { userId: string; client: 'web' | 'desktop'; deviceName: string | null; deviceId?: string | null; now: Date }){
   const token = randomBytes(32).toString('base64url');
   await db.insert(sessions).values({
-    tokenHash: sha256(token), userId: a.userId, client: a.client, deviceName: a.deviceName,
+    tokenHash: sha256(token), userId: a.userId, client: a.client, deviceName: a.deviceName, deviceId: a.deviceId ?? null,
     createdAt: a.now, lastUsedAt: a.now, expiresAt: addDays(a.now, SESSION_DAYS)
   });
   return token;

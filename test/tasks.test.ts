@@ -11,8 +11,8 @@ afterAll(async () => { await t.teardown(); });
 type H = Record<string, string>;
 const call = (method: 'GET' | 'POST' | 'PATCH' | 'DELETE', url: string, headers: H, payload?: object) => t.app.inject({ method, url, headers, payload });
 const STEPS = [{ type: 'open', url: 'https://shop.example/{{who}}' }];
-async function desktop(email: string, deviceName: string): Promise<H> {
-  const res = await t.app.inject({ method: 'POST', url: '/auth/login', payload: { email, password: PASSWORD, client: 'desktop', deviceName } });
+async function desktop(email: string, deviceName: string, deviceId?: string): Promise<H> {
+  const res = await t.app.inject({ method: 'POST', url: '/auth/login', payload: { email, password: PASSWORD, client: 'desktop', deviceName, deviceId } });
   return { authorization: `Bearer ${res.json().token}` };
 }
 
@@ -116,9 +116,54 @@ describe('tasks', () => {
     expect(runs.map((r: { trigger: string }) => r.trigger)).toEqual(['manual', 'rerun', 'manual']);
     const log2 = (await call('GET', `/workspaces/${ws}/activity?kind=automation`, o.headers)).json().entries.map((e: { action: string; detail: object }) => [e.action, e.detail]);
     expect(log2.slice(0, 4)).toEqual([
-      ['run.start', { name: 'Morning visit', trigger: 'manual', profiles: 1 }], ['run.finish', { name: 'Morning visit', status: 'stopped', ok: 0, failed: 0, skipped: 1 }],
-      ['run.start', { name: 'Morning visit', trigger: 'rerun', profiles: 1 }], ['run.finish', { name: 'Morning visit', status: 'done', ok: 2, failed: 1, skipped: 0 }]
+      ['run.start', { name: 'Morning visit', trigger: 'manual', profiles: 1 }], ['run.finish', { name: 'Morning visit', status: 'stopped', ok: 0, failed: 0, signedOut: 0, skipped: 1 }],
+      ['run.start', { name: 'Morning visit', trigger: 'rerun', profiles: 1 }], ['run.finish', { name: 'Morning visit', status: 'done', ok: 2, failed: 1, signedOut: 0, skipped: 0 }]
     ]);
+  });
+
+  it('run on schedule on one computer, once per time, recording the times it missed', async () => {
+    const { o, ws, p1, flow } = await team();
+    const daily = { kind: 'daily', time: '09:00', days: [1, 2, 3, 4, 5], tz: 'Europe/Berlin' };
+    expect((await call('POST', `/workspaces/${ws}/tasks`, o.headers, task(flow.id, [p1.id], { schedule: daily }))).json().error.code).toBe('no_device');
+    const a = await desktop(o.email, 'Laptop A', 'a0000000-0000-4000-8000-000000000001');
+    const b = await desktop(o.email, 'Laptop B', 'b0000000-0000-4000-8000-000000000002');
+    const tk = (await call('POST', `/workspaces/${ws}/tasks`, a, task(flow.id, [p1.id], { schedule: daily }))).json();
+    expect(tk).toMatchObject({ schedule: daily, runner: { email: o.email, deviceName: 'Laptop A', self: true } });
+    expect((await call('GET', `/workspaces/${ws}/tasks`, b)).json().tasks[0].runner).toMatchObject({ deviceName: 'Laptop A', self: false });
+    const mine = (await call('GET', '/me/schedules', a)).json().tasks;
+    expect(mine).toEqual([{ id: tk.id, workspaceId: ws, name: 'Morning visit', schedule: daily, since: t.clock.now().toISOString() }]);
+    expect((await call('GET', '/me/schedules', b)).json().tasks).toEqual([]);
+
+    // Laptop A was off at two scheduled times: they are recorded once each, by A only.
+    t.clock.advanceDays(3);
+    const slots = ['2026-11-02T08:00:00.000Z', '2026-11-03T08:00:00.000Z'];
+    expect((await call('POST', `/tasks/${tk.id}/missed`, b, { slots })).statusCode).toBe(403);
+    expect((await call('POST', `/tasks/${tk.id}/missed`, a, { slots })).statusCode).toBe(204);
+    await call('POST', `/tasks/${tk.id}/missed`, a, { slots: slots.slice(1) });
+    const runs = async () => (await call('GET', `/workspaces/${ws}/runs?taskId=${tk.id}`, o.headers)).json().runs as { status: string; trigger: string; scheduledFor: string | null }[];
+    expect((await runs()).map(r => [r.status, r.scheduledFor])).toEqual([['missed', slots[1]], ['missed', slots[0]]]);
+    expect((await call('GET', '/me/schedules', a)).json().tasks[0].since).toBe(slots[1]);
+
+    // On time: A starts it for that time; the same time can't start twice; a time during a run is skipped as busy.
+    const at = '2026-11-04T09:58:00.000Z';
+    expect((await call('POST', `/tasks/${tk.id}/runs`, b, { trigger: 'schedule', scheduledFor: at })).statusCode).toBe(403);
+    const run = (await call('POST', `/tasks/${tk.id}/runs`, a, { trigger: 'schedule', scheduledFor: at })).json().run;
+    expect(run).toMatchObject({ trigger: 'schedule', scheduledFor: at, status: 'running' });
+    const next = '2026-11-04T09:59:00.000Z';
+    expect((await call('POST', `/tasks/${tk.id}/runs`, a, { trigger: 'schedule', scheduledFor: next })).json().error.code).toBe('task_running');
+    await call('POST', `/runs/${run.id}/items/${p1.id}`, a, { status: 'signed_out', attempts: 1, error: { code: 'signed_out', message: '' } });
+    expect((await call('POST', `/runs/${run.id}/finish`, a, { status: 'done' })).json().counts).toMatchObject({ signed_out: 1, ok: 0 });
+    expect((await call('POST', `/tasks/${tk.id}/runs`, a, { trigger: 'schedule', scheduledFor: at })).json().error.code).toBe('already_run');
+    expect((await runs()).map(r => r.status)).toEqual(['done', 'busy', 'missed', 'missed']);
+
+    // Moving the schedule to Laptop B: A no longer runs it, and nothing before the move counts as missed.
+    t.clock.advanceDays(1);
+    const moved = (await call('PATCH', `/tasks/${tk.id}`, b, { version: tk.version, runHere: true })).json();
+    expect(moved.runner).toMatchObject({ deviceName: 'Laptop B', self: true });
+    expect((await call('GET', '/me/schedules', a)).json().tasks).toEqual([]);
+    expect((await call('GET', '/me/schedules', b)).json().tasks[0].since).toBe(t.clock.now().toISOString());
+    const log = (await call('GET', `/workspaces/${ws}/activity?kind=automation`, o.headers)).json().entries;
+    expect(log.find((e: { action: string }) => e.action === 'run.finish').detail).toMatchObject({ signedOut: 1 });
   });
 
   it('take a run whose app went quiet as interrupted, and forget runs after the plan’s retention', async () => {

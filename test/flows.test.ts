@@ -13,7 +13,8 @@ const STEPS = [
   { type: 'type', selector: '#email', text: '{{email}}', slow: true },
   { type: 'if', test: { kind: 'exists', selector: 'text=Welcome' }, then: [{ type: 'extract', selector: '.balance', attribute: null, variable: 'balance' }], else: [] },
   { type: 'loop', mode: 'each', times: null, selector: '.order', steps: [{ type: 'click', selector: '@item >> a' }] },
-  { type: 'wait', until: 'time', seconds: 1, maxSeconds: 3, selector: null }
+  { type: 'wait', until: 'time', seconds: 1, maxSeconds: 3, selector: null },
+  { type: 'signedIn', url: 'https://shop.example/account', mode: 'absent', selector: 'text=Log in', seconds: 10 }
 ];
 
 // An owner on Studio, an admin and two members.
