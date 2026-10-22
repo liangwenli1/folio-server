@@ -2,9 +2,14 @@ import { and, asc, eq, gt, inArray, isNull, or, sql, type SQL } from 'drizzle-or
 import type { FastifyRequest } from 'fastify';
 import type { Db, Tx } from '../db/client.js';
 import { departmentMembers, departments, groups, memberships, profileData, profileLocks, profiles, proxies, users, workspaces } from '../db/schema.js';
-import { ApiError, notFound } from '../errors.js';
+import { ApiError, forbidden, notFound } from '../errors.js';
 import { requireSession, type Deps } from '../http.js';
-import { profileView } from '../views.js';
+import { profileView, type Fingerprint } from '../views.js';
+import { record } from '../activity/service.js';
+import { publish } from '../events.js';
+import { requireCompany } from '../team/service.js';
+import type { z } from 'zod';
+import type { Role } from '../workspaces/service.js';
 import { requireRole } from '../workspaces/service.js';
 import { entitlements } from '../plans.js';
 import { readSub, toState } from '../billing/service.js';
@@ -81,4 +86,42 @@ export async function loadProfiles(db: Db, where: SQL | undefined, sessionId: st
     .leftJoin(users, eq(users.id, profileLocks.userId))
     .where(where).orderBy(asc(profiles.number));
   return rows.map(r => profileView(r.p, { data: r.d, lock: r.l && { ...r.l, email: r.email! }, sessionId }));
+}
+
+const MAX_FP_BYTES = 64 * 1024;
+export function checkFingerprint(p: { kernel?: string; fingerprint?: z.infer<typeof Fingerprint> }){
+  if (p.fingerprint && p.kernel && p.fingerprint.kind !== p.kernel) throw new ApiError(400, 'fingerprint_kernel', 'The fingerprint does not match the engine');
+  if (p.fingerprint && JSON.stringify(p.fingerprint).length > MAX_FP_BYTES) throw new ApiError(400, 'fingerprint_size', 'The fingerprint is too large');
+}
+
+// Assigning people and departments is for owners and admins; departments need the Company plan.
+export async function checkAssignment(db: Db, workspaceId: string, role: Role, items: { ownerId?: string | null; departmentId?: string | null }[]){
+  if (role === 'member' && items.some(i => i.ownerId !== undefined || i.departmentId !== undefined)) throw forbidden();
+  if (items.some(i => i.departmentId)) await requireCompany(db, workspaceId);
+  await assertOwned(db, workspaceId, { ownerIds: items.map(i => i.ownerId), departmentIds: items.map(i => i.departmentId) });
+}
+
+export interface NewProfile {
+  name: string; groupId?: string | null; tags: string[]; ownerId?: string | null; departmentId?: string | null;
+  kernel: 'chromium' | 'firefox'; kernelVersion: string; os: 'windows' | 'macos' | 'linux'; fingerprint: z.infer<typeof Fingerprint>;
+  proxyId?: string | null; timezoneOverride?: string | null; localeOverride?: string | null; notes?: string | null; syncMode?: 'cloud' | 'local';
+}
+
+// Creates profiles within the plan's limit, numbered in order, assigned to whoever creates them unless said otherwise.
+export async function createProfiles(deps: Deps, workspaceId: string, s: { userId: string; deviceName: string | null }, role: Role, items: NewProfile[]){
+  const { db, clock } = deps;
+  items.forEach(checkFingerprint);
+  await checkAssignment(db, workspaceId, role, items);
+  await assertOwned(db, workspaceId, { groupIds: items.map(i => i.groupId), proxyIds: items.map(i => i.proxyId) });
+  const now = clock.now();
+  const rows = await db.transaction(async tx => {
+    await reserve(tx, workspaceId, items.length);
+    const numbers = await nextNumbers(tx, workspaceId, items.length);
+    return tx.insert(profiles).values(items.map((i, k) => ({
+      ...i, ownerId: i.ownerId === undefined ? s.userId : i.ownerId, workspaceId, number: numbers[k], createdBy: s.userId, createdAt: now, updatedAt: now
+    }))).returning();
+  });
+  await record(db, { workspaceId, actor: s, at: now, action: 'profile.create', profiles: rows });
+  publish(workspaceId, { kind: 'profiles', ids: rows.map(p => p.id) });
+  return rows;
 }

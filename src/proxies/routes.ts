@@ -10,7 +10,7 @@ import { record } from '../activity/service.js';
 import { requireSession, type Deps } from '../http.js';
 import { Geo, Proxy, ProxySecret, proxyType, proxyView } from '../views.js';
 import { requireRole, type Role } from '../workspaces/service.js';
-import { parseProxyLine, type ProxyInput } from './service.js';
+import { parseProxyLine, proxyRow, saveProxies, type ProxyInput } from './service.js';
 
 const wsParams = z.object({ id: z.uuid() });
 const host = z.string().trim().min(1).max(253).regex(/^[A-Za-z0-9.:_-]+$/);
@@ -42,10 +42,6 @@ export function proxyRoutes(app: FastifyInstance, deps: Deps){
   }
   const count = async (id: string) => (await db.select({ n: sql<number>`count(*)::int` }).from(profiles)
     .where(and(eq(profiles.proxyId, id), isNull(profiles.deletedAt))))[0].n;
-  const row = (workspaceId: string, i: ProxyInput & { backupId?: string | null }, now: Date) => ({
-    workspaceId, name: i.name || `${i.host}:${i.port}`, type: i.type, host: i.host, port: i.port,
-    username: i.username || null, passwordEnc: i.password ? seal(i.password) : null, backupId: i.backupId ?? null, createdAt: now, updatedAt: now
-  });
 
   r.get('/workspaces/:id/proxies', { schema: { params: wsParams, response: { 200: z.object({ proxies: z.array(Proxy) }) } } }, async req => {
     const s = await requireSession(req, deps);
@@ -60,7 +56,7 @@ export function proxyRoutes(app: FastifyInstance, deps: Deps){
     const s = await requireSession(req, deps);
     await requireRole(db, req.params.id, s.userId, MANAGERS);
     await assertBackup(req.params.id, req.body.backupId);
-    const [p] = await db.insert(proxies).values(row(req.params.id, req.body, clock.now())).returning();
+    const [p] = await db.insert(proxies).values(proxyRow(req.params.id, req.body, clock.now())).returning();
     await record(db, { workspaceId: req.params.id, actor: s, at: p.createdAt, action: 'proxy.create', detail: { name: p.name } });
     publish(req.params.id, { kind: 'proxies', ids: [p.id] });
     return reply.code(201).send(proxyView(p, 0));
@@ -85,21 +81,16 @@ export function proxyRoutes(app: FastifyInstance, deps: Deps){
     });
     if (parsed.length > 2000) throw new ApiError(400, 'too_many', 'Import up to 2000 proxies at a time');
 
-    const key = (p: ProxyInput) => JSON.stringify([p.type, p.host.toLowerCase(), p.port, p.username || null, p.password || null]);
-    const keyOf = (p: typeof proxies.$inferSelect) => key({ type: p.type as ProxyInput['type'], host: p.host, port: p.port, username: p.username, password: p.passwordEnc ? open(p.passwordEnc) : null });
-    const known = new Map((await db.select().from(proxies).where(eq(proxies.workspaceId, req.params.id))).map(p => [keyOf(p), p]));
-    const fresh = [...new Map(parsed.filter(p => !known.has(key(p))).map(p => [key(p), p])).values()];
     const now = clock.now();
-    const rows = fresh.length ? await db.insert(proxies).values(fresh.map(p => row(req.params.id, p, now))).returning() : [];
-    rows.forEach(p => known.set(keyOf(p), p));
-    if (rows.length){
-      await record(db, { workspaceId: req.params.id, actor: s, at: now, action: 'proxy.import', detail: { added: rows.length } });
+    const { saved, added } = await saveProxies(db, req.params.id, parsed, now);
+    if (added){
+      await record(db, { workspaceId: req.params.id, actor: s, at: now, action: 'proxy.import', detail: { added } });
       publish(req.params.id, { kind: 'proxies' });
     }
 
     const counts = new Map((await db.select({ id: profiles.proxyId, n: sql<number>`count(*)::int` }).from(profiles)
       .where(and(eq(profiles.workspaceId, req.params.id), isNull(profiles.deletedAt))).groupBy(profiles.proxyId)).map(c => [c.id, c.n]));
-    return { proxies: parsed.map(p => { const x = known.get(key(p))!; return proxyView(x, counts.get(x.id) ?? 0); }), added: rows.length, errors };
+    return { proxies: saved.map(x => proxyView(x, counts.get(x.id) ?? 0)), added, errors };
   });
 
   // `password: null` removes it; leaving it out keeps the current one.

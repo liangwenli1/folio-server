@@ -119,8 +119,14 @@ export function syncRoutes(app: FastifyInstance, deps: Deps){
     const body = req.body as Buffer;
     if (!Buffer.isBuffer(body) || !body.length) throw new ApiError(400, 'validation', 'Send the state as application/octet-stream');
     if (p.syncMode === 'local') throw localOnly();
+    // The lock holder saves; the first save of a profile nobody has open needs no lock (a profile brought in
+    // from an export), since there is nothing to overwrite.
     const [l] = await db.select().from(profileLocks).where(and(eq(profileLocks.profileId, p.id), eq(profileLocks.sessionId, s.id)));
-    if (!l) throw new ApiError(409, 'lock_lost', 'Open the profile on this computer before saving its state');
+    if (!l){
+      const [saved] = await db.select({ id: profileData.profileId }).from(profileData).where(eq(profileData.profileId, p.id));
+      const [other] = await db.select({ id: profileLocks.profileId }).from(profileLocks).where(and(eq(profileLocks.profileId, p.id), gt(profileLocks.expiresAt, clock.now())));
+      if (saved || other) throw new ApiError(409, 'lock_lost', 'Open the profile on this computer before saving its state');
+    }
     return savedDataView(await store(p, s, body, req.query));
   });
 

@@ -88,6 +88,11 @@ docker run -d --name folio-minio --network folio-dev -e MINIO_ROOT_USER=folio -e
 - `GET /workspaces/:id/activity` pages back by `seq` (`before=`), filtered by profile, person or kind. Members see entries about the profiles they see and their own actions. Entries older than the plan's retention (Free 7 days, Studio 30, Company 365) are not returned and are deleted once a day.
 - `GET /workspaces/:id/activity.csv` exports the retained log on Company, for owners and admins.
 
+## Workspace export and import
+
+- `GET /workspaces/:id/export` (owners and admins) lists every profile outside the Trash with its fingerprint and settings, the groups, and the proxies with their passwords. The desktop adds each profile's saved state and encrypts the file with a passphrase the server never sees.
+- `POST /workspaces/:id/import` (owners and admins) recreates such a list in a workspace: groups by name, identical proxies reused, profiles numbered anew and assigned to the importer, after checking the plan has room for all of them. It returns each profile's new id; the saved states go up as each profile's first save, which needs no lock when nobody has the profile open.
+
 ## Billing rules
 
 - Plans: Free (5 profiles, 1 member), Studio ($29/mo, 100 profiles), Company ($99/mo, 500 profiles). Yearly is 20% off. Extra profiles come in packs of 100 ($15/mo), up to 2,000 profiles.

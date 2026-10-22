@@ -11,7 +11,7 @@ import { open } from '../crypto.js';
 import { Fingerprint, Group, Profile, ProxySecret, kernel, os, profileView } from '../views.js';
 import { requireRole, type Role } from '../workspaces/service.js';
 import { requireCompany } from '../team/service.js';
-import { access, assertOwned, loadProfiles, nextNumbers, profileFor, reserve } from './service.js';
+import { access, assertOwned, checkAssignment, checkFingerprint, createProfiles, loadProfiles, profileFor, reserve } from './service.js';
 
 const wsParams = z.object({ id: z.uuid() });
 const name = z.string().trim().min(1).max(80);
@@ -19,21 +19,17 @@ const tag = z.string().trim().min(1).max(24);
 const version = z.string().regex(/^[\w.-]{1,40}$/);
 const tz = z.string().regex(/^[A-Za-z_]+(\/[A-Za-z0-9_+-]+){0,2}$/).max(64);
 const locale = z.string().regex(/^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/).max(35);
-const MAX_FP_BYTES = 64 * 1024;
 
-const newProfile = z.object({
+export const newProfile = z.object({
   name, groupId: z.uuid().nullable().optional(), tags: z.array(tag).max(10).default([]),
   // Defaults to the person creating it; only owners and admins assign someone else or a department.
   ownerId: z.uuid().nullable().optional(), departmentId: z.uuid().nullable().optional(),
   kernel, kernelVersion: version, os, fingerprint: Fingerprint, proxyId: z.uuid().nullable().optional(),
-  timezoneOverride: tz.nullable().optional(), localeOverride: locale.nullable().optional(), notes: z.string().max(2000).nullable().optional()
+  timezoneOverride: tz.nullable().optional(), localeOverride: locale.nullable().optional(), notes: z.string().max(2000).nullable().optional(),
+  syncMode: z.enum(['cloud', 'local']).optional()
 });
-type NewProfile = z.infer<typeof newProfile>;
-
-function checkFingerprint(p: { kernel?: string; fingerprint?: z.infer<typeof Fingerprint> }){
-  if (p.fingerprint && p.kernel && p.fingerprint.kind !== p.kernel) throw new ApiError(400, 'fingerprint_kernel', 'The fingerprint does not match the engine');
-  if (p.fingerprint && JSON.stringify(p.fingerprint).length > MAX_FP_BYTES) throw new ApiError(400, 'fingerprint_size', 'The fingerprint is too large');
-}
+// Firefox fingerprints run to tens of kilobytes each.
+export const BULK_BODY = 64 * 1024 * 1024;
 
 export function profileRoutes(app: FastifyInstance, deps: Deps){
   const r = app.withTypeProvider<ZodTypeProvider>();
@@ -49,12 +45,6 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
     const s = await requireSession(req, deps);
     await requireRole(db, workspaceId, s.userId, MANAGERS);
     return s;
-  }
-  // Assigning people and departments is for owners and admins; departments need the Company plan.
-  async function checkAssignment(workspaceId: string, role: Role, items: { ownerId?: string | null; departmentId?: string | null }[]){
-    if (role === 'member' && items.some(i => i.ownerId !== undefined || i.departmentId !== undefined)) throw forbidden();
-    if (items.some(i => i.departmentId)) await requireCompany(db, workspaceId);
-    await assertOwned(db, workspaceId, { ownerIds: items.map(i => i.ownerId), departmentIds: items.map(i => i.departmentId) });
   }
 
   // ---------- groups ----------
@@ -107,36 +97,20 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
     return { profiles: await loadProfiles(db, where, s.id, clock.now()) };
   });
 
-  async function create(workspaceId: string, s: { userId: string; deviceName: string | null }, role: Role, items: NewProfile[]){
-    const userId = s.userId;
-    items.forEach(checkFingerprint);
-    await checkAssignment(workspaceId, role, items);
-    await assertOwned(db, workspaceId, { groupIds: items.map(i => i.groupId), proxyIds: items.map(i => i.proxyId) });
-    const now = clock.now();
-    const rows = await db.transaction(async tx => {
-      await reserve(tx, workspaceId, items.length);
-      const numbers = await nextNumbers(tx, workspaceId, items.length);
-      return tx.insert(profiles).values(items.map((i, k) => ({
-        ...i, ownerId: i.ownerId === undefined ? userId : i.ownerId, workspaceId, number: numbers[k], createdBy: userId, createdAt: now, updatedAt: now
-      }))).returning();
-    });
-    await record(db, { workspaceId, actor: s, at: now, action: 'profile.create', profiles: rows });
-    publish(workspaceId, { kind: 'profiles', ids: rows.map(p => p.id) });
-    return rows;
-  }
 
   r.post('/workspaces/:id/profiles', { schema: { params: wsParams, body: newProfile, response: { 201: Profile } } }, async (req, reply) => {
     const { s, role } = await member(req, req.params.id);
-    const [p] = await create(req.params.id, s, role, [req.body]);
+    const [p] = await createProfiles(deps, req.params.id, s, role, [req.body]);
     return reply.code(201).send(profileView(p));
   });
 
   // Bulk create, used by the spreadsheet import. All or nothing.
   r.post('/workspaces/:id/profiles/bulk', {
+    bodyLimit: BULK_BODY,
     schema: { params: wsParams, body: z.object({ profiles: z.array(newProfile).min(1).max(500) }), response: { 201: z.object({ profiles: z.array(Profile) }) } }
   }, async (req, reply) => {
     const { s, role } = await member(req, req.params.id);
-    return reply.code(201).send({ profiles: (await create(req.params.id, s, role, req.body.profiles)).map(p => profileView(p)) });
+    return reply.code(201).send({ profiles: (await createProfiles(deps, req.params.id, s, role, req.body.profiles)).map(p => profileView(p)) });
   });
 
   // Optimistic concurrency: the client sends the version it edited; a newer one on the server is a conflict.
@@ -156,7 +130,7 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
     const { p, s, role } = await profileFor(deps, req, req.params.id);
     const { version: v, ...patch } = req.body;
     checkFingerprint({ kernel: p.kernel, fingerprint: patch.fingerprint });
-    await checkAssignment(p.workspaceId, role, [patch]);
+    await checkAssignment(db, p.workspaceId, role, [patch]);
     await assertOwned(db, p.workspaceId, { groupIds: [patch.groupId], proxyIds: [patch.proxyId] });
     const [u] = await db.update(profiles).set({ ...patch, version: sql`${profiles.version} + 1`, updatedAt: clock.now() })
       .where(and(eq(profiles.id, p.id), eq(profiles.version, v))).returning();

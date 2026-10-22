@@ -76,7 +76,9 @@ describe('profile locks', () => {
 describe('saved sign-in state', () => {
   it('is written only by the computer holding the lock, and read back by the next one', async () => {
     const { owner, p, a, b } = await profileWithTwoComputers();
+    await req('POST', `/profiles/${p.id}/lock`, b);
     expect((await upload(p.id, a, state('one'))).json().error.code).toBe('lock_lost');
+    await req('DELETE', `/profiles/${p.id}/lock`, b);
     await req('POST', `/profiles/${p.id}/lock`, a);
     const saved = await upload(p.id, a, state('one'), 'cookies=1&storageBytes=420&origins=2');
     expect(saved.json()).toMatchObject({ version: 1, cookies: 1, storageBytes: 420, origins: 2, deviceName: 'Laptop A' });
@@ -109,6 +111,14 @@ describe('saved sign-in state', () => {
     await req('POST', `/workspaces/${owner.workspaceId}/profiles/batch`, owner.headers, { ids: [p.id], action: 'trash' });
     await req('POST', `/workspaces/${owner.workspaceId}/profiles/batch`, owner.headers, { ids: [p.id], action: 'purge' });
     await expect(raw(`${owner.workspaceId}/${p.id}/2`)).rejects.toThrow();
+  });
+
+  it('can be saved the first time without the lock, when nobody has the profile open', async () => {
+    const { p, a, b } = await profileWithTwoComputers();
+    expect((await upload(p.id, a, state('first'))).json()).toMatchObject({ version: 1 });
+    expect((await upload(p.id, a, state('second'))).json().error.code).toBe('lock_lost');
+    await req('POST', `/profiles/${p.id}/lock`, b);
+    expect((await upload(p.id, b, state('second'))).json()).toMatchObject({ version: 2 });
   });
 
   it('rejects an empty upload and answers 404 before anything is saved', async () => {
