@@ -105,6 +105,7 @@ docker run -d --name folio-minio --network folio-dev -e MINIO_ROOT_USER=folio -e
 
 - The extension library (`src/extensions/`) keeps each package as a zip (a crx header is dropped), sealed in object storage, with its sha256 and an Ed25519 signature over its identity and hash (`folio-extension:<id>:<kernel>:<extId>:<sha256>`). The signing key is derived from `SECRET_KEY`; `GET /extensions/key` hands out the public half. Owners and admins add (`POST /workspaces/:id/extensions?kernel=`, bytes), update (`PUT /extensions/:id/package`) and delete extensions; everyone downloads packages.
 - Chromium extensions get a key of the library's own (`publicKey`), so their id is the same on every computer and their data can follow the profile; Firefox ones keep their add-on id, and the same add-on again is an update (`409 extension_exists`).
+- Saved states may carry an `extensions` part (the extensions' data folders), which the server keeps as it is, also when cookies are merged in. Workspace exports include the extensions the profiles use, with their packages and identities; an import reuses one the library already has (same engine and id).
 - Profiles list their extensions (`extensionIds`), checked against the library and the profile's engine (`400 extension_kernel`). The batch actions `add-extension` and `remove-extension` touch only profiles of the extension's engine. `GET /profiles/:id/launch` includes the extensions to install.
 
 ## Billing rules

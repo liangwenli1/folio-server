@@ -9913,15 +9913,6 @@
                               "local"
                             ]
                           },
-                          "extensionIds": {
-                            "maxItems": 50,
-                            "type": "array",
-                            "items": {
-                              "type": "string",
-                              "format": "uuid",
-                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                            }
-                          },
                           "ref": {
                             "type": "string",
                             "minLength": 1,
@@ -9938,6 +9929,16 @@
                             "minLength": 1,
                             "maxLength": 64
                           },
+                          "extensionRefs": {
+                            "default": [],
+                            "maxItems": 50,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64
+                            }
+                          },
                           "saved": {
                             "type": "boolean"
                           }
@@ -9952,7 +9953,52 @@
                           "ref",
                           "group",
                           "proxyRef",
+                          "extensionRefs",
                           "saved"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "extensions": {
+                      "default": [],
+                      "maxItems": 200,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "ref": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 64
+                          },
+                          "kernel": {
+                            "type": "string",
+                            "enum": [
+                              "chromium",
+                              "firefox"
+                            ]
+                          },
+                          "extId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "publicKey": {
+                            "nullable": true,
+                            "type": "string",
+                            "maxLength": 1000
+                          },
+                          "package": {
+                            "type": "string",
+                            "maxLength": 40000000
+                          }
+                        },
+                        "required": [
+                          "ref",
+                          "kernel",
+                          "extId",
+                          "publicKey",
+                          "package"
                         ],
                         "additionalProperties": false
                       }
@@ -9968,6 +10014,7 @@
                     "groups",
                     "proxies",
                     "profiles",
+                    "extensions",
                     "workspace",
                     "exportedAt"
                   ],
@@ -10173,15 +10220,6 @@
                             "local"
                           ]
                         },
-                        "extensionIds": {
-                          "maxItems": 50,
-                          "type": "array",
-                          "items": {
-                            "type": "string",
-                            "format": "uuid",
-                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                          }
-                        },
                         "ref": {
                           "type": "string",
                           "minLength": 1,
@@ -10198,6 +10236,16 @@
                           "minLength": 1,
                           "maxLength": 64
                         },
+                        "extensionRefs": {
+                          "default": [],
+                          "maxItems": 50,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 64
+                          }
+                        },
                         "saved": {
                           "type": "boolean"
                         }
@@ -10212,6 +10260,49 @@
                         "group",
                         "proxyRef",
                         "saved"
+                      ]
+                    }
+                  },
+                  "extensions": {
+                    "default": [],
+                    "maxItems": 200,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "ref": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64
+                        },
+                        "kernel": {
+                          "type": "string",
+                          "enum": [
+                            "chromium",
+                            "firefox"
+                          ]
+                        },
+                        "extId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "publicKey": {
+                          "nullable": true,
+                          "type": "string",
+                          "maxLength": 1000
+                        },
+                        "package": {
+                          "type": "string",
+                          "maxLength": 40000000
+                        }
+                      },
+                      "required": [
+                        "ref",
+                        "kernel",
+                        "extId",
+                        "publicKey",
+                        "package"
                       ]
                     }
                   }
@@ -10277,12 +10368,16 @@
                         },
                         "groups": {
                           "type": "number"
+                        },
+                        "extensions": {
+                          "type": "number"
                         }
                       },
                       "required": [
                         "profiles",
                         "proxies",
-                        "groups"
+                        "groups",
+                        "extensions"
                       ],
                       "additionalProperties": false
                     }

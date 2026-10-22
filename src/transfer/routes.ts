@@ -1,11 +1,13 @@
-// A whole workspace in one file (owners and admins): its profiles with their fingerprints, groups, and proxies
-// with passwords. The desktop adds each profile's saved sign-in state, encrypts the file with a passphrase the
+// A whole workspace in one file (owners and admins): its profiles with their fingerprints, groups, proxies with
+// passwords, and the library extensions the profiles use (with their packages and identities, so the data saved
+// in them still fits). The desktop adds each profile's saved sign-in state, encrypts the file with a passphrase the
 // server never sees, and on import sends the list back here to recreate it in another workspace.
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
-import { and, asc, eq, isNull } from 'drizzle-orm';
-import { groups, profileData, profiles, proxies, workspaces } from '../db/schema.js';
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
+import { extensions, groups, profileData, profiles, proxies, workspaces } from '../db/schema.js';
 import { open } from '../crypto.js';
 import { publish } from '../events.js';
 import { record } from '../activity/service.js';
@@ -16,8 +18,9 @@ import { ApiError } from '../errors.js';
 import { entitlements } from '../plans.js';
 import { readSub, toState } from '../billing/service.js';
 import { saveProxies } from '../proxies/service.js';
-import { proxyType } from '../views.js';
+import { kernel, proxyType } from '../views.js';
 import { requireRole } from '../workspaces/service.js';
+import { chromiumId, readPackage, sha256, signPackage } from '../extensions/package.js';
 
 const params = z.object({ id: z.uuid() });
 const ref = z.string().min(1).max(64);
@@ -26,15 +29,18 @@ const ExportedProxy = z.object({
   username: z.string().max(256).nullable(), password: z.string().max(256).nullable(), backupRef: ref.nullable()
 });
 // `saved`: the profile has a sign-in state, which travels next to this list.
-const ExportedProfile = newProfile.omit({ groupId: true, ownerId: true, departmentId: true, proxyId: true })
-  .extend({ ref, group: z.string().max(80).nullable(), proxyRef: ref.nullable(), saved: z.boolean() });
+const ExportedProfile = newProfile.omit({ groupId: true, ownerId: true, departmentId: true, proxyId: true, extensionIds: true })
+  .extend({ ref, group: z.string().max(80).nullable(), proxyRef: ref.nullable(), extensionRefs: z.array(ref).max(50).default([]), saved: z.boolean() });
+// `package` is the zip, base64-encoded.
+const ExportedExtension = z.object({ ref, kernel, extId: z.string().min(1).max(200), publicKey: z.string().max(1000).nullable(), package: z.string().max(40_000_000) });
 const Bundle = z.object({
-  groups: z.array(z.string().trim().min(1).max(80)).max(1000), proxies: z.array(ExportedProxy).max(2000), profiles: z.array(ExportedProfile).max(2000)
+  groups: z.array(z.string().trim().min(1).max(80)).max(1000), proxies: z.array(ExportedProxy).max(2000), profiles: z.array(ExportedProfile).max(2000),
+  extensions: z.array(ExportedExtension).max(200).default([])
 });
 
 export function transferRoutes(app: FastifyInstance, deps: Deps){
   const r = app.withTypeProvider<ZodTypeProvider>();
-  const { db, clock } = deps;
+  const { db, clock, storage } = deps;
   const manager = async (req: Parameters<typeof requireSession>[0], workspaceId: string) => {
     const s = await requireSession(req, deps);
     const role = await requireRole(db, workspaceId, s.userId, ['owner', 'admin']);
@@ -51,6 +57,8 @@ export function transferRoutes(app: FastifyInstance, deps: Deps){
     const profileRows = await db.select({ p: profiles, saved: profileData.profileId }).from(profiles).leftJoin(profileData, eq(profileData.profileId, profiles.id))
       .where(and(eq(profiles.workspaceId, ws), isNull(profiles.deletedAt))).orderBy(asc(profiles.number));
     const groupName = new Map(groupRows.map(g => [g.id, g.name]));
+    const used = [...new Set(profileRows.flatMap(x => x.p.extensionIds))];
+    const extRows = used.length ? await db.select().from(extensions).where(inArray(extensions.id, used)) : [];
     const now = clock.now();
     await record(db, { workspaceId: ws, actor: s, at: now, action: 'workspace.export', detail: { profiles: profileRows.length, proxies: proxyRows.length } });
     return {
@@ -63,8 +71,11 @@ export function transferRoutes(app: FastifyInstance, deps: Deps){
         ref: p.id, name: p.name, group: p.groupId ? groupName.get(p.groupId) ?? null : null, tags: p.tags, kernel: p.kernel as 'chromium' | 'firefox',
         kernelVersion: p.kernelVersion, os: p.os as 'windows' | 'macos' | 'linux', fingerprint: p.fingerprint as z.infer<typeof newProfile>['fingerprint'],
         proxyRef: p.proxyId, timezoneOverride: p.timezoneOverride, localeOverride: p.localeOverride, notes: p.notes,
-        syncMode: p.syncMode as 'cloud' | 'local', saved: !!saved
-      }))
+        syncMode: p.syncMode as 'cloud' | 'local', extensionRefs: p.extensionIds, saved: !!saved
+      })),
+      extensions: await Promise.all(extRows.map(async e => ({
+        ref: e.id, kernel: e.kernel as 'chromium' | 'firefox', extId: e.extId, publicKey: e.publicKey, package: (await storage.get(e.objectKey)).toString('base64')
+      })))
     };
   });
 
@@ -75,7 +86,7 @@ export function transferRoutes(app: FastifyInstance, deps: Deps){
     bodyLimit: BULK_BODY,
     schema: {
       params, body: Bundle,
-      response: { 200: z.object({ profiles: z.array(z.object({ ref, id: z.string() })), added: z.object({ profiles: z.number(), proxies: z.number(), groups: z.number() }) }) }
+      response: { 200: z.object({ profiles: z.array(z.object({ ref, id: z.string() })), added: z.object({ profiles: z.number(), proxies: z.number(), groups: z.number(), extensions: z.number() }) }) }
     }
   }, async req => {
     const { s, role } = await manager(req, req.params.id);
@@ -97,11 +108,33 @@ export function transferRoutes(app: FastifyInstance, deps: Deps){
       if (backup && backup !== saved[i].id) await db.update(proxies).set({ backupId: backup }).where(eq(proxies.id, saved[i].id));
     }
 
-    const created = bundle.profiles.length ? await createProfiles(deps, ws, s, role, bundle.profiles.map(({ ref: _ref, group, proxyRef, saved: _saved, ...p }) => ({
-      ...p, groupId: group ? groupId.get(group) ?? null : null, proxyId: proxyRef ? proxyId.get(proxyRef) ?? null : null
+    // Extensions keep their identity: one already in this library is reused, the rest join it.
+    const extensionId = new Map<string, string>();
+    let addedExtensions = 0;
+    for (const x of bundle.extensions){
+      const [have] = await db.select({ id: extensions.id }).from(extensions).where(and(eq(extensions.workspaceId, ws), eq(extensions.kernel, x.kernel), eq(extensions.extId, x.extId)));
+      if (have){ extensionId.set(x.ref, have.id); continue; }
+      const zip = Buffer.from(x.package, 'base64');
+      const pkg = readPackage(zip);
+      if (x.kernel === 'chromium' ? !x.publicKey || chromiumId(Buffer.from(x.publicKey, 'base64')) !== x.extId : !!pkg.geckoId && pkg.geckoId !== x.extId){
+        throw new ApiError(400, 'extension_mismatch', 'An extension in this file does not match its identity');
+      }
+      const id = randomUUID(), hash = sha256(pkg.zip), objectKey = `extensions/${id}/${hash}`;
+      await storage.put(objectKey, pkg.zip);
+      await db.insert(extensions).values({
+        id, workspaceId: ws, name: pkg.name, kernel: x.kernel, version: pkg.version, extId: x.extId, publicKey: x.publicKey, sha256: hash, size: pkg.zip.length, objectKey,
+        signature: signPackage({ id, kernel: x.kernel, extId: x.extId, sha256: hash }), source: 'upload', createdBy: s.userId, createdAt: now, updatedAt: now
+      });
+      extensionId.set(x.ref, id);
+      addedExtensions++;
+    }
+
+    const created = bundle.profiles.length ? await createProfiles(deps, ws, s, role, bundle.profiles.map(({ ref: _ref, group, proxyRef, extensionRefs, saved: _saved, ...p }) => ({
+      ...p, groupId: group ? groupId.get(group) ?? null : null, proxyId: proxyRef ? proxyId.get(proxyRef) ?? null : null,
+      extensionIds: extensionRefs.flatMap(r => extensionId.get(r) ?? [])
     }))) : [];
-    await record(db, { workspaceId: ws, actor: s, at: now, action: 'workspace.import', detail: { profiles: created.length, proxies: added, groups: newGroups.length } });
-    publish(ws, { kind: 'proxies' }); publish(ws, { kind: 'groups' });
-    return { profiles: bundle.profiles.map((p, i) => ({ ref: p.ref, id: created[i].id })), added: { profiles: created.length, proxies: added, groups: newGroups.length } };
+    await record(db, { workspaceId: ws, actor: s, at: now, action: 'workspace.import', detail: { profiles: created.length, proxies: added, groups: newGroups.length, extensions: addedExtensions } });
+    publish(ws, { kind: 'proxies' }); publish(ws, { kind: 'groups' }); publish(ws, { kind: 'extensions' });
+    return { profiles: bundle.profiles.map((p, i) => ({ ref: p.ref, id: created[i].id })), added: { profiles: created.length, proxies: added, groups: newGroups.length, extensions: addedExtensions } };
   });
 }

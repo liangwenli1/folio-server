@@ -25,7 +25,8 @@ const Cookie = z.object({
   name: z.string().max(4096), value: z.string().max(16_384), domain: z.string().min(1).max(253), path: z.string().max(1024).default('/'),
   expires: z.number().default(-1), httpOnly: z.boolean().default(false), secure: z.boolean().default(false), sameSite: z.enum(['Strict', 'Lax', 'None']).default('Lax')
 });
-type State = { cookies: z.infer<typeof Cookie>[]; origins: { origin: string }[] };
+// `extensions` holds the data folders of the profile's extensions; the server passes it through untouched.
+type State = { cookies: z.infer<typeof Cookie>[]; origins: { origin: string }[]; extensions?: unknown };
 type Session = typeof sessions.$inferSelect;
 
 export function syncRoutes(app: FastifyInstance, deps: Deps){
@@ -48,8 +49,8 @@ export function syncRoutes(app: FastifyInstance, deps: Deps){
   }
   // Cookies come back in full shape whatever wrote them; entries that are not cookies are dropped.
   async function readState(objectKey: string): Promise<State> {
-    const raw = JSON.parse(gunzipSync(await storage.get(objectKey)).toString('utf8')) as { cookies?: unknown[]; origins?: State['origins'] };
-    return { cookies: (raw.cookies ?? []).flatMap(c => { const r = Cookie.safeParse(c); return r.success ? [r.data] : []; }), origins: raw.origins ?? [] };
+    const raw = JSON.parse(gunzipSync(await storage.get(objectKey)).toString('utf8')) as { cookies?: unknown[]; origins?: State['origins']; extensions?: unknown };
+    return { cookies: (raw.cookies ?? []).flatMap(c => { const r = Cookie.safeParse(c); return r.success ? [r.data] : []; }), origins: raw.origins ?? [], ...(raw.extensions ? { extensions: raw.extensions } : {}) };
   }
 
   // `via: 'api'`: opened by a script through the desktop app's local API, which the activity log says.
