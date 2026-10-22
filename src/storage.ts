@@ -12,7 +12,9 @@ export interface Storage {
 
 export async function createStorage(config: Config): Promise<Storage> {
   const { bucket, ...s3 } = config.s3;
-  const client = new S3Client({ endpoint: s3.endpoint, region: s3.region, forcePathStyle: s3.forcePathStyle, credentials: { accessKeyId: s3.accessKeyId, secretAccessKey: s3.secretAccessKey } });
+  // Checksums only where S3 requires them: the SDK's default CRC32 on every upload isn't accepted by R2 and some others.
+  const client = new S3Client({ endpoint: s3.endpoint, region: s3.region, forcePathStyle: s3.forcePathStyle, credentials: { accessKeyId: s3.accessKeyId, secretAccessKey: s3.secretAccessKey },
+    requestChecksumCalculation: 'WHEN_REQUIRED', responseChecksumValidation: 'WHEN_REQUIRED' });
   // Development creates its bucket; in production it must already exist.
   if (process.env.NODE_ENV !== 'production') await client.send(new HeadBucketCommand({ Bucket: bucket })).catch(() => client.send(new CreateBucketCommand({ Bucket: bucket })));
   return {

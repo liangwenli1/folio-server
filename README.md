@@ -29,7 +29,7 @@ DEV_TOOLS=1 MOCK_PAYMENTS=1 npm run dev     # http://localhost:47110, applies mi
 | `SMTP_URL` | `smtp://folio-mailpit:1025` | Outgoing mail, any SMTP provider (e.g. `smtps://user:pass@smtp.example.com:465`). Required in production |
 | `MAIL_FROM` | `Folio <no-reply@folio.test>` | Sender address; its domain needs SPF and DKIM set up with the provider. Required in production |
 | `SECRET_KEY` | development key | 32 bytes, base64, for encrypting proxy passwords. Required in production |
-| `TRUST_PROXY` | off | Address or CIDR of the reverse proxy allowed to set `X-Forwarded-For`. Leave unset when clients connect directly, or the header can be forged |
+| `TRUST_PROXY` | off | Addresses or CIDRs (comma-separated, or `uniquelocal` for private networks) of the reverse proxy allowed to set `X-Forwarded-For`. Leave unset when clients connect directly, or the header can be forged |
 | `GEOIP_DB` | unset | Path to the DB-IP City Lite `.mmdb` file (https://db-ip.com/db/download/ip-to-city-lite, CC BY 4.0; show "IP Geolocation by DB-IP" wherever locations appear). Without it, exit locations are unknown |
 | `DEV_PRIVATE_GEO` | unset | Dev only: `seattle`, `london`, `tokyo` or `frankfurt`, used as the location of private and loopback addresses so proxy checks work on a local network |
 
@@ -61,6 +61,26 @@ docker run -d --name folio-minio --network folio-dev -e MINIO_ROOT_USER=folio -e
 | `npm run typecheck` | TypeScript check |
 | `npm run db:generate` | New migration from `src/db/schema.ts` |
 | `npm run openapi` | Regenerates `openapi.json` |
+
+## Deploy
+
+Production is three containers on one server (`deploy/docker-compose.yml`): PostgreSQL 16, this API, and the site (folio-site's image: nginx with the static site, passing `/api/` on to the API, so the site and API share one origin). Cloudflare serves the domain over HTTPS and connects to the site container's port; object storage is Cloudflare R2. Paid plans show as coming soon until there is a real payment gateway (`MOCK_PAYMENTS` stays empty).
+
+The images are `ghcr.io/<owner>/folio-server` and `ghcr.io/<owner>/folio-site`, built by GitHub Actions. The server image includes the DB-IP City Lite database at `geoip/dbip-city-lite.mmdb`, which the workflow downloads before building; for a build of your own, put the file there (it is ignored by git).
+
+On the server:
+
+1. Install Docker with the compose plugin, and log in to GHCR once with a GitHub token that can read packages: `docker login ghcr.io -u <github-name>`.
+2. In Cloudflare R2, create a bucket and an API token with Object Read & Write on it.
+3. Copy `deploy/` to the server, `cp .env.example .env`, and fill it in. Keep `SECRET_KEY` safe and never change it: proxy passwords and saved sign-ins can't be read without it.
+4. `docker compose up -d`. Migrations run when the API starts; `docker compose logs -f server` shows mail or storage errors.
+5. In Cloudflare: a proxied DNS record for the domain pointing at the server; SSL/TLS mode Flexible (Cloudflare reaches the server over plain HTTP); and either `FOLIO_PORT=80`, or an Origin Rule that overrides the destination port to `FOLIO_PORT` (Origin Rules are on the Free plan). The server's firewall can let only Cloudflare's ranges reach that port.
+
+Upgrading: `docker compose pull && docker compose up -d` (`FOLIO_VERSION` picks the tag: `latest`, a version such as `v0.1.0`, or `main`).
+
+Backups: `docker compose exec -T postgres pg_dump -U folio folio | gzip > folio-$(date +%F).sql.gz`, run daily from cron and copied off the server; restore into an empty database with `gunzip -c <file> | docker compose exec -T postgres psql -U folio folio`. R2 keeps the saved sign-ins and extension packages.
+
+Cloudflare's Free plan accepts requests up to 100 MB; sign-in packages are capped at 50 MB, and live updates send a heartbeat every 25 seconds so the connection stays open.
 
 ## Profiles and proxies
 

@@ -1950,6 +1950,9 @@
                     "maxProfiles": {
                       "type": "number"
                     },
+                    "payments": {
+                      "type": "boolean"
+                    },
                     "plans": {
                       "type": "array",
                       "items": {
@@ -2035,6 +2038,7 @@
                     "trialDays",
                     "refundDays",
                     "maxProfiles",
+                    "payments",
                     "plans",
                     "addon"
                   ],

@@ -12,6 +12,19 @@ describe('plans', () => {
   it('lists prices publicly', async () => {
     const res = await t.app.inject({ url: '/plans' });
     expect(res.json().plans.map((p: { id: string; price: { monthly: number } }) => [p.id, p.price.monthly])).toEqual([['free', 0], ['studio', 2900], ['company', 9900]]);
+    expect(res.json().payments).toBe(true);
+  });
+
+  it('says when payments are off: paid changes are refused, the trial still starts', async () => {
+    t.config.mockPayments = false;
+    try {
+      expect((await t.app.inject({ url: '/plans' })).json().payments).toBe(false);
+      const { headers, workspaceId } = await signup(t.app);
+      const paid = await t.app.inject({ method: 'POST', url: `/workspaces/${workspaceId}/billing/checkout`, headers, payload: { plan: 'studio', period: 'monthly', addonPacks: 0 } });
+      expect(paid.json().error.code).toBe('payments_unavailable');
+      const trial = await t.app.inject({ method: 'POST', url: `/workspaces/${workspaceId}/billing/trial`, headers });
+      expect(trial.json().subscription).toMatchObject({ plan: 'studio', status: 'trialing' });
+    } finally { t.config.mockPayments = true; }
   });
 });
 

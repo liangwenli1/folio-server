@@ -31,13 +31,15 @@ export function billingRoutes(app: FastifyInstance, deps: Deps){
       response: {
         200: z.object({
           currency: z.literal('usd'), trialDays: z.number(), refundDays: z.number(), maxProfiles: z.number(),
+          // Whether paid plans can be bought right now; trials and changes that cost nothing work either way.
+          payments: z.boolean(),
           plans: z.array(z.object({ id: z.enum(['free', 'studio', 'company']), profiles: z.number(), members: z.number().nullable(), logDays: z.number(), price: z.object({ monthly: z.number(), yearly: z.number() }) })),
           addon: z.object({ profiles: z.number(), price: z.object({ monthly: z.number(), yearly: z.number() }) })
         })
       }
     }
   }, async () => ({
-    currency: 'usd' as const, trialDays: TRIAL_DAYS, refundDays: REFUND_DAYS, maxProfiles: MAX_PROFILES,
+    currency: 'usd' as const, trialDays: TRIAL_DAYS, refundDays: REFUND_DAYS, maxProfiles: MAX_PROFILES, payments: config.mockPayments,
     plans: (Object.keys(PLANS) as (keyof typeof PLANS)[]).map(id => ({ id, profiles: PLANS[id].profiles, members: PLANS[id].members, logDays: PLANS[id].logDays, price: { ...PLANS[id].price } })),
     addon: { profiles: ADDON.profiles, price: { ...ADDON.price } }
   }));
