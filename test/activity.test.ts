@@ -51,6 +51,10 @@ describe('the activity log', () => {
     const { entries } = await log(o.headers, o.workspaceId, `?profileId=${p.id}&kind=open`);
     expect(entries.map(e => [e.action, e.deviceName])).toEqual([['profile.takeover', null], ['profile.open', 'Laptop B'], ['profile.close', 'Laptop A'], ['profile.open', 'Laptop A']]);
     expect(entries[0].detail).toEqual({ from: o.email, device: 'Laptop B' });
+    // Opened by a script through the local API.
+    await call('DELETE', `/profiles/${p.id}/lock`, b);
+    await call('POST', `/profiles/${p.id}/lock`, a, { via: 'api' });
+    expect((await log(o.headers, o.workspaceId, `?profileId=${p.id}&kind=open`)).entries[0]).toMatchObject({ action: 'profile.open', detail: { via: 'api' } });
   });
 
   it('shows members what concerns their own profiles and their own actions', async () => {

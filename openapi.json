@@ -7860,6 +7860,25 @@
     },
     "/profiles/{id}/lock": {
       "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "nullable": true,
+                "type": "object",
+                "properties": {
+                  "via": {
+                    "type": "string",
+                    "enum": [
+                      "api"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
         "parameters": [
           {
             "schema": {

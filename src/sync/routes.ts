@@ -52,7 +52,8 @@ export function syncRoutes(app: FastifyInstance, deps: Deps){
     return { cookies: (raw.cookies ?? []).flatMap(c => { const r = Cookie.safeParse(c); return r.success ? [r.data] : []; }), origins: raw.origins ?? [] };
   }
 
-  r.post('/profiles/:id/lock', { schema: { params, response: { 200: z.object({ expiresAt: z.string(), data: SavedData.nullable() }) } } }, async req => {
+  // `via: 'api'`: opened by a script through the desktop app's local API, which the activity log says.
+  r.post('/profiles/:id/lock', { schema: { params, body: z.object({ via: z.enum(['api']).optional() }).nullish(), response: { 200: z.object({ expiresAt: z.string(), data: SavedData.nullable() }) } } }, async req => {
     const { p, s } = await profileFor(deps, req, req.params.id);
     if (p.deletedAt) throw new ApiError(409, 'in_trash', 'Restore this profile from the trash before opening it');
     const now = clock.now(), expiresAt = new Date(now.getTime() + LOCK_MS);
@@ -65,7 +66,9 @@ export function syncRoutes(app: FastifyInstance, deps: Deps){
     if (!l) throw new ApiError(409, 'locked', 'This profile is open on another computer');
     await db.update(profiles).set({ lastOpenedAt: now, lastOpenedBy: s.userId }).where(eq(profiles.id, p.id));
     // Taking the lock again from the same open browser is not a new opening.
-    if (!(before && before.sessionId === s.id && before.expiresAt > now)) await record(db, { workspaceId: p.workspaceId, actor: s, at: now, action: 'profile.open', profiles: [p] });
+    if (!(before && before.sessionId === s.id && before.expiresAt > now)){
+      await record(db, { workspaceId: p.workspaceId, actor: s, at: now, action: 'profile.open', profiles: [p], ...(req.body?.via ? { detail: { via: req.body.via } } : {}) });
+    }
     changed(p);
     const [d] = await db.select().from(profileData).where(eq(profileData.profileId, p.id));
     return { expiresAt: expiresAt.toISOString(), data: d ? savedDataView(d) : null };
