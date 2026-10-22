@@ -2,16 +2,16 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { and, asc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
-import { departments, groups, profileData, profiles, proxies, users } from '../db/schema.js';
+import { departments, extensions, groups, profileData, profiles, proxies, users } from '../db/schema.js';
 import { record } from '../activity/service.js';
 import { ApiError, forbidden, notFound } from '../errors.js';
 import { publish } from '../events.js';
 import { requireSession, type Deps } from '../http.js';
 import { open } from '../crypto.js';
-import { Fingerprint, Group, Profile, ProxySecret, kernel, os, profileView } from '../views.js';
+import { Extension, Fingerprint, Group, Profile, ProxySecret, extensionView, kernel, os, profileView } from '../views.js';
 import { requireRole, type Role } from '../workspaces/service.js';
 import { requireCompany } from '../team/service.js';
-import { access, assertOwned, checkAssignment, checkFingerprint, createProfiles, loadProfiles, profileFor, reserve } from './service.js';
+import { access, assertOwned, checkAssignment, checkExtensions, checkFingerprint, createProfiles, loadProfiles, profileFor, reserve } from './service.js';
 
 const wsParams = z.object({ id: z.uuid() });
 const name = z.string().trim().min(1).max(80);
@@ -26,7 +26,7 @@ export const newProfile = z.object({
   ownerId: z.uuid().nullable().optional(), departmentId: z.uuid().nullable().optional(),
   kernel, kernelVersion: version, os, fingerprint: Fingerprint, proxyId: z.uuid().nullable().optional(),
   timezoneOverride: tz.nullable().optional(), localeOverride: locale.nullable().optional(), notes: z.string().max(2000).nullable().optional(),
-  syncMode: z.enum(['cloud', 'local']).optional()
+  syncMode: z.enum(['cloud', 'local']).optional(), extensionIds: z.array(z.uuid()).max(50).optional()
 });
 // Firefox fingerprints run to tens of kilobytes each.
 export const BULK_BODY = 64 * 1024 * 1024;
@@ -122,7 +122,7 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
         ownerId: z.uuid().nullable().optional(), departmentId: z.uuid().nullable().optional(),
         proxyId: z.uuid().nullable().optional(), kernelVersion: version.optional(), os: os.optional(), fingerprint: Fingerprint.optional(),
         timezoneOverride: tz.nullable().optional(), localeOverride: locale.nullable().optional(), notes: z.string().max(2000).nullable().optional(),
-        syncMode: z.enum(['cloud', 'local']).optional()
+        syncMode: z.enum(['cloud', 'local']).optional(), extensionIds: z.array(z.uuid()).max(50).optional()
       }),
       response: { 200: Profile }
     }
@@ -132,6 +132,7 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
     checkFingerprint({ kernel: p.kernel, fingerprint: patch.fingerprint });
     await checkAssignment(db, p.workspaceId, role, [patch]);
     await assertOwned(db, p.workspaceId, { groupIds: [patch.groupId], proxyIds: [patch.proxyId] });
+    await checkExtensions(db, p.workspaceId, [{ kernel: p.kernel, extensionIds: patch.extensionIds }]);
     const [u] = await db.update(profiles).set({ ...patch, version: sql`${profiles.version} + 1`, updatedAt: clock.now() })
       .where(and(eq(profiles.id, p.id), eq(profiles.version, v))).returning();
     if (!u) throw new ApiError(409, 'stale', 'Someone changed this profile in the meantime. Reload it and try again.');
@@ -152,17 +153,17 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
       params: wsParams,
       body: z.object({
         ids: z.array(z.uuid()).min(1).max(2000),
-        action: z.enum(['move', 'tag', 'untag', 'set-proxy', 'assign', 'set-department', 'trash', 'restore', 'purge']),
+        action: z.enum(['move', 'tag', 'untag', 'set-proxy', 'assign', 'set-department', 'add-extension', 'remove-extension', 'trash', 'restore', 'purge']),
         groupId: z.uuid().nullable().optional(), tag: tag.optional(), proxyId: z.uuid().nullable().optional(),
-        ownerId: z.uuid().nullable().optional(), departmentId: z.uuid().nullable().optional()
+        ownerId: z.uuid().nullable().optional(), departmentId: z.uuid().nullable().optional(), extensionId: z.uuid().optional()
       }),
       response: { 200: z.object({ updated: z.number() }) }
     }
   }, async req => {
     const { s, role, scope } = await member(req, req.params.id);
     const { ids, action } = req.body;
-    // Members change their own profiles' group, tags and proxy; the rest is for owners and admins.
-    if (role === 'member' && !['move', 'tag', 'untag', 'set-proxy'].includes(action)) throw forbidden();
+    // Members change their own profiles' group, tags, proxy and extensions; the rest is for owners and admins.
+    if (role === 'member' && !['move', 'tag', 'untag', 'set-proxy', 'add-extension', 'remove-extension'].includes(action)) throw forbidden();
     const now = clock.now();
     const mine = and(eq(profiles.workspaceId, req.params.id), inArray(profiles.id, ids), scope);
     const bump = { version: sql`${profiles.version} + 1`, updatedAt: now };
@@ -195,6 +196,17 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
         updated = await db.update(profiles).set({ ...bump, tags }).where(and(mine, isNull(profiles.deletedAt))).returning(ref);
         break;
       }
+      // Only profiles of the extension's engine take it; the others are left as they are.
+      case 'add-extension': case 'remove-extension': {
+        const [ext] = req.body.extensionId ? await db.select().from(extensions).where(and(eq(extensions.id, req.body.extensionId), eq(extensions.workspaceId, req.params.id))) : [];
+        if (!ext) throw new ApiError(400, 'bad_reference', 'Unknown extension');
+        updated = action === 'add-extension'
+          ? await db.update(profiles).set({ ...bump, extensionIds: sql`array_append(${profiles.extensionIds}, ${ext.id}::uuid)` })
+            .where(and(mine, isNull(profiles.deletedAt), eq(profiles.kernel, ext.kernel), sql`not (${ext.id}::uuid = any(${profiles.extensionIds}))`)).returning(ref)
+          : await db.update(profiles).set({ ...bump, extensionIds: sql`array_remove(${profiles.extensionIds}, ${ext.id}::uuid)` })
+            .where(and(mine, sql`${ext.id}::uuid = any(${profiles.extensionIds})`)).returning(ref);
+        break;
+      }
       case 'trash':
         updated = await db.update(profiles).set({ ...bump, deletedAt: now }).where(and(mine, isNull(profiles.deletedAt))).returning(ref);
         break;
@@ -222,7 +234,8 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
       : action === 'set-proxy' ? { proxy: await name(proxies, req.body.proxyId) }
       : action === 'set-department' ? { department: await name(departments, req.body.departmentId) }
       : action === 'assign' ? { to: req.body.ownerId ? (await db.select({ e: users.email }).from(users).where(eq(users.id, req.body.ownerId)))[0]?.e ?? null : null }
-      : action === 'tag' || action === 'untag' ? { tag: req.body.tag } : {};
+      : action === 'tag' || action === 'untag' ? { tag: req.body.tag }
+      : action === 'add-extension' || action === 'remove-extension' ? { extension: (await db.select({ n: extensions.name }).from(extensions).where(eq(extensions.id, req.body.extensionId!)))[0]?.n ?? null } : {};
     if (action !== 'purge') await record(db, { workspaceId: req.params.id, actor: s, at: now, action: `profile.${action}`, profiles: updated, detail });
     publish(req.params.id, { kind: 'profiles', ids: updated.map(u => u.id) });
     if (action === 'move') publish(req.params.id, { kind: 'groups' });
@@ -232,7 +245,7 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
   // Everything the desktop app needs to launch a profile, including proxy passwords.
   // The desktop refuses to pass this route through to its renderer.
   r.get('/profiles/:id/launch', {
-    schema: { params: wsParams, response: { 200: z.object({ profile: Profile, proxy: ProxySecret.nullable(), backup: ProxySecret.nullable() }) } }
+    schema: { params: wsParams, response: { 200: z.object({ profile: Profile, proxy: ProxySecret.nullable(), backup: ProxySecret.nullable(), extensions: z.array(Extension) }) } }
   }, async req => {
     const { p, s } = await profileFor(deps, req, req.params.id);
     if (p.deletedAt) throw new ApiError(409, 'in_trash', 'Restore this profile from the trash before opening it');
@@ -241,6 +254,8 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
       : null;
     const [proxy] = p.proxyId ? await db.select().from(proxies).where(eq(proxies.id, p.proxyId)) : [];
     const [backup] = proxy?.backupId ? await db.select().from(proxies).where(eq(proxies.id, proxy.backupId)) : [];
-    return { profile: (await loadProfiles(db, eq(profiles.id, p.id), s.id, clock.now()))[0], proxy: secret(proxy), backup: secret(backup) };
+    // The extensions it opens with, to fetch and check against their signatures.
+    const exts = p.extensionIds.length ? await db.select().from(extensions).where(inArray(extensions.id, p.extensionIds)) : [];
+    return { profile: (await loadProfiles(db, eq(profiles.id, p.id), s.id, clock.now()))[0], proxy: secret(proxy), backup: secret(backup), extensions: exts.map(e => extensionView(e, 0)) };
   });
 }

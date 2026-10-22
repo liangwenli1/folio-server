@@ -1,6 +1,6 @@
 // Response shapes. These zod schemas also produce the OpenAPI document the site and desktop generate types from.
 import { z } from 'zod';
-import type { flows, profileData, profileLocks, profiles, proxies, users } from './db/schema.js';
+import type { extensions, flows, profileData, profileLocks, profiles, proxies, users } from './db/schema.js';
 import { entitlements } from './plans.js';
 import { Step } from './flows/steps.js';
 import { toState, type PaymentRow, type SubRow } from './billing/service.js';
@@ -95,7 +95,7 @@ export const Profile = z.object({
   ownerId: z.string().nullable(), departmentId: z.string().nullable(), tags: z.array(z.string()), kernel, kernelVersion: z.string(), os, fingerprint: Fingerprint, proxyId: z.string().nullable(),
   timezoneOverride: z.string().nullable(), localeOverride: z.string().nullable(), notes: z.string().nullable(),
   lastOpenedAt: iso, lastOpenedBy: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(), deletedAt: iso, version: z.number(),
-  syncMode: z.enum(['cloud', 'local']), data: SavedData.nullable(), lock: LockHolder.nullable()
+  syncMode: z.enum(['cloud', 'local']), extensionIds: z.array(z.string()), data: SavedData.nullable(), lock: LockHolder.nullable()
 });
 type LockRow = typeof profileLocks.$inferSelect & { email: string };
 export function profileView(p: typeof profiles.$inferSelect, state: { data: typeof profileData.$inferSelect | null; lock: LockRow | null; sessionId: string } | null = null): z.infer<typeof Profile> {
@@ -107,7 +107,7 @@ export function profileView(p: typeof profiles.$inferSelect, state: { data: type
     timezoneOverride: p.timezoneOverride, localeOverride: p.localeOverride, notes: p.notes,
     lastOpenedAt: p.lastOpenedAt?.toISOString() ?? null, lastOpenedBy: p.lastOpenedBy,
     createdAt: p.createdAt.toISOString(), updatedAt: p.updatedAt.toISOString(), deletedAt: p.deletedAt?.toISOString() ?? null, version: p.version,
-    syncMode: p.syncMode as 'cloud' | 'local', data: state?.data ? savedDataView(state.data) : null,
+    syncMode: p.syncMode as 'cloud' | 'local', extensionIds: p.extensionIds, data: state?.data ? savedDataView(state.data) : null,
     lock: lock ? { email: lock.email, deviceName: lock.deviceName, since: lock.acquiredAt.toISOString(), self: lock.sessionId === state.sessionId } : null
   };
 }
@@ -193,4 +193,16 @@ export const Task = z.object({
   concurrency: z.number(), retries: z.number(), timeoutMin: z.number(), hasVariables: z.boolean(),
   schedule: Schedule.nullable(), runner: z.object({ email: z.string().nullable(), deviceName: z.string().nullable(), self: z.boolean() }).nullable(),
   createdBy: z.string().nullable(), canEdit: z.boolean(), version: z.number(), createdAt: z.string(), updatedAt: z.string(), lastRun: Run.nullable()
+});
+
+// ---------- extensions (P5) ----------
+// `publicKey` (Chromium) goes into the unpacked manifest so the extension id is the same everywhere; `signature` is
+// checked by the desktop app before installing; `profiles` counts the profiles it is installed in.
+export const Extension = z.object({
+  id: z.string(), name: z.string(), kernel, version: z.string(), extId: z.string(), publicKey: z.string().nullable(), sha256: z.string(), size: z.number(),
+  signature: z.string(), source: z.enum(['upload', 'store']), storeId: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(), profiles: z.number()
+});
+export const extensionView = (e: typeof extensions.$inferSelect, profiles: number): z.infer<typeof Extension> => ({
+  id: e.id, name: e.name, kernel: e.kernel as 'chromium' | 'firefox', version: e.version, extId: e.extId, publicKey: e.publicKey, sha256: e.sha256, size: e.size,
+  signature: e.signature, source: e.source as 'upload' | 'store', storeId: e.storeId, createdAt: e.createdAt.toISOString(), updatedAt: e.updatedAt.toISOString(), profiles
 });

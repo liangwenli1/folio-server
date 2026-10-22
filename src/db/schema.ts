@@ -159,6 +159,8 @@ export const profiles = pgTable('profiles', {
   notes: text(),
   // 'cloud': sign-in state is saved to Folio and follows the profile; 'local': it stays on the computer that uses it.
   syncMode: text().notNull().default('cloud'),
+  // Extensions from the workspace's library installed in this profile.
+  extensionIds: uuid().array().notNull().default([]),
   lastOpenedAt: ts(),
   lastOpenedBy: uuid().references(() => users.id, { onDelete: 'set null' }),
   createdBy: uuid().references(() => users.id, { onDelete: 'set null' }),
@@ -222,6 +224,29 @@ export const departmentMembers = pgTable('department_members', {
   departmentId: uuid().notNull().references(() => departments.id, { onDelete: 'cascade' }),
   userId: uuid().notNull().references(() => users.id, { onDelete: 'cascade' })
 }, t => [primaryKey({ columns: [t.departmentId, t.userId] }), index().on(t.userId)]);
+
+// A browser extension in the workspace's library. Its package (the zip, without a crx header) is sealed in object
+// storage; `signature` is the server's Ed25519 signature over its identity and sha256, which the desktop app checks
+// before installing it. Chromium extensions get a key of the library's own (`publicKey`), so their id (`extId`) is the
+// same on every computer and their data can follow the profile; Firefox ones keep their add-on id.
+export const extensions = pgTable('extensions', {
+  id: uuid().primaryKey().defaultRandom(),
+  workspaceId: uuid().notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  name: text().notNull(),
+  kernel: text().notNull(),
+  version: text().notNull(),
+  extId: text().notNull(),
+  publicKey: text(),
+  sha256: text().notNull(),
+  size: integer().notNull(),
+  objectKey: text().notNull(),
+  signature: text().notNull(),
+  source: text().notNull(),
+  storeId: text(),
+  createdBy: uuid().references(() => users.id, { onDelete: 'set null' }),
+  createdAt: createdAt(),
+  updatedAt: ts().notNull().defaultNow()
+}, t => [index().on(t.workspaceId), uniqueIndex().on(t.workspaceId, t.kernel, t.extId)]);
 
 // An automation flow: a list of steps (see flows/steps.ts), shared by the workspace. Anyone may create one; its
 // creator, admins and the owner may change it.

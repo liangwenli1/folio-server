@@ -12,17 +12,19 @@ export const ACTIONS = [
   'proxy.create', 'proxy.import', 'proxy.update', 'proxy.delete', 'group.create', 'group.rename', 'group.delete',
   'member.invite', 'member.join', 'member.role', 'member.remove', 'member.leave', 'invitation.withdraw',
   'department.create', 'department.update', 'department.delete', 'cookies.export', 'cookies.import', 'workspace.export', 'workspace.import',
-  'flow.create', 'flow.update', 'flow.delete', 'task.create', 'task.update', 'task.delete', 'run.start', 'run.finish'
+  'flow.create', 'flow.update', 'flow.delete', 'task.create', 'task.update', 'task.delete', 'run.start', 'run.finish',
+  'extension.add', 'extension.update', 'extension.delete', 'profile.add-extension', 'profile.remove-extension'
 ] as const;
 export type Action = typeof ACTIONS[number];
 // Filters in the log page.
 export const KINDS = {
   open: ['profile.open', 'profile.close', 'profile.takeover'],
-  profiles: ['profile.create', 'profile.update', 'profile.move', 'profile.tag', 'profile.untag', 'profile.set-proxy', 'profile.assign', 'profile.set-department'],
+  profiles: ['profile.create', 'profile.update', 'profile.move', 'profile.tag', 'profile.untag', 'profile.set-proxy', 'profile.assign', 'profile.set-department', 'profile.add-extension', 'profile.remove-extension'],
   trash: ['profile.trash', 'profile.restore', 'profile.purge'],
   proxies: ['proxy.create', 'proxy.import', 'proxy.update', 'proxy.delete', 'group.create', 'group.rename', 'group.delete'],
   cookies: ['cookies.export', 'cookies.import', 'workspace.export', 'workspace.import'],
   team: ['member.invite', 'member.join', 'member.role', 'member.remove', 'member.leave', 'invitation.withdraw', 'department.create', 'department.update', 'department.delete'],
+  extensions: ['extension.add', 'extension.update', 'extension.delete'],
   automation: ['flow.create', 'flow.update', 'flow.delete', 'task.create', 'task.update', 'task.delete', 'run.start', 'run.finish']
 } satisfies Record<string, Action[]>;
 

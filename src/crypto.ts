@@ -1,5 +1,6 @@
 // AES-256-GCM for data at rest (proxy passwords, saved sign-in state). Sealed form: iv | tag | ciphertext.
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
+// Ed25519 signatures for extension packages, with a key derived from the same secret.
+import { createCipheriv, createDecipheriv, createHash, createPrivateKey, createPublicKey, hkdfSync, randomBytes, sign } from 'node:crypto';
 import { config } from './config.js';
 
 // Outside production a fixed development key is used when SECRET_KEY is unset (config.ts refuses that in production).
@@ -22,3 +23,12 @@ export function openBytes(sealed: Buffer){
 // Strings (proxy passwords) are stored as base64 text.
 export const seal = (plain: string) => sealBytes(Buffer.from(plain, 'utf8')).toString('base64');
 export const open = (sealed: string) => openBytes(Buffer.from(sealed, 'base64')).toString('utf8');
+
+// The signing key is derived from SECRET_KEY, so there is no second secret to keep. The desktop app checks
+// extension packages against the public half before installing them.
+const signer = createPrivateKey({
+  key: Buffer.concat([Buffer.from('302e020100300506032b657004220420', 'hex'), Buffer.from(hkdfSync('sha256', key, 'folio', 'extension signing', 32))]),
+  format: 'der', type: 'pkcs8'
+});
+export const signingPublicKey = createPublicKey(signer).export({ type: 'spki', format: 'der' }).toString('base64');
+export const signText = (text: string) => sign(null, Buffer.from(text, 'utf8'), signer).toString('base64');

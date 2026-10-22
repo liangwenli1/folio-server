@@ -4797,6 +4797,12 @@
                               "local"
                             ]
                           },
+                          "extensionIds": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
                           "data": {
                             "nullable": true,
                             "type": "object",
@@ -4886,6 +4892,7 @@
                           "deletedAt",
                           "version",
                           "syncMode",
+                          "extensionIds",
                           "data",
                           "lock"
                         ],
@@ -5041,6 +5048,15 @@
                       "cloud",
                       "local"
                     ]
+                  },
+                  "extensionIds": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    }
                   }
                 },
                 "required": [
@@ -5217,6 +5233,12 @@
                         "local"
                       ]
                     },
+                    "extensionIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
                     "data": {
                       "nullable": true,
                       "type": "object",
@@ -5306,6 +5328,7 @@
                     "deletedAt",
                     "version",
                     "syncMode",
+                    "extensionIds",
                     "data",
                     "lock"
                   ],
@@ -5463,6 +5486,15 @@
                             "cloud",
                             "local"
                           ]
+                        },
+                        "extensionIds": {
+                          "maxItems": 50,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
                         }
                       },
                       "required": [
@@ -5650,6 +5682,12 @@
                               "local"
                             ]
                           },
+                          "extensionIds": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
                           "data": {
                             "nullable": true,
                             "type": "object",
@@ -5739,6 +5777,7 @@
                           "deletedAt",
                           "version",
                           "syncMode",
+                          "extensionIds",
                           "data",
                           "lock"
                         ],
@@ -5893,6 +5932,15 @@
                       "cloud",
                       "local"
                     ]
+                  },
+                  "extensionIds": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    }
                   }
                 },
                 "required": [
@@ -6065,6 +6113,12 @@
                         "local"
                       ]
                     },
+                    "extensionIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
                     "data": {
                       "nullable": true,
                       "type": "object",
@@ -6154,6 +6208,7 @@
                     "deletedAt",
                     "version",
                     "syncMode",
+                    "extensionIds",
                     "data",
                     "lock"
                   ],
@@ -6193,6 +6248,8 @@
                       "set-proxy",
                       "assign",
                       "set-department",
+                      "add-extension",
+                      "remove-extension",
                       "trash",
                       "restore",
                       "purge"
@@ -6223,6 +6280,11 @@
                   },
                   "departmentId": {
                     "nullable": true,
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "extensionId": {
                     "type": "string",
                     "format": "uuid",
                     "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
@@ -6439,6 +6501,12 @@
                             "local"
                           ]
                         },
+                        "extensionIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
                         "data": {
                           "nullable": true,
                           "type": "object",
@@ -6528,6 +6596,7 @@
                         "deletedAt",
                         "version",
                         "syncMode",
+                        "extensionIds",
                         "data",
                         "lock"
                       ],
@@ -6612,12 +6681,90 @@
                         "password"
                       ],
                       "additionalProperties": false
+                    },
+                    "extensions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "kernel": {
+                            "type": "string",
+                            "enum": [
+                              "chromium",
+                              "firefox"
+                            ]
+                          },
+                          "version": {
+                            "type": "string"
+                          },
+                          "extId": {
+                            "type": "string"
+                          },
+                          "publicKey": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "sha256": {
+                            "type": "string"
+                          },
+                          "size": {
+                            "type": "number"
+                          },
+                          "signature": {
+                            "type": "string"
+                          },
+                          "source": {
+                            "type": "string",
+                            "enum": [
+                              "upload",
+                              "store"
+                            ]
+                          },
+                          "storeId": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          },
+                          "profiles": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "kernel",
+                          "version",
+                          "extId",
+                          "publicKey",
+                          "sha256",
+                          "size",
+                          "signature",
+                          "source",
+                          "storeId",
+                          "createdAt",
+                          "updatedAt",
+                          "profiles"
+                        ],
+                        "additionalProperties": false
+                      }
                     }
                   },
                   "required": [
                     "profile",
                     "proxy",
-                    "backup"
+                    "backup",
+                    "extensions"
                   ],
                   "additionalProperties": false
                 }
@@ -9323,6 +9470,7 @@
                 "proxies",
                 "cookies",
                 "team",
+                "extensions",
                 "automation"
               ]
             },
@@ -9433,7 +9581,12 @@
                               "task.update",
                               "task.delete",
                               "run.start",
-                              "run.finish"
+                              "run.finish",
+                              "extension.add",
+                              "extension.update",
+                              "extension.delete",
+                              "profile.add-extension",
+                              "profile.remove-extension"
                             ]
                           },
                           "profile": {
@@ -9524,6 +9677,7 @@
                 "proxies",
                 "cookies",
                 "team",
+                "extensions",
                 "automation"
               ]
             },
@@ -9758,6 +9912,15 @@
                               "cloud",
                               "local"
                             ]
+                          },
+                          "extensionIds": {
+                            "maxItems": 50,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            }
                           },
                           "ref": {
                             "type": "string",
@@ -10009,6 +10172,15 @@
                             "cloud",
                             "local"
                           ]
+                        },
+                        "extensionIds": {
+                          "maxItems": 50,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          }
                         },
                         "ref": {
                           "type": "string",
@@ -12496,6 +12668,445 @@
                   "required": [
                     "run",
                     "items"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{id}/extensions": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "extensions": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "kernel": {
+                            "type": "string",
+                            "enum": [
+                              "chromium",
+                              "firefox"
+                            ]
+                          },
+                          "version": {
+                            "type": "string"
+                          },
+                          "extId": {
+                            "type": "string"
+                          },
+                          "publicKey": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "sha256": {
+                            "type": "string"
+                          },
+                          "size": {
+                            "type": "number"
+                          },
+                          "signature": {
+                            "type": "string"
+                          },
+                          "source": {
+                            "type": "string",
+                            "enum": [
+                              "upload",
+                              "store"
+                            ]
+                          },
+                          "storeId": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          },
+                          "profiles": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "kernel",
+                          "version",
+                          "extId",
+                          "publicKey",
+                          "sha256",
+                          "size",
+                          "signature",
+                          "source",
+                          "storeId",
+                          "createdAt",
+                          "updatedAt",
+                          "profiles"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "extensions"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "default": "upload",
+              "type": "string",
+              "enum": [
+                "upload",
+                "store"
+              ]
+            },
+            "in": "query",
+            "name": "source",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "storeId",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "chromium",
+                "firefox"
+              ]
+            },
+            "in": "query",
+            "name": "kernel",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "kernel": {
+                      "type": "string",
+                      "enum": [
+                        "chromium",
+                        "firefox"
+                      ]
+                    },
+                    "version": {
+                      "type": "string"
+                    },
+                    "extId": {
+                      "type": "string"
+                    },
+                    "publicKey": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "sha256": {
+                      "type": "string"
+                    },
+                    "size": {
+                      "type": "number"
+                    },
+                    "signature": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "upload",
+                        "store"
+                      ]
+                    },
+                    "storeId": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    },
+                    "profiles": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "kernel",
+                    "version",
+                    "extId",
+                    "publicKey",
+                    "sha256",
+                    "size",
+                    "signature",
+                    "source",
+                    "storeId",
+                    "createdAt",
+                    "updatedAt",
+                    "profiles"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/extensions/{id}/package": {
+      "put": {
+        "parameters": [
+          {
+            "schema": {
+              "default": "upload",
+              "type": "string",
+              "enum": [
+                "upload",
+                "store"
+              ]
+            },
+            "in": "query",
+            "name": "source",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "storeId",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "kernel": {
+                      "type": "string",
+                      "enum": [
+                        "chromium",
+                        "firefox"
+                      ]
+                    },
+                    "version": {
+                      "type": "string"
+                    },
+                    "extId": {
+                      "type": "string"
+                    },
+                    "publicKey": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "sha256": {
+                      "type": "string"
+                    },
+                    "size": {
+                      "type": "number"
+                    },
+                    "signature": {
+                      "type": "string"
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "upload",
+                        "store"
+                      ]
+                    },
+                    "storeId": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    },
+                    "profiles": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "kernel",
+                    "version",
+                    "extId",
+                    "publicKey",
+                    "sha256",
+                    "size",
+                    "signature",
+                    "source",
+                    "storeId",
+                    "createdAt",
+                    "updatedAt",
+                    "profiles"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/extensions/{id}": {
+      "delete": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "nullable": true,
+                  "enum": [
+                    null
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/extensions/key": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "publicKey": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "publicKey"
                   ],
                   "additionalProperties": false
                 }

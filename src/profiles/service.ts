@@ -1,7 +1,7 @@
 import { and, asc, eq, gt, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
 import type { FastifyRequest } from 'fastify';
 import type { Db, Tx } from '../db/client.js';
-import { departmentMembers, departments, groups, memberships, profileData, profileLocks, profiles, proxies, users, workspaces } from '../db/schema.js';
+import { departmentMembers, departments, extensions, groups, memberships, profileData, profileLocks, profiles, proxies, users, workspaces } from '../db/schema.js';
 import { ApiError, forbidden, notFound } from '../errors.js';
 import { requireSession, type Deps } from '../http.js';
 import { profileView, type Fingerprint } from '../views.js';
@@ -94,6 +94,18 @@ export function checkFingerprint(p: { kernel?: string; fingerprint?: z.infer<typ
   if (p.fingerprint && JSON.stringify(p.fingerprint).length > MAX_FP_BYTES) throw new ApiError(400, 'fingerprint_size', 'The fingerprint is too large');
 }
 
+// Extensions must be in the workspace's library and made for the profile's engine.
+export async function checkExtensions(db: Db | Tx, workspaceId: string, items: { kernel: string; extensionIds?: string[] }[]){
+  const wanted = [...new Set(items.flatMap(i => i.extensionIds ?? []))];
+  if (!wanted.length) return;
+  const found = new Map((await db.select({ id: extensions.id, kernel: extensions.kernel }).from(extensions)
+    .where(and(eq(extensions.workspaceId, workspaceId), inArray(extensions.id, wanted)))).map(e => [e.id, e.kernel]));
+  for (const i of items) for (const id of i.extensionIds ?? []){
+    if (!found.has(id)) throw new ApiError(400, 'bad_reference', 'Unknown extension');
+    if (found.get(id) !== i.kernel) throw new ApiError(400, 'extension_kernel', 'This extension is made for the other engine');
+  }
+}
+
 // Assigning people and departments is for owners and admins; departments need the Company plan.
 export async function checkAssignment(db: Db, workspaceId: string, role: Role, items: { ownerId?: string | null; departmentId?: string | null }[]){
   if (role === 'member' && items.some(i => i.ownerId !== undefined || i.departmentId !== undefined)) throw forbidden();
@@ -105,6 +117,7 @@ export interface NewProfile {
   name: string; groupId?: string | null; tags: string[]; ownerId?: string | null; departmentId?: string | null;
   kernel: 'chromium' | 'firefox'; kernelVersion: string; os: 'windows' | 'macos' | 'linux'; fingerprint: z.infer<typeof Fingerprint>;
   proxyId?: string | null; timezoneOverride?: string | null; localeOverride?: string | null; notes?: string | null; syncMode?: 'cloud' | 'local';
+  extensionIds?: string[];
 }
 
 // Creates profiles within the plan's limit, numbered in order, assigned to whoever creates them unless said otherwise.
@@ -113,6 +126,7 @@ export async function createProfiles(deps: Deps, workspaceId: string, s: { userI
   items.forEach(checkFingerprint);
   await checkAssignment(db, workspaceId, role, items);
   await assertOwned(db, workspaceId, { groupIds: items.map(i => i.groupId), proxyIds: items.map(i => i.proxyId) });
+  await checkExtensions(db, workspaceId, items);
   const now = clock.now();
   const rows = await db.transaction(async tx => {
     await reserve(tx, workspaceId, items.length);
