@@ -21,6 +21,13 @@ export function authRoutes(app: FastifyInstance, deps: Deps){
   const r = app.withTypeProvider<ZodTypeProvider>();
   const limited = { rateLimit: { max: deps.config.authRateLimit, timeWindow: '1 minute' } };
   const { db, clock } = deps;
+  // With email verification off (a test server), accounts made before it was turned off count as verified too, from
+  // their next login or page load.
+  const verifiedWhenOff = async (u: typeof users.$inferSelect) => {
+    if (deps.config.emailVerification || u.emailVerifiedAt) return u;
+    const [v] = await db.update(users).set({ emailVerifiedAt: clock.now() }).where(eq(users.id, u.id)).returning();
+    return v;
+  };
   const sendCode = async (u: { id: string; email: string; locale: string }, purpose: 'verify' | 'reset') =>
     deps.mailer.send(u.email, codeMail(u.locale as Locale, purpose, await issueCode(db, u.id, purpose, clock.now())));
 
@@ -51,9 +58,10 @@ export function authRoutes(app: FastifyInstance, deps: Deps){
       response: { 200: z.object({ user: User, token: z.string().optional() }) }
     }
   }, async (req, reply) => {
-    const [u] = await db.select().from(users).where(eq(users.email, normalize(req.body.email)));
-    const ok = await verify(u?.passwordHash ?? DUMMY_HASH, req.body.password);
-    if (!u || !ok) throw new ApiError(401, 'invalid_credentials', 'The email or password is not right');
+    const [found] = await db.select().from(users).where(eq(users.email, normalize(req.body.email)));
+    const ok = await verify(found?.passwordHash ?? DUMMY_HASH, req.body.password);
+    if (!found || !ok) throw new ApiError(401, 'invalid_credentials', 'The email or password is not right');
+    const u = await verifiedWhenOff(found);
     const token = await createSession(db, { userId: u.id, client: req.body.client, deviceName: req.body.deviceName ?? null, deviceId: req.body.deviceId ?? null, now: clock.now() });
     if (req.body.client === 'desktop') return { user: userView(u), token };
     setSessionCookie(reply, token, deps.config);
@@ -111,7 +119,7 @@ export function authRoutes(app: FastifyInstance, deps: Deps){
 
   r.get('/me', { schema: { response: { 200: z.object({ user: User, workspaces: z.array(WorkspaceSummary) }) } } }, async req => {
     const s = await requireSession(req, deps);
-    const [u] = await db.select().from(users).where(eq(users.id, s.userId));
+    const u = await verifiedWhenOff((await db.select().from(users).where(eq(users.id, s.userId)))[0]);
     const rows = await db.select({ id: workspaces.id, name: workspaces.name, role: memberships.role, plan: subscriptions.plan, status: subscriptions.status })
       .from(memberships)
       .innerJoin(workspaces, eq(workspaces.id, memberships.workspaceId))

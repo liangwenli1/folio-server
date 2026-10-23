@@ -28,6 +28,16 @@ describe('register and log in', () => {
     } finally { t.config.emailVerification = true; }
   });
 
+  it('turning email verification off also lets in accounts made before, from their next page load', async () => {
+    const { headers } = await signup(t.app, { verify: false });
+    expect((await t.app.inject({ url: '/me', headers })).json().user.emailVerified).toBe(false);
+    t.config.emailVerification = false;
+    try {
+      expect((await t.app.inject({ url: '/me', headers })).json().user.emailVerified).toBe(true);
+    } finally { t.config.emailVerification = true; }
+    expect((await t.app.inject({ url: '/me', headers })).json().user.emailVerified).toBe(true);
+  });
+
   it('refuses a second account with the same email', async () => {
     const { email } = await signup(t.app);
     const res = await t.app.inject({ method: 'POST', url: '/auth/register', payload: { email, password: PASSWORD } });

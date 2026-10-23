@@ -36,7 +36,7 @@ database_url: postgres://folio:folio@localhost:5432/folio
 | `smtp.url` | `smtp://folio-mailpit:1025` | Outgoing mail, any SMTP provider (e.g. `smtps://user:pass@smtp.example.com:465`). Required in production |
 | `smtp.from` | `Folio <no-reply@folio.test>` | Sender address; its domain needs SPF and DKIM set up with the provider. Required in production |
 | `mock_payments` | `false` | Enables the mock card gateway and renewals. There is no real gateway yet |
-| `email_verification` | `true` | `false` only on a test server: new accounts count as verified and no code is sent, so made-up addresses can try every feature |
+| `email_verification` | `true` | `false` only on a test server: new accounts count as verified and no code is sent, and accounts made before count as verified from their next login or page load, so made-up addresses can try every feature |
 | `trust_proxy` | off | Addresses or CIDRs (comma-separated, or `uniquelocal` for private networks) of the reverse proxy allowed to set `X-Forwarded-For`. Leave unset when clients connect directly, or the header can be forged |
 | `geoip_db` | unset | Path to the DB-IP City Lite `.mmdb` file (https://db-ip.com/db/download/ip-to-city-lite, CC BY 4.0; show "IP Geolocation by DB-IP" wherever locations appear). Without it, exit locations are unknown |
 | `auth_rate_limit` | `20` | Sign-in and sign-up attempts per address per minute |
