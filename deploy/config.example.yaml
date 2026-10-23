@@ -33,6 +33,10 @@ smtp:
 # 体验付费功能。正式上线前改回 false。
 mock_payments: false
 
+# 邮箱验证：true 时注册后要填邮件里的验证码。只在测试服务器上设 false：新注册的账号直接算已验证，不发验证码，
+# 可以用随便编的邮箱注册并试用全部功能（购买套餐、接受邀请）。正式上线前改回 true。
+email_verification: true
+
 # 下面几项和 docker-compose.yml 配套，保持不变即可。
 # 数据库只在 compose 内部网络里，不对外开放；要改密码，这里和 docker-compose.yml 的 POSTGRES_PASSWORD 一起改。
 database_url: postgres://folio:folio@postgres:5432/folio

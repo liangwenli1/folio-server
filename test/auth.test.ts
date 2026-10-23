@@ -18,6 +18,16 @@ describe('register and log in', () => {
     expect(me.json().workspaces).toEqual([expect.objectContaining({ role: 'owner', plan: 'free', status: 'active' })]);
   });
 
+  it('with email verification off (a test server), counts new accounts as verified and sends no code', async () => {
+    t.config.emailVerification = false;
+    try {
+      const email = uniqueEmail();
+      const res = await t.app.inject({ method: 'POST', url: '/auth/register', payload: { email, password: PASSWORD } });
+      expect(res.json().user).toMatchObject({ email, emailVerified: true });
+      await expect(lastMail(email)).rejects.toThrow('No email');
+    } finally { t.config.emailVerification = true; }
+  });
+
   it('refuses a second account with the same email', async () => {
     const { email } = await signup(t.app);
     const res = await t.app.inject({ method: 'POST', url: '/auth/register', payload: { email, password: PASSWORD } });

@@ -25,15 +25,15 @@ async function load(yaml: string | null, nodeEnv = 'development'){
 
 describe('config.yaml', () => {
   it('maps the keys onto the settings, with development defaults for the rest', async () => {
-    const { config } = await load('site_url: http://203.0.113.10:8080/\ncookie_secure: false\nmock_payments: true\ns3:\n  bucket: folio\n  force_path_style: false\nsmtp:\n  from: Folio <a@b.c>\n');
+    const { config } = await load('site_url: http://203.0.113.10:8080/\ncookie_secure: false\nmock_payments: true\nemail_verification: false\ns3:\n  bucket: folio\n  force_path_style: false\nsmtp:\n  from: Folio <a@b.c>\n');
     expect(config).toMatchObject({
-      siteUrl: 'http://203.0.113.10:8080', siteOrigins: ['http://203.0.113.10:8080'], cookieSecure: false, mockPayments: true, devTools: false,
+      siteUrl: 'http://203.0.113.10:8080', siteOrigins: ['http://203.0.113.10:8080'], cookieSecure: false, mockPayments: true, emailVerification: false, devTools: false,
       s3: { bucket: 'folio', forcePathStyle: false, endpoint: 'http://folio-minio:9000' }, mailFrom: 'Folio <a@b.c>', smtpUrl: 'smtp://folio-mailpit:1025', port: 47110
     });
   });
 
   it('without a file, development runs on its defaults', async () => {
-    expect((await load(null)).config).toMatchObject({ siteUrl: 'http://localhost:47120', mockPayments: false, trustProxy: false });
+    expect((await load(null)).config).toMatchObject({ siteUrl: 'http://localhost:47120', mockPayments: false, emailVerification: true, trustProxy: false });
   });
 
   it('names an unknown key or a wrong value', async () => {

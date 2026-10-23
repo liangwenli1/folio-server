@@ -29,6 +29,8 @@ const Settings = z.strictObject({
   smtp: z.strictObject({ url: z.string().optional(), from: z.string().optional() }).optional(),
   // Mock card payments. Off unless explicitly enabled; there is no real gateway yet.
   mock_payments: z.boolean().optional(),
+  // false on a test server: new accounts count as verified, with no code sent, so made-up addresses work.
+  email_verification: z.boolean().optional(),
   // Which reverse proxies may set X-Forwarded-For (e.g. "10.0.0.5", "10.0.0.0/8" or "uniquelocal"). Off by default,
   // so the header cannot be forged.
   trust_proxy: z.string().optional(),
@@ -64,6 +66,7 @@ export const config = {
   cookieSecure: file.cookie_secure ?? false,
   cookieDomain: file.cookie_domain,
   mockPayments: file.mock_payments ?? false,
+  emailVerification: file.email_verification ?? true,
   devTools: file.dev_tools ?? false,
   smtpUrl: file.smtp?.url ?? 'smtp://folio-mailpit:1025',
   mailFrom: file.smtp?.from ?? 'Folio <no-reply@folio.test>',

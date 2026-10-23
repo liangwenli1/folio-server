@@ -32,14 +32,15 @@ export function authRoutes(app: FastifyInstance, deps: Deps){
     const email = normalize(req.body.email);
     const passwordHash = await hash(req.body.password);
     const user = await db.transaction(async tx => {
-      const [u] = await tx.insert(users).values({ email, passwordHash, locale: req.body.locale, createdAt: now }).onConflictDoNothing().returning();
+      const [u] = await tx.insert(users).values({ email, passwordHash, locale: req.body.locale, createdAt: now, emailVerifiedAt: deps.config.emailVerification ? null : now })
+        .onConflictDoNothing().returning();
       if (!u) throw new ApiError(409, 'email_taken', 'An account with this email already exists. Log in instead.');
       await createWorkspace(tx, u.id, email.split('@')[0], now);
       return u;
     });
     setSessionCookie(reply, await createSession(db, { userId: user.id, client: 'web', deviceName: null, now }), deps.config);
     // The account exists either way; if the email does not go out, the verify page can send it again.
-    await sendCode(user, 'verify').catch(err => req.log.error(err, 'sending the verification email failed'));
+    if (deps.config.emailVerification) await sendCode(user, 'verify').catch(err => req.log.error(err, 'sending the verification email failed'));
     return reply.code(201).send({ user: userView(user) });
   });
 
