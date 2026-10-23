@@ -10,28 +10,37 @@ Node 24, TypeScript, Fastify, Drizzle ORM, PostgreSQL 16. Request and response s
 
 ```sh
 npm install
-export DATABASE_URL=postgres://folio:folio@localhost:5432/folio
-DEV_TOOLS=1 MOCK_PAYMENTS=1 npm run dev     # http://localhost:47110, applies migrations on start
+npm run dev     # http://localhost:47110, applies migrations on start
 ```
 
-| Variable | Default | Meaning |
+Settings come from `config.yaml` in the working directory (`src/config.ts`); no environment variables are read for them. The file is ignored by git, and anything left out takes a development default. Unknown keys and wrong values stop the server with the key named; `NODE_ENV=production` (set in the image) also requires the file and the keys marked below. A development `config.yaml` might be:
+
+```yaml
+dev_tools: true
+mock_payments: true
+dev_private_geo: seattle
+database_url: postgres://folio:folio@localhost:5432/folio
+```
+
+| Key | Default | Meaning |
 |---|---|---|
-| `DATABASE_URL` | `postgres://folio:folio@folio-postgres:5432/folio` | PostgreSQL connection |
-| `PORT` | `47110` | HTTP port |
-| `SITE_ORIGINS` | `http://localhost:47120,http://127.0.0.1:47120` | Site origins allowed to call the API with the session cookie |
-| `SITE_URL` | `http://localhost:47120` | Public site URL |
-| `COOKIE_SECURE` / `COOKIE_DOMAIN` | off / unset | Set both in production (e.g. `COOKIE_DOMAIN=.example.com`) |
-| `MOCK_PAYMENTS` | off | Enables the mock card gateway and renewals. There is no real gateway yet |
-| `DEV_TOOLS` | off | `/dev/run-due` (process trial ends and renewals now). Refused when `NODE_ENV=production` |
-| `S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET` | `http://folio-minio:9000`, `us-east-1`, `folio-dev` | Object storage for saved sign-in state: AWS S3, Cloudflare R2, Aliyun OSS or any S3-compatible service. Development creates the bucket; in production it must exist and `S3_BUCKET` is required |
-| `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | development keys | Required in production |
-| `S3_FORCE_PATH_STYLE` | `1` | `0` for services that want bucket-named hosts |
-| `SMTP_URL` | `smtp://folio-mailpit:1025` | Outgoing mail, any SMTP provider (e.g. `smtps://user:pass@smtp.example.com:465`). Required in production |
-| `MAIL_FROM` | `Folio <no-reply@folio.test>` | Sender address; its domain needs SPF and DKIM set up with the provider. Required in production |
-| `SECRET_KEY` | development key | 32 bytes, base64, for encrypting proxy passwords. Required in production |
-| `TRUST_PROXY` | off | Addresses or CIDRs (comma-separated, or `uniquelocal` for private networks) of the reverse proxy allowed to set `X-Forwarded-For`. Leave unset when clients connect directly, or the header can be forged |
-| `GEOIP_DB` | unset | Path to the DB-IP City Lite `.mmdb` file (https://db-ip.com/db/download/ip-to-city-lite, CC BY 4.0; show "IP Geolocation by DB-IP" wherever locations appear). Without it, exit locations are unknown |
-| `DEV_PRIVATE_GEO` | unset | Dev only: `seattle`, `london`, `tokyo` or `frankfurt`, used as the location of private and loopback addresses so proxy checks work on a local network |
+| `site_url` | `http://localhost:47120` | Folio's public address: the site, with the API under `/api` behind nginx. Links in emails use it |
+| `site_origins` | the origin of `site_url` | Origins allowed to call the API with the session cookie |
+| `cookie_secure` / `cookie_domain` | `false` / unset | `true` when served over HTTPS |
+| `database_url` | `postgres://folio:folio@folio-postgres:5432/folio` | PostgreSQL connection |
+| `port`, `host` | `47110`, `0.0.0.0` | Where the API listens |
+| `secret_key` | development key | 32 bytes, base64, for proxy passwords, saved sign-ins and extension signatures. Required in production |
+| `s3.endpoint`, `s3.region`, `s3.bucket` | `http://folio-minio:9000`, `us-east-1`, `folio-dev` | Object storage for saved sign-in state: AWS S3, Cloudflare R2, Aliyun OSS or any S3-compatible service. Development creates the bucket; in production it must exist, and `s3.bucket` is required |
+| `s3.access_key_id`, `s3.secret_access_key` | development keys | Required in production |
+| `s3.force_path_style` | `true` | `false` for services that want bucket-named hosts |
+| `smtp.url` | `smtp://folio-mailpit:1025` | Outgoing mail, any SMTP provider (e.g. `smtps://user:pass@smtp.example.com:465`). Required in production |
+| `smtp.from` | `Folio <no-reply@folio.test>` | Sender address; its domain needs SPF and DKIM set up with the provider. Required in production |
+| `mock_payments` | `false` | Enables the mock card gateway and renewals. There is no real gateway yet |
+| `trust_proxy` | off | Addresses or CIDRs (comma-separated, or `uniquelocal` for private networks) of the reverse proxy allowed to set `X-Forwarded-For`. Leave unset when clients connect directly, or the header can be forged |
+| `geoip_db` | unset | Path to the DB-IP City Lite `.mmdb` file (https://db-ip.com/db/download/ip-to-city-lite, CC BY 4.0; show "IP Geolocation by DB-IP" wherever locations appear). Without it, exit locations are unknown |
+| `auth_rate_limit` | `20` | Sign-in and sign-up attempts per address per minute |
+| `dev_tools` | `false` | `/dev/run-due` and other test helpers. Refused in production |
+| `dev_private_geo` | unset | Dev only: `seattle`, `london`, `tokyo` or `frankfurt`, used as the location of private and loopback addresses so proxy checks work on a local network |
 
 Email: verification codes and password resets go out over SMTP (`src/mail.ts`), in the recipient's language. If a verification email cannot be sent, sign-up still succeeds and the verify page can send it again; password resets always answer 204 so they do not reveal whether an account exists. In development, mail goes to a local [Mailpit](https://mailpit.axllent.org) inbox:
 
@@ -64,21 +73,21 @@ docker run -d --name folio-minio --network folio-dev -e MINIO_ROOT_USER=folio -e
 
 ## Deploy
 
-Production is three containers on one server (`deploy/docker-compose.yml`): PostgreSQL 16, this API, and the site (folio-site's image: nginx with the static site, passing `/api/` on to the API, so the site and API share one origin). Cloudflare serves the domain over HTTPS and connects to the site container's port; object storage is Cloudflare R2. Paid plans show as coming soon until there is a real payment gateway (`MOCK_PAYMENTS` stays empty).
+Production is three containers on one server (`deploy/docker-compose.yml`): PostgreSQL 16, this API, and the site (folio-site's image: nginx with the static site, passing `/api/` on to the API, so the site and API share one origin). Cloudflare serves the domain over HTTPS and connects to the site container's port; object storage is Cloudflare R2. Paid plans show as coming soon until there is a real payment gateway (`mock_payments: false`).
 
-The images are `ghcr.io/<owner>/folio-server` and `ghcr.io/<owner>/folio-site`, built by GitHub Actions. The server image includes the DB-IP City Lite database at `geoip/dbip-city-lite.mmdb`, which the workflow downloads before building; for a build of your own, put the file there (it is ignored by git).
+The images are `ghcr.io/<owner>/folio-server` and `ghcr.io/<owner>/folio-site`, built by GitHub Actions. The server image includes the DB-IP City Lite database at `geoip/dbip-city-lite.mmdb`, which the workflow downloads before building; for a build of your own, put the file there (it is ignored by git). The API reads `/app/config.yaml`, which compose mounts from next to `docker-compose.yml`.
 
 On the server:
 
 1. Install Docker with the compose plugin, and log in to GHCR once with a GitHub token that can read packages: `docker login ghcr.io -u <github-name>`.
 2. In Cloudflare R2, create a bucket and an API token with Object Read & Write on it.
-3. Copy `deploy/` to the server, `cp .env.example .env`, and fill it in. Keep `SECRET_KEY` safe and never change it: proxy passwords and saved sign-ins can't be read without it.
-4. `docker compose up -d`. Migrations run when the API starts; `docker compose logs -f server` shows mail or storage errors.
-5. In Cloudflare: a proxied DNS record for the domain pointing at the server; SSL/TLS mode Flexible (Cloudflare reaches the server over plain HTTP); and either `FOLIO_PORT=80`, or an Origin Rule that overrides the destination port to `FOLIO_PORT` (Origin Rules are on the Free plan). The server's firewall can let only Cloudflare's ranges reach that port.
+3. Copy `deploy/` to the server. In `docker-compose.yml`, put your GitHub user or organization in the two image lines (and the tag: `latest`, a version such as `v0.1.0`, or `main`), and the port if not 8080. Then `cp config.example.yaml config.yaml` and fill it in, before the first start (otherwise Docker creates a folder by that name). Keep `secret_key` safe and never change it: proxy passwords and saved sign-ins can't be read without it.
+4. `docker compose up -d`. Migrations run when the API starts; `docker compose logs -f server` shows mistakes in `config.yaml` and mail or storage errors. After editing `config.yaml`, `docker compose up -d --force-recreate server`.
+5. In Cloudflare: a proxied DNS record for the domain pointing at the server; SSL/TLS mode Flexible (Cloudflare reaches the server over plain HTTP); and either the port set to 80 in `docker-compose.yml`, or an Origin Rule that overrides the destination port to 8080 (Origin Rules are on the Free plan). The server's firewall can let only Cloudflare's ranges reach that port.
 
-Before there is a domain, the same setup can be tried by IP: `FOLIO_URL=http://<server IP>:8080`, `COOKIE_SECURE=0` (browsers drop secure cookies on plain http, so the site's sign-in wouldn't stick), `FOLIO_VERSION=main` if no version is tagged yet, and port 8080 open in the server's firewall; Cloudflare isn't involved. `MOCK_PAYMENTS=1` lets a test server "buy" paid plans. Traffic is unencrypted, so use throwaway passwords, and switch back to the domain and `COOKIE_SECURE=1` for real use. The desktop repository's "Test build" workflow makes installers for such an address.
+Before there is a domain, the same setup can be tried by IP: `site_url: http://<server IP>:8080` and `cookie_secure: false` (browsers drop secure cookies on plain http, so the site's sign-in wouldn't stick), the image tag `main` if no version is tagged yet, and port 8080 open in the server's firewall; Cloudflare isn't involved. `mock_payments: true` lets a test server "buy" paid plans. Traffic is unencrypted, so use throwaway passwords, and switch back to the domain and `cookie_secure: true` for real use. The desktop repository's "Test build" workflow makes installers for such an address.
 
-Upgrading: `docker compose pull && docker compose up -d` (`FOLIO_VERSION` picks the tag: `latest`, a version such as `v0.1.0`, or `main`).
+Upgrading: `docker compose pull && docker compose up -d`.
 
 Backups: `docker compose exec -T postgres pg_dump -U folio folio | gzip > folio-$(date +%F).sql.gz`, run daily from cron and copied off the server; restore into an empty database with `gunzip -c <file> | docker compose exec -T postgres psql -U folio folio`. R2 keeps the saved sign-ins and extension packages.
 

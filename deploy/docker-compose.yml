@@ -1,7 +1,10 @@
-# Folio on one server: PostgreSQL, the API and the site. Cloudflare serves the domain over HTTPS and connects to
-# FOLIO_PORT (before there is a domain, people can connect to FOLIO_PORT directly by IP, for testing); the site
-# container answers there and passes /api/ on to the API. Object storage is Cloudflare R2.
-# Copy this folder to the server, fill in .env from .env.example, then: docker compose up -d
+# Folio on one server: PostgreSQL, the API and the site. Cloudflare serves the domain over HTTPS and connects to the
+# site container's port (before there is a domain, people can connect to that port directly by IP, for testing); the
+# site container passes /api/ on to the API. Object storage is Cloudflare R2.
+#
+# Before the first start: put your GitHub user or organization (lower case) in both image lines, and create
+# config.yaml next to this file from config.example.yaml. Then: docker compose up -d
+# Image tags: latest (the newest v* tag), a version such as v0.1.0, or main (the newest push to main).
 name: folio
 
 services:
@@ -9,7 +12,8 @@ services:
     image: postgres:16.15-alpine
     environment:
       POSTGRES_USER: folio
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      # Only reachable inside this compose network. To change it, change database_url in config.yaml too.
+      POSTGRES_PASSWORD: folio
       POSTGRES_DB: folio
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -20,32 +24,19 @@ services:
     restart: unless-stopped
 
   server:
-    image: ghcr.io/${GHCR_OWNER:?set GHCR_OWNER in .env}/folio-server:${FOLIO_VERSION:-latest}
-    environment:
-      DATABASE_URL: postgres://folio:${POSTGRES_PASSWORD}@postgres:5432/folio
-      SITE_URL: ${FOLIO_URL:?set FOLIO_URL in .env}
-      SITE_ORIGINS: ${FOLIO_URL}
-      COOKIE_SECURE: ${COOKIE_SECURE:-1}
-      # Only the site container reaches the API, and it passes on the visitor's address.
-      TRUST_PROXY: uniquelocal
-      SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in .env}
-      S3_ENDPOINT: ${S3_ENDPOINT:?set S3_ENDPOINT in .env}
-      S3_REGION: ${S3_REGION:-auto}
-      S3_BUCKET: ${S3_BUCKET:?set S3_BUCKET in .env}
-      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?set S3_ACCESS_KEY_ID in .env}
-      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?set S3_SECRET_ACCESS_KEY in .env}
-      SMTP_URL: ${SMTP_URL:?set SMTP_URL in .env}
-      MAIL_FROM: ${MAIL_FROM:?set MAIL_FROM in .env}
-      MOCK_PAYMENTS: ${MOCK_PAYMENTS:-}
+    image: ghcr.io/your-github-name/folio-server:latest
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
     depends_on:
       postgres:
         condition: service_healthy
     restart: unless-stopped
 
   site:
-    image: ghcr.io/${GHCR_OWNER}/folio-site:${FOLIO_VERSION:-latest}
+    image: ghcr.io/your-github-name/folio-site:latest
+    # The port on this server that Cloudflare (or, while testing, the browser) connects to: "<port>:8080".
     ports:
-      - "${FOLIO_PORT:-8080}:8080"
+      - "8080:8080"
     depends_on:
       - server
     restart: unless-stopped

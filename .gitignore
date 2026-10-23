@@ -4,3 +4,5 @@ dist/
 *.log
 # The GeoIP database, downloaded at build time (see README).
 geoip/
+# Local settings (deploy/config.example.yaml is the template).
+config.yaml
