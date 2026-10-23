@@ -1,5 +1,6 @@
 # Folio on one server: PostgreSQL, the API and the site. Cloudflare serves the domain over HTTPS and connects to
-# FOLIO_PORT; the site container answers there and passes /api/ on to the API. Object storage is Cloudflare R2.
+# FOLIO_PORT (before there is a domain, people can connect to FOLIO_PORT directly by IP, for testing); the site
+# container answers there and passes /api/ on to the API. Object storage is Cloudflare R2.
 # Copy this folder to the server, fill in .env from .env.example, then: docker compose up -d
 name: folio
 
@@ -22,9 +23,9 @@ services:
     image: ghcr.io/${GHCR_OWNER:?set GHCR_OWNER in .env}/folio-server:${FOLIO_VERSION:-latest}
     environment:
       DATABASE_URL: postgres://folio:${POSTGRES_PASSWORD}@postgres:5432/folio
-      SITE_URL: https://${FOLIO_DOMAIN:?set FOLIO_DOMAIN in .env}
-      SITE_ORIGINS: https://${FOLIO_DOMAIN}
-      COOKIE_SECURE: "1"
+      SITE_URL: ${FOLIO_URL:?set FOLIO_URL in .env}
+      SITE_ORIGINS: ${FOLIO_URL}
+      COOKIE_SECURE: ${COOKIE_SECURE:-1}
       # Only the site container reaches the API, and it passes on the visitor's address.
       TRUST_PROXY: uniquelocal
       SECRET_KEY: ${SECRET_KEY:?set SECRET_KEY in .env}

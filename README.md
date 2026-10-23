@@ -76,6 +76,8 @@ On the server:
 4. `docker compose up -d`. Migrations run when the API starts; `docker compose logs -f server` shows mail or storage errors.
 5. In Cloudflare: a proxied DNS record for the domain pointing at the server; SSL/TLS mode Flexible (Cloudflare reaches the server over plain HTTP); and either `FOLIO_PORT=80`, or an Origin Rule that overrides the destination port to `FOLIO_PORT` (Origin Rules are on the Free plan). The server's firewall can let only Cloudflare's ranges reach that port.
 
+Before there is a domain, the same setup can be tried by IP: `FOLIO_URL=http://<server IP>:8080`, `COOKIE_SECURE=0` (browsers drop secure cookies on plain http, so the site's sign-in wouldn't stick), `FOLIO_VERSION=main` if no version is tagged yet, and port 8080 open in the server's firewall; Cloudflare isn't involved. `MOCK_PAYMENTS=1` lets a test server "buy" paid plans. Traffic is unencrypted, so use throwaway passwords, and switch back to the domain and `COOKIE_SECURE=1` for real use. The desktop repository's "Test build" workflow makes installers for such an address.
+
 Upgrading: `docker compose pull && docker compose up -d` (`FOLIO_VERSION` picks the tag: `latest`, a version such as `v0.1.0`, or `main`).
 
 Backups: `docker compose exec -T postgres pg_dump -U folio folio | gzip > folio-$(date +%F).sql.gz`, run daily from cron and copied off the server; restore into an empty database with `gunzip -c <file> | docker compose exec -T postgres psql -U folio folio`. R2 keeps the saved sign-ins and extension packages.
