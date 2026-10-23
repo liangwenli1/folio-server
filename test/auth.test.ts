@@ -94,7 +94,7 @@ describe('emails', () => {
     await t.app.inject({ method: 'POST', url: '/auth/register', payload: { email, password: PASSWORD, locale: 'zh' } });
     const m = await lastMail(email);
     expect(m.Subject).toMatch(/^Folio 验证码：\d{6}$/);
-    expect(m.HTML).toContain('确认你的邮箱');
+    expect(m.HTML).toContain('验证邮箱');
     await t.app.inject({ method: 'POST', url: '/auth/password/forgot', payload: { email } });
     expect((await lastMail(email)).Subject).toMatch(/^Folio 重设密码验证码/);
   });

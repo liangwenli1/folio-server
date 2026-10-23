@@ -16,7 +16,7 @@ const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt
 
 // One layout for every message: the name, a heading, what to do, a code or a button, and a closing note.
 function layout(locale: Locale, heading: string, lead: string, action: { code: string } | { label: string; url: string }, note: string): Pick<Mail, 'text' | 'html'> {
-  const foot = locale === 'zh' ? '这封邮件由 Folio 自动发送。' : 'Folio sent this email automatically.';
+  const foot = locale === 'zh' ? '此邮件由 Folio 系统自动发送，请勿直接回复。' : 'Folio sent this email automatically.';
   const text = [heading, '', lead, '', 'code' in action ? action.code : `${action.label}: ${action.url}`, '', note, '', foot].join('\n');
   const p = (s: string, color = '#13212F') => `<p style="margin:0 0 14px;font-size:15px;line-height:1.55;color:${color}">${esc(s)}</p>`;
   const middle = 'code' in action
@@ -35,8 +35,8 @@ ${p(lead)}${middle}${p(note, '#56636F')}
 export function codeMail(locale: Locale, purpose: 'verify' | 'reset', code: string): Mail {
   if (locale === 'zh'){
     return purpose === 'verify'
-      ? { subject: `Folio 验证码：${code}`, ...layout(locale, '确认你的邮箱', '在 Folio 页面上输入下面的验证码，完成邮箱验证。验证码 15 分钟内有效。', { code }, '如果你没有注册 Folio，忽略这封邮件即可。') }
-      : { subject: `Folio 重设密码验证码：${code}`, ...layout(locale, '重设密码', '在 Folio 页面上输入下面的验证码，然后设置新密码。验证码 15 分钟内有效。', { code }, '如果不是你本人操作，忽略这封邮件即可，密码不会改变。') };
+      ? { subject: `Folio 验证码：${code}`, ...layout(locale, '验证邮箱', '请在 Folio 页面输入以下验证码完成邮箱验证，15 分钟内有效。', { code }, '如非本人注册 Folio，请忽略此邮件。') }
+      : { subject: `Folio 重设密码验证码：${code}`, ...layout(locale, '重设密码', '请在 Folio 页面输入以下验证码并设置新密码，15 分钟内有效。', { code }, '如非本人操作，请忽略此邮件，密码不会变更。') };
   }
   return purpose === 'verify'
     ? { subject: `${code} is your Folio code`, ...layout(locale, 'Confirm your email', 'Enter this code on the Folio page to confirm your email address. It expires in 15 minutes.', { code }, 'If you didn’t sign up for Folio, ignore this email.') }
@@ -46,7 +46,7 @@ export function codeMail(locale: Locale, purpose: 'verify' | 'reset', code: stri
 export function inviteMail(locale: Locale, a: { workspace: string; inviter: string; role: 'admin' | 'member'; url: string }): Mail {
   if (locale === 'zh'){
     const role = a.role === 'admin' ? '管理员' : '成员';
-    return { subject: `${a.inviter} 邀请你加入 ${a.workspace}（Folio）`, ...layout(locale, `加入 ${a.workspace}`, `${a.inviter} 邀请你以${role}身份加入 Folio 上的团队「${a.workspace}」。`, { label: '接受邀请', url: a.url }, '邀请 7 天内有效。如果你不认识对方，忽略这封邮件即可。') };
+    return { subject: `${a.inviter} 邀请您加入 ${a.workspace}（Folio）`, ...layout(locale, `加入 ${a.workspace}`, `${a.inviter} 邀请您以${role}身份加入 Folio 团队「${a.workspace}」。`, { label: '接受邀请', url: a.url }, '邀请 7 天内有效。如不认识邀请人，请忽略此邮件。') };
   }
   const role = a.role === 'admin' ? 'an admin' : 'a member';
   return { subject: `${a.inviter} invited you to ${a.workspace} on Folio`, ...layout(locale, `Join ${a.workspace}`, `${a.inviter} invited you to join the ${a.workspace} workspace on Folio as ${role}.`, { label: 'Accept the invitation', url: a.url }, 'The invitation expires in 7 days. If you weren’t expecting it, ignore this email.') };
