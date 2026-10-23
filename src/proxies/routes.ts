@@ -102,8 +102,8 @@ export function proxyRoutes(app: FastifyInstance, deps: Deps){
     const { password, ...rest } = req.body;
     const [u] = await db.update(proxies).set({
       ...rest, ...(password === undefined ? {} : { passwordEnc: password ? seal(password) : null }), updatedAt: clock.now(),
-      // A changed address invalidates the last check.
-      ...(rest.host || rest.port || rest.type ? { lastCheck: null } : {})
+      // A changed address is a different line: its checks start over.
+      ...(rest.host || rest.port || rest.type ? { lastCheck: null, history: [], lastExit: null } : {})
     }).where(eq(proxies.id, p.id)).returning();
     await record(db, { workspaceId: p.workspaceId, actor: s, at: u.updatedAt, action: 'proxy.update', detail: { name: u.name, fields: Object.keys(req.body) } });
     publish(p.workspaceId, { kind: 'proxies', ids: [p.id] });
@@ -128,7 +128,9 @@ export function proxyRoutes(app: FastifyInstance, deps: Deps){
     }
   }, async req => {
     const { p } = await proxyFor(req, req.params.id);
-    const [u] = await db.update(proxies).set({ lastCheck: { ...req.body, checkedAt: clock.now().toISOString() } }).where(eq(proxies.id, p.id)).returning();
+    const at = clock.now().toISOString(), c = req.body;
+    const history = [...(p.history as unknown[]), { at, ok: c.ok, ms: c.ms }].slice(-20);
+    const [u] = await db.update(proxies).set({ lastCheck: { ...c, checkedAt: at }, history, ...(c.ok ? { lastExit: { ip: c.ip, geo: c.geo, at } } : {}) }).where(eq(proxies.id, p.id)).returning();
     publish(p.workspaceId, { kind: 'proxies', ids: [p.id] });
     return proxyView(u, await count(p.id));
   });

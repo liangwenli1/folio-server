@@ -15,7 +15,22 @@ export function zipOf(bytes: Buffer){
 
 const unreadable = (why: string) => new ApiError(400, 'extension_unreadable', why);
 
-// Name, version and (Firefox) add-on id from manifest.json; a name like __MSG_appName__ comes from its locale file.
+// The package's icon for the library page: the largest declared one up to 128 px (else the smallest), as a data URL;
+// none over 64 KB.
+const ICON_TYPES: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', svg: 'image/svg+xml', webp: 'image/webp', gif: 'image/gif' };
+function iconOf(zip: Buffer, m: Record<string, any>){
+  const declared = { ...m.browser_action?.default_icon, ...m.action?.default_icon, ...m.icons } as Record<string, unknown>;
+  const sized = Object.entries(declared).map(([k, v]) => [Number(k), v] as const).filter((x): x is readonly [number, string] => x[0] > 0 && typeof x[1] === 'string');
+  const pick = sized.filter(([n]) => n <= 128).sort((a, b) => b[0] - a[0])[0] ?? sized.sort((a, b) => a[0] - b[0])[0];
+  if (!pick) return null;
+  const path = pick[1].replace(/^\.?\//, ''), type = ICON_TYPES[path.split('.').pop()!.toLowerCase()];
+  if (!type) return null;
+  let file: Uint8Array | undefined;
+  try { file = unzipSync(new Uint8Array(zip), { filter: f => f.name === path })[path]; } catch { return null; }
+  return file && file.length <= 64 * 1024 ? `data:${type};base64,${Buffer.from(file).toString('base64')}` : null;
+}
+
+// Name, version, (Firefox) add-on id and icon from manifest.json; a name like __MSG_appName__ comes from its locale file.
 export function readPackage(bytes: Buffer){
   const zip = zipOf(bytes);
   let files: Record<string, Uint8Array>;
@@ -33,7 +48,7 @@ export function readPackage(bytes: Buffer){
     name = Object.entries(messages).find(([k]) => k.toLowerCase() === msg[1].toLowerCase())?.[1].message ?? name;
   }
   const geckoId = m.browser_specific_settings?.gecko?.id ?? m.applications?.gecko?.id ?? null;
-  return { zip, name: name.slice(0, 120), version: m.version.slice(0, 40), geckoId: typeof geckoId === 'string' ? geckoId : null };
+  return { zip, name: name.slice(0, 120), version: m.version.slice(0, 40), geckoId: typeof geckoId === 'string' ? geckoId : null, icon: iconOf(zip, m) };
 }
 
 // A Chromium extension's id is the first 128 bits of the sha256 of its public key, written with the letters a–p.

@@ -89,16 +89,28 @@ export const savedDataView = (d: typeof profileData.$inferSelect): z.infer<typeo
 });
 // Who has the profile open right now; `self` is the session asking.
 export const LockHolder = z.object({ email: z.string(), deviceName: z.string().nullable(), since: z.string(), self: z.boolean() });
+// Where a profile went out from when it opened.
+export const ProfileExit = z.object({ ip: z.string(), geo: Geo.nullable(), at: z.string() });
+// What the self-check page found inside the profile's browser: each check with what it saw and what it should be,
+// and fingerprints of its canvas and WebGL drawing (to find profiles that draw the same).
+export const reportCheck = z.enum(['webrtc', 'timezone', 'language', 'ua', 'canvas', 'webgl']);
+export const HealthReport = z.object({
+  at: z.string(),
+  checks: z.array(z.object({ id: reportCheck, ok: z.boolean(), seen: z.string().max(300), want: z.string().max(300).nullable() })).max(12),
+  canvas: z.string().max(64).nullable(), webgl: z.string().max(64).nullable()
+});
 
 export const Profile = z.object({
   id: z.string(), workspaceId: z.string(), number: z.number(), name: z.string(), groupId: z.string().nullable(),
   ownerId: z.string().nullable(), departmentId: z.string().nullable(), tags: z.array(z.string()), kernel, kernelVersion: z.string(), os, fingerprint: Fingerprint, proxyId: z.string().nullable(),
   timezoneOverride: z.string().nullable(), localeOverride: z.string().nullable(), notes: z.string().nullable(),
   lastOpenedAt: iso, lastOpenedBy: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(), deletedAt: iso, version: z.number(),
-  syncMode: z.enum(['cloud', 'local']), extensionIds: z.array(z.string()), data: SavedData.nullable(), lock: LockHolder.nullable()
+  syncMode: z.enum(['cloud', 'local']), extensionIds: z.array(z.string()), data: SavedData.nullable(), lock: LockHolder.nullable(),
+  lastExit: ProfileExit.nullable(), prevExit: ProfileExit.nullable(), report: HealthReport.nullable(), starred: z.boolean()
 });
 type LockRow = typeof profileLocks.$inferSelect & { email: string };
-export function profileView(p: typeof profiles.$inferSelect, state: { data: typeof profileData.$inferSelect | null; lock: LockRow | null; sessionId: string } | null = null): z.infer<typeof Profile> {
+// `starred`: the asker marked it as a favourite.
+export function profileView(p: typeof profiles.$inferSelect, state: { data: typeof profileData.$inferSelect | null; lock: LockRow | null; sessionId: string; starred: boolean } | null = null): z.infer<typeof Profile> {
   const lock = state?.lock;
   return {
     id: p.id, workspaceId: p.workspaceId, number: p.number, name: p.name, groupId: p.groupId, ownerId: p.ownerId, departmentId: p.departmentId, tags: p.tags,
@@ -108,7 +120,9 @@ export function profileView(p: typeof profiles.$inferSelect, state: { data: type
     lastOpenedAt: p.lastOpenedAt?.toISOString() ?? null, lastOpenedBy: p.lastOpenedBy,
     createdAt: p.createdAt.toISOString(), updatedAt: p.updatedAt.toISOString(), deletedAt: p.deletedAt?.toISOString() ?? null, version: p.version,
     syncMode: p.syncMode as 'cloud' | 'local', extensionIds: p.extensionIds, data: state?.data ? savedDataView(state.data) : null,
-    lock: lock ? { email: lock.email, deviceName: lock.deviceName, since: lock.acquiredAt.toISOString(), self: lock.sessionId === state.sessionId } : null
+    lock: lock ? { email: lock.email, deviceName: lock.deviceName, since: lock.acquiredAt.toISOString(), self: lock.sessionId === state.sessionId } : null,
+    lastExit: p.lastExit as z.infer<typeof ProfileExit> | null, prevExit: p.prevExit as z.infer<typeof ProfileExit> | null,
+    report: p.report as z.infer<typeof HealthReport> | null, starred: !!state?.starred
   };
 }
 
@@ -118,16 +132,20 @@ export const proxyType = z.enum(['http', 'https', 'socks5']);
 export const ProxyCheck = z.object({
   ok: z.boolean(), ms: z.number().nullable(), ip: z.string().nullable(), geo: Geo.nullable(), error: z.string().nullable(), checkedAt: z.string()
 });
+// `history`: the last 20 checks, oldest first; `lastExit`: where the last check that got through came out (so a line that
+// is down now still has a place).
+export const ProxyHistory = z.object({ at: z.string(), ok: z.boolean(), ms: z.number().nullable() });
+export const ProxyExit = z.object({ ip: z.string().nullable(), geo: Geo.nullable(), at: z.string() });
 export const Proxy = z.object({
   id: z.string(), name: z.string(), type: proxyType, host: z.string(), port: z.number(), username: z.string().nullable(),
-  hasPassword: z.boolean(), backupId: z.string().nullable(), lastCheck: ProxyCheck.nullable(), profiles: z.number(),
-  createdAt: z.string(), updatedAt: z.string()
+  hasPassword: z.boolean(), backupId: z.string().nullable(), lastCheck: ProxyCheck.nullable(), history: z.array(ProxyHistory), lastExit: ProxyExit.nullable(),
+  profiles: z.number(), createdAt: z.string(), updatedAt: z.string()
 });
 export function proxyView(p: typeof proxies.$inferSelect, profileCount: number): z.infer<typeof Proxy> {
   return {
     id: p.id, name: p.name, type: p.type as 'http' | 'https' | 'socks5', host: p.host, port: p.port, username: p.username,
     hasPassword: !!p.passwordEnc, backupId: p.backupId, lastCheck: (p.lastCheck as z.infer<typeof ProxyCheck> | null) ?? null,
-    profiles: profileCount, createdAt: p.createdAt.toISOString(), updatedAt: p.updatedAt.toISOString()
+    history: p.history as z.infer<typeof ProxyHistory>[], lastExit: (p.lastExit as z.infer<typeof ProxyExit> | null) ?? null, profiles: profileCount, createdAt: p.createdAt.toISOString(), updatedAt: p.updatedAt.toISOString()
   };
 }
 // Full connection details, including the password. Served only to the desktop app's main process.
@@ -200,11 +218,11 @@ export const Task = z.object({
 // checked by the desktop app before installing; `profiles` counts the profiles it is installed in.
 export const Extension = z.object({
   id: z.string(), name: z.string(), kernel, version: z.string(), extId: z.string(), publicKey: z.string().nullable(), sha256: z.string(), size: z.number(),
-  signature: z.string(), source: z.enum(['upload', 'store']), storeId: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(), profiles: z.number()
+  signature: z.string(), source: z.enum(['upload', 'store']), storeId: z.string().nullable(), icon: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(), profiles: z.number()
 });
 export const extensionView = (e: typeof extensions.$inferSelect, profiles: number): z.infer<typeof Extension> => ({
   id: e.id, name: e.name, kernel: e.kernel as 'chromium' | 'firefox', version: e.version, extId: e.extId, publicKey: e.publicKey, sha256: e.sha256, size: e.size,
-  signature: e.signature, source: e.source as 'upload' | 'store', storeId: e.storeId, createdAt: e.createdAt.toISOString(), updatedAt: e.updatedAt.toISOString(), profiles
+  signature: e.signature, source: e.source as 'upload' | 'store', storeId: e.storeId, icon: e.icon, createdAt: e.createdAt.toISOString(), updatedAt: e.updatedAt.toISOString(), profiles
 });
 
 // ---------- browser engines (P6) ----------

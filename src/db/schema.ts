@@ -122,7 +122,8 @@ export const groups = pgTable('groups', {
   createdAt: createdAt()
 }, t => [uniqueIndex().on(t.workspaceId, t.name)]);
 
-// Passwords are encrypted with SECRET_KEY (see crypto.ts). `backupId` is the line to fall back to.
+// Passwords are encrypted with SECRET_KEY (see crypto.ts). `backupId` is the line to fall back to. `history` keeps the
+// last 20 checks ({ at, ok, ms }); `lastExit` is where the last check that got through came out ({ ip, geo, at }).
 export const proxies = pgTable('proxies', {
   id: uuid().primaryKey().defaultRandom(),
   workspaceId: uuid().notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
@@ -134,6 +135,8 @@ export const proxies = pgTable('proxies', {
   passwordEnc: text(),
   backupId: uuid().references((): AnyPgColumn => proxies.id, { onDelete: 'set null' }),
   lastCheck: jsonb(),
+  history: jsonb().notNull().default([]),
+  lastExit: jsonb(),
   createdAt: createdAt(),
   updatedAt: ts().notNull().defaultNow()
 }, t => [index().on(t.workspaceId)]);
@@ -163,12 +166,24 @@ export const profiles = pgTable('profiles', {
   extensionIds: uuid().array().notNull().default([]),
   lastOpenedAt: ts(),
   lastOpenedBy: uuid().references(() => users.id, { onDelete: 'set null' }),
+  // Where it went out from the last two times it was opened with a different exit IP ({ ip, geo, at }), for the warnings
+  // about profiles that look related or moved; and its latest health report from the self-check page.
+  lastExit: jsonb(),
+  prevExit: jsonb(),
+  report: jsonb(),
   createdBy: uuid().references(() => users.id, { onDelete: 'set null' }),
   createdAt: createdAt(),
   updatedAt: ts().notNull().defaultNow(),
   deletedAt: ts(),
   version: integer().notNull().default(0)
 }, t => [uniqueIndex().on(t.workspaceId, t.number), index().on(t.workspaceId, t.deletedAt)]);
+
+// The profiles each person marked as favourites; they come first in that person's lists.
+export const profileStars = pgTable('profile_stars', {
+  userId: uuid().notNull().references(() => users.id, { onDelete: 'cascade' }),
+  profileId: uuid().notNull().references(() => profiles.id, { onDelete: 'cascade' }),
+  createdAt: createdAt()
+}, t => [primaryKey({ columns: [t.userId, t.profileId] })]);
 
 // The latest saved sign-in state of a profile (cookies, local storage, IndexedDB): a sealed object in object
 // storage, written only by the session that holds the profile's lock.
@@ -228,7 +243,8 @@ export const departmentMembers = pgTable('department_members', {
 // A browser extension in the workspace's library. Its package (the zip, without a crx header) is sealed in object
 // storage; `signature` is the server's Ed25519 signature over its identity and sha256, which the desktop app checks
 // before installing it. Chromium extensions get a key of the library's own (`publicKey`), so their id (`extId`) is the
-// same on every computer and their data can follow the profile; Firefox ones keep their add-on id.
+// same on every computer and their data can follow the profile; Firefox ones keep their add-on id. `icon` is the
+// package's own icon as a data URL, when it has a small enough one.
 export const extensions = pgTable('extensions', {
   id: uuid().primaryKey().defaultRandom(),
   workspaceId: uuid().notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
@@ -243,6 +259,7 @@ export const extensions = pgTable('extensions', {
   signature: text().notNull(),
   source: text().notNull(),
   storeId: text(),
+  icon: text(),
   createdBy: uuid().references(() => users.id, { onDelete: 'set null' }),
   createdAt: createdAt(),
   updatedAt: ts().notNull().defaultNow()

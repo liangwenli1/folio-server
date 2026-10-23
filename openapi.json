@@ -4874,6 +4874,196 @@
                               "self"
                             ],
                             "additionalProperties": false
+                          },
+                          "lastExit": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "ip": {
+                                "type": "string"
+                              },
+                              "geo": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "country": {
+                                    "type": "string"
+                                  },
+                                  "countryName": {
+                                    "type": "string"
+                                  },
+                                  "region": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  },
+                                  "city": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  },
+                                  "lat": {
+                                    "type": "number"
+                                  },
+                                  "lon": {
+                                    "type": "number"
+                                  },
+                                  "timezone": {
+                                    "type": "string"
+                                  },
+                                  "locale": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "country",
+                                  "countryName",
+                                  "region",
+                                  "city",
+                                  "lat",
+                                  "lon",
+                                  "timezone",
+                                  "locale"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "at": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "ip",
+                              "geo",
+                              "at"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "prevExit": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "ip": {
+                                "type": "string"
+                              },
+                              "geo": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "country": {
+                                    "type": "string"
+                                  },
+                                  "countryName": {
+                                    "type": "string"
+                                  },
+                                  "region": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  },
+                                  "city": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  },
+                                  "lat": {
+                                    "type": "number"
+                                  },
+                                  "lon": {
+                                    "type": "number"
+                                  },
+                                  "timezone": {
+                                    "type": "string"
+                                  },
+                                  "locale": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "country",
+                                  "countryName",
+                                  "region",
+                                  "city",
+                                  "lat",
+                                  "lon",
+                                  "timezone",
+                                  "locale"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "at": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "ip",
+                              "geo",
+                              "at"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "report": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "at": {
+                                "type": "string"
+                              },
+                              "checks": {
+                                "maxItems": 12,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "enum": [
+                                        "webrtc",
+                                        "timezone",
+                                        "language",
+                                        "ua",
+                                        "canvas",
+                                        "webgl"
+                                      ]
+                                    },
+                                    "ok": {
+                                      "type": "boolean"
+                                    },
+                                    "seen": {
+                                      "type": "string",
+                                      "maxLength": 300
+                                    },
+                                    "want": {
+                                      "nullable": true,
+                                      "type": "string",
+                                      "maxLength": 300
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "ok",
+                                    "seen",
+                                    "want"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "canvas": {
+                                "nullable": true,
+                                "type": "string",
+                                "maxLength": 64
+                              },
+                              "webgl": {
+                                "nullable": true,
+                                "type": "string",
+                                "maxLength": 64
+                              }
+                            },
+                            "required": [
+                              "at",
+                              "checks",
+                              "canvas",
+                              "webgl"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "starred": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -4902,7 +5092,11 @@
                           "syncMode",
                           "extensionIds",
                           "data",
-                          "lock"
+                          "lock",
+                          "lastExit",
+                          "prevExit",
+                          "report",
+                          "starred"
                         ],
                         "additionalProperties": false
                       }
@@ -5310,6 +5504,196 @@
                         "self"
                       ],
                       "additionalProperties": false
+                    },
+                    "lastExit": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "ip": {
+                          "type": "string"
+                        },
+                        "geo": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "country": {
+                              "type": "string"
+                            },
+                            "countryName": {
+                              "type": "string"
+                            },
+                            "region": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "city": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "lat": {
+                              "type": "number"
+                            },
+                            "lon": {
+                              "type": "number"
+                            },
+                            "timezone": {
+                              "type": "string"
+                            },
+                            "locale": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "country",
+                            "countryName",
+                            "region",
+                            "city",
+                            "lat",
+                            "lon",
+                            "timezone",
+                            "locale"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "at": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "ip",
+                        "geo",
+                        "at"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "prevExit": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "ip": {
+                          "type": "string"
+                        },
+                        "geo": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "country": {
+                              "type": "string"
+                            },
+                            "countryName": {
+                              "type": "string"
+                            },
+                            "region": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "city": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "lat": {
+                              "type": "number"
+                            },
+                            "lon": {
+                              "type": "number"
+                            },
+                            "timezone": {
+                              "type": "string"
+                            },
+                            "locale": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "country",
+                            "countryName",
+                            "region",
+                            "city",
+                            "lat",
+                            "lon",
+                            "timezone",
+                            "locale"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "at": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "ip",
+                        "geo",
+                        "at"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "report": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "at": {
+                          "type": "string"
+                        },
+                        "checks": {
+                          "maxItems": 12,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "enum": [
+                                  "webrtc",
+                                  "timezone",
+                                  "language",
+                                  "ua",
+                                  "canvas",
+                                  "webgl"
+                                ]
+                              },
+                              "ok": {
+                                "type": "boolean"
+                              },
+                              "seen": {
+                                "type": "string",
+                                "maxLength": 300
+                              },
+                              "want": {
+                                "nullable": true,
+                                "type": "string",
+                                "maxLength": 300
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "ok",
+                              "seen",
+                              "want"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "canvas": {
+                          "nullable": true,
+                          "type": "string",
+                          "maxLength": 64
+                        },
+                        "webgl": {
+                          "nullable": true,
+                          "type": "string",
+                          "maxLength": 64
+                        }
+                      },
+                      "required": [
+                        "at",
+                        "checks",
+                        "canvas",
+                        "webgl"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "starred": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -5338,7 +5722,11 @@
                     "syncMode",
                     "extensionIds",
                     "data",
-                    "lock"
+                    "lock",
+                    "lastExit",
+                    "prevExit",
+                    "report",
+                    "starred"
                   ],
                   "additionalProperties": false
                 }
@@ -5759,6 +6147,196 @@
                               "self"
                             ],
                             "additionalProperties": false
+                          },
+                          "lastExit": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "ip": {
+                                "type": "string"
+                              },
+                              "geo": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "country": {
+                                    "type": "string"
+                                  },
+                                  "countryName": {
+                                    "type": "string"
+                                  },
+                                  "region": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  },
+                                  "city": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  },
+                                  "lat": {
+                                    "type": "number"
+                                  },
+                                  "lon": {
+                                    "type": "number"
+                                  },
+                                  "timezone": {
+                                    "type": "string"
+                                  },
+                                  "locale": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "country",
+                                  "countryName",
+                                  "region",
+                                  "city",
+                                  "lat",
+                                  "lon",
+                                  "timezone",
+                                  "locale"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "at": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "ip",
+                              "geo",
+                              "at"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "prevExit": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "ip": {
+                                "type": "string"
+                              },
+                              "geo": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "country": {
+                                    "type": "string"
+                                  },
+                                  "countryName": {
+                                    "type": "string"
+                                  },
+                                  "region": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  },
+                                  "city": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  },
+                                  "lat": {
+                                    "type": "number"
+                                  },
+                                  "lon": {
+                                    "type": "number"
+                                  },
+                                  "timezone": {
+                                    "type": "string"
+                                  },
+                                  "locale": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "country",
+                                  "countryName",
+                                  "region",
+                                  "city",
+                                  "lat",
+                                  "lon",
+                                  "timezone",
+                                  "locale"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "at": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "ip",
+                              "geo",
+                              "at"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "report": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "at": {
+                                "type": "string"
+                              },
+                              "checks": {
+                                "maxItems": 12,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "enum": [
+                                        "webrtc",
+                                        "timezone",
+                                        "language",
+                                        "ua",
+                                        "canvas",
+                                        "webgl"
+                                      ]
+                                    },
+                                    "ok": {
+                                      "type": "boolean"
+                                    },
+                                    "seen": {
+                                      "type": "string",
+                                      "maxLength": 300
+                                    },
+                                    "want": {
+                                      "nullable": true,
+                                      "type": "string",
+                                      "maxLength": 300
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "ok",
+                                    "seen",
+                                    "want"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "canvas": {
+                                "nullable": true,
+                                "type": "string",
+                                "maxLength": 64
+                              },
+                              "webgl": {
+                                "nullable": true,
+                                "type": "string",
+                                "maxLength": 64
+                              }
+                            },
+                            "required": [
+                              "at",
+                              "checks",
+                              "canvas",
+                              "webgl"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "starred": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
@@ -5787,7 +6365,11 @@
                           "syncMode",
                           "extensionIds",
                           "data",
-                          "lock"
+                          "lock",
+                          "lastExit",
+                          "prevExit",
+                          "report",
+                          "starred"
                         ],
                         "additionalProperties": false
                       }
@@ -6190,6 +6772,196 @@
                         "self"
                       ],
                       "additionalProperties": false
+                    },
+                    "lastExit": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "ip": {
+                          "type": "string"
+                        },
+                        "geo": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "country": {
+                              "type": "string"
+                            },
+                            "countryName": {
+                              "type": "string"
+                            },
+                            "region": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "city": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "lat": {
+                              "type": "number"
+                            },
+                            "lon": {
+                              "type": "number"
+                            },
+                            "timezone": {
+                              "type": "string"
+                            },
+                            "locale": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "country",
+                            "countryName",
+                            "region",
+                            "city",
+                            "lat",
+                            "lon",
+                            "timezone",
+                            "locale"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "at": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "ip",
+                        "geo",
+                        "at"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "prevExit": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "ip": {
+                          "type": "string"
+                        },
+                        "geo": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "country": {
+                              "type": "string"
+                            },
+                            "countryName": {
+                              "type": "string"
+                            },
+                            "region": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "city": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "lat": {
+                              "type": "number"
+                            },
+                            "lon": {
+                              "type": "number"
+                            },
+                            "timezone": {
+                              "type": "string"
+                            },
+                            "locale": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "country",
+                            "countryName",
+                            "region",
+                            "city",
+                            "lat",
+                            "lon",
+                            "timezone",
+                            "locale"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "at": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "ip",
+                        "geo",
+                        "at"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "report": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "at": {
+                          "type": "string"
+                        },
+                        "checks": {
+                          "maxItems": 12,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "enum": [
+                                  "webrtc",
+                                  "timezone",
+                                  "language",
+                                  "ua",
+                                  "canvas",
+                                  "webgl"
+                                ]
+                              },
+                              "ok": {
+                                "type": "boolean"
+                              },
+                              "seen": {
+                                "type": "string",
+                                "maxLength": 300
+                              },
+                              "want": {
+                                "nullable": true,
+                                "type": "string",
+                                "maxLength": 300
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "ok",
+                              "seen",
+                              "want"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "canvas": {
+                          "nullable": true,
+                          "type": "string",
+                          "maxLength": 64
+                        },
+                        "webgl": {
+                          "nullable": true,
+                          "type": "string",
+                          "maxLength": 64
+                        }
+                      },
+                      "required": [
+                        "at",
+                        "checks",
+                        "canvas",
+                        "webgl"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "starred": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
@@ -6218,7 +6990,11 @@
                     "syncMode",
                     "extensionIds",
                     "data",
-                    "lock"
+                    "lock",
+                    "lastExit",
+                    "prevExit",
+                    "report",
+                    "starred"
                   ],
                   "additionalProperties": false
                 }
@@ -6347,6 +7123,260 @@
                     "updated"
                   ],
                   "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/profiles/{id}/exit": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ip": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 45
+                  },
+                  "geo": {
+                    "nullable": true,
+                    "type": "object",
+                    "properties": {
+                      "country": {
+                        "type": "string"
+                      },
+                      "countryName": {
+                        "type": "string"
+                      },
+                      "region": {
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "city": {
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "lat": {
+                        "type": "number"
+                      },
+                      "lon": {
+                        "type": "number"
+                      },
+                      "timezone": {
+                        "type": "string"
+                      },
+                      "locale": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "country",
+                      "countryName",
+                      "region",
+                      "city",
+                      "lat",
+                      "lon",
+                      "timezone",
+                      "locale"
+                    ]
+                  }
+                },
+                "required": [
+                  "ip",
+                  "geo"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "nullable": true,
+                  "enum": [
+                    null
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/profiles/{id}/report": {
+      "put": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "checks": {
+                    "maxItems": 12,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "enum": [
+                            "webrtc",
+                            "timezone",
+                            "language",
+                            "ua",
+                            "canvas",
+                            "webgl"
+                          ]
+                        },
+                        "ok": {
+                          "type": "boolean"
+                        },
+                        "seen": {
+                          "type": "string",
+                          "maxLength": 300
+                        },
+                        "want": {
+                          "nullable": true,
+                          "type": "string",
+                          "maxLength": 300
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "ok",
+                        "seen",
+                        "want"
+                      ]
+                    }
+                  },
+                  "canvas": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "webgl": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 64
+                  }
+                },
+                "required": [
+                  "checks",
+                  "canvas",
+                  "webgl"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "nullable": true,
+                  "enum": [
+                    null
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/profiles/{id}/star": {
+      "put": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "nullable": true,
+                  "enum": [
+                    null
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "nullable": true,
+                  "enum": [
+                    null
+                  ]
                 }
               }
             }
@@ -6591,6 +7621,196 @@
                             "self"
                           ],
                           "additionalProperties": false
+                        },
+                        "lastExit": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "ip": {
+                              "type": "string"
+                            },
+                            "geo": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "country": {
+                                  "type": "string"
+                                },
+                                "countryName": {
+                                  "type": "string"
+                                },
+                                "region": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "city": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "lat": {
+                                  "type": "number"
+                                },
+                                "lon": {
+                                  "type": "number"
+                                },
+                                "timezone": {
+                                  "type": "string"
+                                },
+                                "locale": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "country",
+                                "countryName",
+                                "region",
+                                "city",
+                                "lat",
+                                "lon",
+                                "timezone",
+                                "locale"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "at": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "ip",
+                            "geo",
+                            "at"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "prevExit": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "ip": {
+                              "type": "string"
+                            },
+                            "geo": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "country": {
+                                  "type": "string"
+                                },
+                                "countryName": {
+                                  "type": "string"
+                                },
+                                "region": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "city": {
+                                  "nullable": true,
+                                  "type": "string"
+                                },
+                                "lat": {
+                                  "type": "number"
+                                },
+                                "lon": {
+                                  "type": "number"
+                                },
+                                "timezone": {
+                                  "type": "string"
+                                },
+                                "locale": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "country",
+                                "countryName",
+                                "region",
+                                "city",
+                                "lat",
+                                "lon",
+                                "timezone",
+                                "locale"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "at": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "ip",
+                            "geo",
+                            "at"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "report": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "at": {
+                              "type": "string"
+                            },
+                            "checks": {
+                              "maxItems": 12,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "enum": [
+                                      "webrtc",
+                                      "timezone",
+                                      "language",
+                                      "ua",
+                                      "canvas",
+                                      "webgl"
+                                    ]
+                                  },
+                                  "ok": {
+                                    "type": "boolean"
+                                  },
+                                  "seen": {
+                                    "type": "string",
+                                    "maxLength": 300
+                                  },
+                                  "want": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "maxLength": 300
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "ok",
+                                  "seen",
+                                  "want"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "canvas": {
+                              "nullable": true,
+                              "type": "string",
+                              "maxLength": 64
+                            },
+                            "webgl": {
+                              "nullable": true,
+                              "type": "string",
+                              "maxLength": 64
+                            }
+                          },
+                          "required": [
+                            "at",
+                            "checks",
+                            "canvas",
+                            "webgl"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "starred": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -6619,7 +7839,11 @@
                         "syncMode",
                         "extensionIds",
                         "data",
-                        "lock"
+                        "lock",
+                        "lastExit",
+                        "prevExit",
+                        "report",
+                        "starred"
                       ],
                       "additionalProperties": false
                     },
@@ -6751,6 +7975,10 @@
                             "nullable": true,
                             "type": "string"
                           },
+                          "icon": {
+                            "nullable": true,
+                            "type": "string"
+                          },
                           "createdAt": {
                             "type": "string"
                           },
@@ -6773,6 +8001,7 @@
                           "signature",
                           "source",
                           "storeId",
+                          "icon",
                           "createdAt",
                           "updatedAt",
                           "profiles"
@@ -6929,6 +8158,92 @@
                             ],
                             "additionalProperties": false
                           },
+                          "history": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "at": {
+                                  "type": "string"
+                                },
+                                "ok": {
+                                  "type": "boolean"
+                                },
+                                "ms": {
+                                  "nullable": true,
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "at",
+                                "ok",
+                                "ms"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "lastExit": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "ip": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "geo": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "country": {
+                                    "type": "string"
+                                  },
+                                  "countryName": {
+                                    "type": "string"
+                                  },
+                                  "region": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  },
+                                  "city": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  },
+                                  "lat": {
+                                    "type": "number"
+                                  },
+                                  "lon": {
+                                    "type": "number"
+                                  },
+                                  "timezone": {
+                                    "type": "string"
+                                  },
+                                  "locale": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "country",
+                                  "countryName",
+                                  "region",
+                                  "city",
+                                  "lat",
+                                  "lon",
+                                  "timezone",
+                                  "locale"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "at": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "ip",
+                              "geo",
+                              "at"
+                            ],
+                            "additionalProperties": false
+                          },
                           "profiles": {
                             "type": "number"
                           },
@@ -6949,6 +8264,8 @@
                           "hasPassword",
                           "backupId",
                           "lastCheck",
+                          "history",
+                          "lastExit",
                           "profiles",
                           "createdAt",
                           "updatedAt"
@@ -7152,6 +8469,92 @@
                       ],
                       "additionalProperties": false
                     },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "at": {
+                            "type": "string"
+                          },
+                          "ok": {
+                            "type": "boolean"
+                          },
+                          "ms": {
+                            "nullable": true,
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "at",
+                          "ok",
+                          "ms"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "lastExit": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "ip": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "geo": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "country": {
+                              "type": "string"
+                            },
+                            "countryName": {
+                              "type": "string"
+                            },
+                            "region": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "city": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "lat": {
+                              "type": "number"
+                            },
+                            "lon": {
+                              "type": "number"
+                            },
+                            "timezone": {
+                              "type": "string"
+                            },
+                            "locale": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "country",
+                            "countryName",
+                            "region",
+                            "city",
+                            "lat",
+                            "lon",
+                            "timezone",
+                            "locale"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "at": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "ip",
+                        "geo",
+                        "at"
+                      ],
+                      "additionalProperties": false
+                    },
                     "profiles": {
                       "type": "number"
                     },
@@ -7172,6 +8575,8 @@
                     "hasPassword",
                     "backupId",
                     "lastCheck",
+                    "history",
+                    "lastExit",
                     "profiles",
                     "createdAt",
                     "updatedAt"
@@ -7346,6 +8751,92 @@
                             ],
                             "additionalProperties": false
                           },
+                          "history": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "at": {
+                                  "type": "string"
+                                },
+                                "ok": {
+                                  "type": "boolean"
+                                },
+                                "ms": {
+                                  "nullable": true,
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "at",
+                                "ok",
+                                "ms"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "lastExit": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "ip": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "geo": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "country": {
+                                    "type": "string"
+                                  },
+                                  "countryName": {
+                                    "type": "string"
+                                  },
+                                  "region": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  },
+                                  "city": {
+                                    "nullable": true,
+                                    "type": "string"
+                                  },
+                                  "lat": {
+                                    "type": "number"
+                                  },
+                                  "lon": {
+                                    "type": "number"
+                                  },
+                                  "timezone": {
+                                    "type": "string"
+                                  },
+                                  "locale": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "country",
+                                  "countryName",
+                                  "region",
+                                  "city",
+                                  "lat",
+                                  "lon",
+                                  "timezone",
+                                  "locale"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "at": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "ip",
+                              "geo",
+                              "at"
+                            ],
+                            "additionalProperties": false
+                          },
                           "profiles": {
                             "type": "number"
                           },
@@ -7366,6 +8857,8 @@
                           "hasPassword",
                           "backupId",
                           "lastCheck",
+                          "history",
+                          "lastExit",
                           "profiles",
                           "createdAt",
                           "updatedAt"
@@ -7590,6 +9083,92 @@
                       ],
                       "additionalProperties": false
                     },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "at": {
+                            "type": "string"
+                          },
+                          "ok": {
+                            "type": "boolean"
+                          },
+                          "ms": {
+                            "nullable": true,
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "at",
+                          "ok",
+                          "ms"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "lastExit": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "ip": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "geo": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "country": {
+                              "type": "string"
+                            },
+                            "countryName": {
+                              "type": "string"
+                            },
+                            "region": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "city": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "lat": {
+                              "type": "number"
+                            },
+                            "lon": {
+                              "type": "number"
+                            },
+                            "timezone": {
+                              "type": "string"
+                            },
+                            "locale": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "country",
+                            "countryName",
+                            "region",
+                            "city",
+                            "lat",
+                            "lon",
+                            "timezone",
+                            "locale"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "at": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "ip",
+                        "geo",
+                        "at"
+                      ],
+                      "additionalProperties": false
+                    },
                     "profiles": {
                       "type": "number"
                     },
@@ -7610,6 +9189,8 @@
                     "hasPassword",
                     "backupId",
                     "lastCheck",
+                    "history",
+                    "lastExit",
                     "profiles",
                     "createdAt",
                     "updatedAt"
@@ -7861,6 +9442,92 @@
                       ],
                       "additionalProperties": false
                     },
+                    "history": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "at": {
+                            "type": "string"
+                          },
+                          "ok": {
+                            "type": "boolean"
+                          },
+                          "ms": {
+                            "nullable": true,
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "at",
+                          "ok",
+                          "ms"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "lastExit": {
+                      "nullable": true,
+                      "type": "object",
+                      "properties": {
+                        "ip": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "geo": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "country": {
+                              "type": "string"
+                            },
+                            "countryName": {
+                              "type": "string"
+                            },
+                            "region": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "city": {
+                              "nullable": true,
+                              "type": "string"
+                            },
+                            "lat": {
+                              "type": "number"
+                            },
+                            "lon": {
+                              "type": "number"
+                            },
+                            "timezone": {
+                              "type": "string"
+                            },
+                            "locale": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "country",
+                            "countryName",
+                            "region",
+                            "city",
+                            "lat",
+                            "lon",
+                            "timezone",
+                            "locale"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "at": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "ip",
+                        "geo",
+                        "at"
+                      ],
+                      "additionalProperties": false
+                    },
                     "profiles": {
                       "type": "number"
                     },
@@ -7881,6 +9548,8 @@
                     "hasPassword",
                     "backupId",
                     "lastCheck",
+                    "history",
+                    "lastExit",
                     "profiles",
                     "createdAt",
                     "updatedAt"
@@ -12864,6 +14533,10 @@
                             "nullable": true,
                             "type": "string"
                           },
+                          "icon": {
+                            "nullable": true,
+                            "type": "string"
+                          },
                           "createdAt": {
                             "type": "string"
                           },
@@ -12886,6 +14559,7 @@
                           "signature",
                           "source",
                           "storeId",
+                          "icon",
                           "createdAt",
                           "updatedAt",
                           "profiles"
@@ -13002,6 +14676,10 @@
                       "nullable": true,
                       "type": "string"
                     },
+                    "icon": {
+                      "nullable": true,
+                      "type": "string"
+                    },
                     "createdAt": {
                       "type": "string"
                     },
@@ -13024,6 +14702,7 @@
                     "signature",
                     "source",
                     "storeId",
+                    "icon",
                     "createdAt",
                     "updatedAt",
                     "profiles"
@@ -13123,6 +14802,10 @@
                       "nullable": true,
                       "type": "string"
                     },
+                    "icon": {
+                      "nullable": true,
+                      "type": "string"
+                    },
                     "createdAt": {
                       "type": "string"
                     },
@@ -13145,6 +14828,7 @@
                     "signature",
                     "source",
                     "storeId",
+                    "icon",
                     "createdAt",
                     "updatedAt",
                     "profiles"

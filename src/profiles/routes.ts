@@ -2,13 +2,13 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { and, asc, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
-import { departments, extensions, groups, profileData, profiles, proxies, users } from '../db/schema.js';
+import { departments, extensions, groups, profileData, profileStars, profiles, proxies, users } from '../db/schema.js';
 import { record } from '../activity/service.js';
 import { ApiError, forbidden, notFound } from '../errors.js';
 import { publish } from '../events.js';
 import { requireSession, type Deps } from '../http.js';
 import { open } from '../crypto.js';
-import { Extension, Fingerprint, Group, Profile, ProxySecret, extensionView, kernel, os, profileView } from '../views.js';
+import { Extension, Fingerprint, Geo, Group, HealthReport, Profile, ProxySecret, extensionView, kernel, os, profileView } from '../views.js';
 import { requireRole, type Role } from '../workspaces/service.js';
 import { requireCompany } from '../team/service.js';
 import { access, assertOwned, checkAssignment, checkExtensions, checkFingerprint, createProfiles, loadProfiles, profileFor, reserve } from './service.js';
@@ -94,7 +94,7 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
   }, async req => {
     const { s, scope } = await member(req, req.params.id);
     const where = and(eq(profiles.workspaceId, req.params.id), req.query.trash === '1' ? isNotNull(profiles.deletedAt) : isNull(profiles.deletedAt), scope);
-    return { profiles: await loadProfiles(db, where, s.id, clock.now()) };
+    return { profiles: await loadProfiles(db, where, s, clock.now()) };
   });
 
 
@@ -145,7 +145,7 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
     const fields = (Object.keys(patch) as (keyof typeof patch)[]).filter(k => JSON.stringify(patch[k] ?? null) !== JSON.stringify(p[k] ?? null));
     if (fields.length) await record(db, { workspaceId: p.workspaceId, actor: s, at: u.updatedAt, action: 'profile.update', profiles: [u], detail: { fields } });
     publish(p.workspaceId, { kind: 'profiles', ids: [p.id] });
-    return (await loadProfiles(db, eq(profiles.id, u.id), s.id, clock.now()))[0];
+    return (await loadProfiles(db, eq(profiles.id, u.id), s, clock.now()))[0];
   });
 
   r.post('/workspaces/:id/profiles/batch', {
@@ -252,6 +252,36 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
     return { updated: updated.length };
   });
 
+  // Where the profile went out from when it opened on a computer. A different IP than last time keeps the last one as
+  // the previous exit, for the warning about a profile that moved.
+  r.post('/profiles/:id/exit', { schema: { params: wsParams, body: z.object({ ip: z.string().min(1).max(45), geo: Geo.nullable() }), response: { 204: z.null() } } }, async (req, reply) => {
+    const { p } = await profileFor(deps, req, req.params.id);
+    const last = p.lastExit as { ip: string } | null, exit = { ...req.body, at: clock.now().toISOString() };
+    await db.update(profiles).set(last && last.ip !== exit.ip ? { lastExit: exit, prevExit: last } : { lastExit: exit }).where(eq(profiles.id, p.id));
+    publish(p.workspaceId, { kind: 'profiles', ids: [p.id] });
+    return reply.code(204).send(null);
+  });
+
+  // The latest health report from the profile's self-check page, seen by the whole team.
+  r.put('/profiles/:id/report', { schema: { params: wsParams, body: HealthReport.omit({ at: true }), response: { 204: z.null() } } }, async (req, reply) => {
+    const { p } = await profileFor(deps, req, req.params.id);
+    await db.update(profiles).set({ report: { ...req.body, at: clock.now().toISOString() } }).where(eq(profiles.id, p.id));
+    publish(p.workspaceId, { kind: 'profiles', ids: [p.id] });
+    return reply.code(204).send(null);
+  });
+
+  // Favourites, each person's own.
+  r.put('/profiles/:id/star', { schema: { params: wsParams, response: { 204: z.null() } } }, async (req, reply) => {
+    const { p, s } = await profileFor(deps, req, req.params.id);
+    await db.insert(profileStars).values({ userId: s.userId, profileId: p.id }).onConflictDoNothing();
+    return reply.code(204).send(null);
+  });
+  r.delete('/profiles/:id/star', { schema: { params: wsParams, response: { 204: z.null() } } }, async (req, reply) => {
+    const { p, s } = await profileFor(deps, req, req.params.id);
+    await db.delete(profileStars).where(and(eq(profileStars.userId, s.userId), eq(profileStars.profileId, p.id)));
+    return reply.code(204).send(null);
+  });
+
   // Everything the desktop app needs to launch a profile, including proxy passwords.
   // The desktop refuses to pass this route through to its renderer.
   r.get('/profiles/:id/launch', {
@@ -266,6 +296,6 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
     const [backup] = proxy?.backupId ? await db.select().from(proxies).where(eq(proxies.id, proxy.backupId)) : [];
     // The extensions it opens with, to fetch and check against their signatures.
     const exts = p.extensionIds.length ? await db.select().from(extensions).where(inArray(extensions.id, p.extensionIds)) : [];
-    return { profile: (await loadProfiles(db, eq(profiles.id, p.id), s.id, clock.now()))[0], proxy: secret(proxy), backup: secret(backup), extensions: exts.map(e => extensionView(e, 0)) };
+    return { profile: (await loadProfiles(db, eq(profiles.id, p.id), s, clock.now()))[0], proxy: secret(proxy), backup: secret(backup), extensions: exts.map(e => extensionView(e, 0)) };
   });
 }

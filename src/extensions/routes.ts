@@ -58,7 +58,7 @@ export function extensionRoutes(app: FastifyInstance, deps: Deps){
     await storage.put(objectKey, p.zip);
     const [e] = await db.insert(extensions).values({
       id, workspaceId: req.params.id, name: p.name, kernel: req.query.kernel, version: p.version, ...who, sha256: hash, size: p.zip.length, objectKey,
-      signature: signPackage({ id, kernel: req.query.kernel, extId: who.extId, sha256: hash }), source: req.query.source, storeId: req.query.storeId ?? null,
+      signature: signPackage({ id, kernel: req.query.kernel, extId: who.extId, sha256: hash }), source: req.query.source, storeId: req.query.storeId ?? null, icon: p.icon,
       createdBy: s.userId, createdAt: now, updatedAt: now
     }).returning();
     await record(db, { workspaceId: e.workspaceId, actor: s, at: now, action: 'extension.add', detail: { name: e.name, kernel: e.kernel, version: e.version } });
@@ -76,7 +76,7 @@ export function extensionRoutes(app: FastifyInstance, deps: Deps){
     await storage.put(objectKey, p.zip);
     const [u] = await db.update(extensions).set({
       name: p.name, version: p.version, sha256: hash, size: p.zip.length, objectKey, signature: signPackage({ ...e, sha256: hash }),
-      source: req.query.source, storeId: req.query.storeId ?? e.storeId, updatedAt: now
+      source: req.query.source, storeId: req.query.storeId ?? e.storeId, icon: p.icon, updatedAt: now
     }).where(eq(extensions.id, e.id)).returning();
     if (objectKey !== e.objectKey) await storage.delete(e.objectKey).catch(err => req.log.error(err, 'deleting old extension package failed'));
     await record(db, { workspaceId: e.workspaceId, actor: s, at: now, action: 'extension.update', detail: { name: u.name, version: u.version, from: e.version } });

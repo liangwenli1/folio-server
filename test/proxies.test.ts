@@ -51,14 +51,22 @@ describe('proxies', () => {
     expect((await t.app.inject({ url: `/workspaces/${workspaceId}/proxies`, headers })).json().proxies).toHaveLength(3);
   });
 
-  it('store the latest check and forget it when the address changes', async () => {
+  it('store the latest check, the last 20, and where they last got through, and forget them when the address changes', async () => {
     const { headers, workspaceId } = await signup(t.app);
     const p = (await t.app.inject({ method: 'POST', url: `/workspaces/${workspaceId}/proxies`, headers, payload: { type: 'http', host: 'x.example.net', port: 80 } })).json();
+    expect(p).toMatchObject({ history: [], lastExit: null });
     const geo = { country: 'US', countryName: 'United States', region: 'Washington', city: 'Seattle', lat: 47.6, lon: -122.3, timezone: 'America/Los_Angeles', locale: 'en-US' };
-    const checked = await t.app.inject({ method: 'POST', url: `/proxies/${p.id}/check`, headers, payload: { ok: true, ms: 182, ip: '172.58.1.2', geo, error: null } });
+    const report = (body: object) => t.app.inject({ method: 'POST', url: `/proxies/${p.id}/check`, headers, payload: body });
+    const checked = await report({ ok: true, ms: 182, ip: '172.58.1.2', geo, error: null });
     expect(checked.json().lastCheck).toMatchObject({ ok: true, ms: 182, geo: { city: 'Seattle' } });
+    for (let i = 0; i < 21; i++) await report({ ok: true, ms: 100 + i, ip: '172.58.1.2', geo, error: null });
+    const down = (await report({ ok: false, ms: null, ip: null, geo: null, error: 'timeout' })).json();
+    expect(down.history).toHaveLength(20);
+    expect(down.history.at(-1)).toMatchObject({ ok: false, ms: null });
+    expect(down.history[0].ms).toBe(102);
+    expect(down.lastExit).toMatchObject({ ip: '172.58.1.2', geo: { city: 'Seattle' } });
     const moved = await t.app.inject({ method: 'PATCH', url: `/proxies/${p.id}`, headers, payload: { host: 'y.example.net' } });
-    expect(moved.json().lastCheck).toBeNull();
+    expect(moved.json()).toMatchObject({ lastCheck: null, history: [], lastExit: null });
   });
 
   it('cannot back themselves up, and leave profiles without a proxy when deleted', async () => {

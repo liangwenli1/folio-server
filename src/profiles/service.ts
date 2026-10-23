@@ -1,7 +1,7 @@
 import { and, asc, eq, gt, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
 import type { FastifyRequest } from 'fastify';
 import type { Db, Tx } from '../db/client.js';
-import { departmentMembers, departments, extensions, groups, memberships, profileData, profileLocks, profiles, proxies, users, workspaces } from '../db/schema.js';
+import { departmentMembers, departments, extensions, groups, memberships, profileData, profileLocks, profileStars, profiles, proxies, users, workspaces } from '../db/schema.js';
 import { ApiError, forbidden, notFound } from '../errors.js';
 import { requireSession, type Deps } from '../http.js';
 import { profileView, type Fingerprint } from '../views.js';
@@ -78,14 +78,15 @@ export async function profileFor(deps: Deps, req: FastifyRequest, id: string){
   return { p, s, role };
 }
 
-// Profiles with their saved state and who has them open, as the asking session sees them.
-export async function loadProfiles(db: Db, where: SQL | undefined, sessionId: string, now: Date){
-  const rows = await db.select({ p: profiles, d: profileData, l: profileLocks, email: users.email }).from(profiles)
+// Profiles with their saved state, who has them open and whether the asker starred them, as the asking session sees them.
+export async function loadProfiles(db: Db, where: SQL | undefined, s: { id: string; userId: string }, now: Date){
+  const rows = await db.select({ p: profiles, d: profileData, l: profileLocks, email: users.email, star: profileStars.userId }).from(profiles)
     .leftJoin(profileData, eq(profileData.profileId, profiles.id))
     .leftJoin(profileLocks, and(eq(profileLocks.profileId, profiles.id), gt(profileLocks.expiresAt, now)))
     .leftJoin(users, eq(users.id, profileLocks.userId))
+    .leftJoin(profileStars, and(eq(profileStars.profileId, profiles.id), eq(profileStars.userId, s.userId)))
     .where(where).orderBy(asc(profiles.number));
-  return rows.map(r => profileView(r.p, { data: r.d, lock: r.l && { ...r.l, email: r.email! }, sessionId }));
+  return rows.map(r => profileView(r.p, { data: r.d, lock: r.l && { ...r.l, email: r.email! }, sessionId: s.id, starred: !!r.star }));
 }
 
 const MAX_FP_BYTES = 64 * 1024;

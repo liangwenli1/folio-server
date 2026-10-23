@@ -14,9 +14,12 @@ const call = (method: 'GET' | 'POST' | 'PATCH' | 'DELETE' | 'PUT', url: string, 
 const send = (method: 'POST' | 'PUT', url: string, headers: H, body: Buffer) => t.app.inject({ method, url, headers: { ...headers, 'content-type': 'application/octet-stream' }, payload: body });
 const sha = (b: Buffer | Uint8Array) => createHash('sha256').update(b).digest('hex');
 
-const zip = (files: Record<string, string>) => Buffer.from(zipSync(Object.fromEntries(Object.entries(files).map(([k, v]) => [k, strToU8(v)]))));
+const zip = (files: Record<string, string | Uint8Array>) => Buffer.from(zipSync(Object.fromEntries(Object.entries(files).map(([k, v]) => [k, typeof v === 'string' ? strToU8(v) : v]))));
+// A 1×1 PNG, for the icons.
+const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
 const CHROMIUM = zip({
-  'manifest.json': JSON.stringify({ manifest_version: 3, name: '__MSG_appName__', version: '1.4.2', default_locale: 'en' }),
+  'manifest.json': JSON.stringify({ manifest_version: 3, name: '__MSG_appName__', version: '1.4.2', default_locale: 'en', icons: { 16: 'icons/16.png', 48: 'icons/48.png', 256: 'icons/256.png' } }),
+  'icons/48.png': PNG,
   '_locales/en/messages.json': JSON.stringify({ appName: { message: 'Shop Helper' } }),
   'content.js': 'document.documentElement.dataset.helper = "on";'
 });
@@ -42,6 +45,8 @@ describe('the extension library', () => {
     expect(e).toMatchObject({ name: 'Shop Helper', version: '1.4.2', kernel: 'chromium', source: 'store', sha256: sha(CHROMIUM), size: CHROMIUM.length, profiles: 0 });
     expect(e.extId).toBe(chromiumId(Buffer.from(e.publicKey, 'base64')));
     expect(e.extId).toMatch(/^[a-p]{32}$/);
+    // Its own icon, the largest declared one up to 128 px.
+    expect(e.icon).toBe(`data:image/png;base64,${PNG.toString('base64')}`);
     const { publicKey } = (await call('GET', '/extensions/key', m.headers)).json();
     const key = createPublicKey({ key: Buffer.from(publicKey, 'base64'), format: 'der', type: 'spki' });
     expect(verify(null, Buffer.from(`folio-extension:${e.id}:chromium:${e.extId}:${e.sha256}`), key, Buffer.from(e.signature, 'base64'))).toBe(true);
@@ -56,7 +61,7 @@ describe('the extension library', () => {
 
     // Firefox keeps its add-on id; the same add-on again is an update, which keeps the identity.
     const ff = (await send('POST', `/workspaces/${ws}/extensions?kernel=firefox`, o.headers, FIREFOX)).json();
-    expect(ff).toMatchObject({ kernel: 'firefox', extId: 'helper@shop.example', publicKey: null, version: '2.0' });
+    expect(ff).toMatchObject({ kernel: 'firefox', extId: 'helper@shop.example', publicKey: null, version: '2.0', icon: null });
     expect((await send('POST', `/workspaces/${ws}/extensions?kernel=firefox`, o.headers, xpi('2.1'))).json().error.code).toBe('extension_exists');
     const updated = (await send('PUT', `/extensions/${ff.id}/package`, o.headers, xpi('2.1'))).json();
     expect(updated).toMatchObject({ id: ff.id, extId: ff.extId, version: '2.1', sha256: sha(xpi('2.1')) });

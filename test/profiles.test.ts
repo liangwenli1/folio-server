@@ -111,6 +111,37 @@ describe('editing profiles', () => {
   });
 });
 
+describe('what the app learns about a profile', () => {
+  it('remembers where it last went out and the time before, its health report, and each person\'s favourites', async () => {
+    const o = await signup(t.app);
+    await buy(t.app, o.headers, o.workspaceId, { plan: 'studio', period: 'monthly', addonPacks: 0 });
+    const p = (await post(`/workspaces/${o.workspaceId}/profiles`, o.headers, chromiumProfile('Shop-1'))).json();
+    expect(p).toMatchObject({ lastExit: null, prevExit: null, report: null, starred: false });
+    const seattle = { country: 'US', countryName: 'United States', region: 'Washington', city: 'Seattle', lat: 47.6, lon: -122.3, timezone: 'America/Los_Angeles', locale: 'en-US' };
+    const exit = (ip: string, geo: object | null) => post(`/profiles/${p.id}/exit`, o.headers, { ip, geo });
+    const one = async () => (await t.app.inject({ url: `/workspaces/${o.workspaceId}/profiles`, headers: o.headers })).json().profiles[0];
+    expect((await exit('172.58.1.2', seattle)).statusCode).toBe(204);
+    await exit('172.58.1.2', seattle);
+    expect(await one()).toMatchObject({ lastExit: { ip: '172.58.1.2', geo: { city: 'Seattle' } }, prevExit: null });
+    await exit('81.2.69.160', null);
+    expect(await one()).toMatchObject({ lastExit: { ip: '81.2.69.160', geo: null }, prevExit: { ip: '172.58.1.2' } });
+
+    const report = { checks: [{ id: 'webrtc', ok: true, seen: 'none', want: null }, { id: 'timezone', ok: false, seen: 'Asia/Shanghai', want: 'America/Los_Angeles' }], canvas: 'a1b2', webgl: null };
+    expect((await t.app.inject({ method: 'PUT', url: `/profiles/${p.id}/report`, headers: o.headers, payload: report })).statusCode).toBe(204);
+    expect((await one()).report).toMatchObject({ ...report, at: expect.any(String) });
+    expect((await t.app.inject({ method: 'PUT', url: `/profiles/${p.id}/report`, headers: o.headers, payload: { ...report, checks: [{ id: 'nope', ok: true, seen: '', want: null }] } })).statusCode).toBe(400);
+
+    // Stars are per person: someone else in the team doesn't see them.
+    expect((await t.app.inject({ method: 'PUT', url: `/profiles/${p.id}/star`, headers: o.headers })).statusCode).toBe(204);
+    await t.app.inject({ method: 'PUT', url: `/profiles/${p.id}/star`, headers: o.headers });
+    expect((await one()).starred).toBe(true);
+    const other = await signup(t.app);
+    expect((await t.app.inject({ method: 'PUT', url: `/profiles/${p.id}/star`, headers: other.headers })).statusCode).toBe(404);
+    await t.app.inject({ method: 'DELETE', url: `/profiles/${p.id}/star`, headers: o.headers });
+    expect((await one()).starred).toBe(false);
+  });
+});
+
 describe('launch details', () => {
   it('include the proxy password and its backup line, but not for profiles in the trash', async () => {
     const { headers, workspaceId } = await signup(t.app);
