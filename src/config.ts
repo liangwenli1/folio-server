@@ -39,6 +39,8 @@ const Settings = z.strictObject({
   // Dev only: advancing subscriptions by hand, and treating private and loopback addresses as this city so proxy
   // checks work on a local network.
   dev_tools: z.boolean().optional(),
+  // Platform admins, by email: they add browser engine versions from the desktop app's Engines page.
+  admins: z.array(z.email()).optional(),
   dev_private_geo: z.enum(['seattle', 'london', 'tokyo', 'frankfurt']).optional()
 });
 
@@ -82,7 +84,8 @@ export const config = {
   trustProxy: file.trust_proxy ?? (false as const),
   secretKey: file.secret_key ?? '',
   geoipDb: file.geoip_db ?? '',
-  devPrivateGeo: file.dev_private_geo ?? ''
+  devPrivateGeo: file.dev_private_geo ?? '',
+  admins: (file.admins ?? []).map(e => e.toLowerCase())
 };
 
 export type Config = typeof config;

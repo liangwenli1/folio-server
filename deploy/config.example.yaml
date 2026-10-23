@@ -38,6 +38,11 @@ mock_payments: false
 # 正式上线前改回 true。
 email_verification: true
 
+# 平台管理员（邮箱）：可在工作台「内核」页上传新的内核版本、设为推荐和下架。上传的安装包存在上面 s3 的 kernels/ 目录，
+# 工作台直接与存储传输，不经过官网和 Cloudflare。
+admins:
+  - you@example.com
+
 # 下面几项和 docker-compose.yml 配套，保持不变即可。
 # 数据库只在 compose 内部网络里，不对外开放；要改密码，这里和 docker-compose.yml 的 POSTGRES_PASSWORD 一起改。
 database_url: postgres://folio:folio@postgres:5432/folio

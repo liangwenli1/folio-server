@@ -1,6 +1,6 @@
 // Response shapes. These zod schemas also produce the OpenAPI document the site and desktop generate types from.
 import { z } from 'zod';
-import type { extensions, flows, profileData, profileLocks, profiles, proxies, users } from './db/schema.js';
+import type { extensions, flows, kernels, profileData, profileLocks, profiles, proxies, users } from './db/schema.js';
 import { entitlements } from './plans.js';
 import { Step } from './flows/steps.js';
 import { toState, type PaymentRow, type SubRow } from './billing/service.js';
@@ -205,4 +205,18 @@ export const Extension = z.object({
 export const extensionView = (e: typeof extensions.$inferSelect, profiles: number): z.infer<typeof Extension> => ({
   id: e.id, name: e.name, kernel: e.kernel as 'chromium' | 'firefox', version: e.version, extId: e.extId, publicKey: e.publicKey, sha256: e.sha256, size: e.size,
   signature: e.signature, source: e.source as 'upload' | 'store', storeId: e.storeId, createdAt: e.createdAt.toISOString(), updatedAt: e.updatedAt.toISOString(), profiles
+});
+
+// ---------- browser engines (P6) ----------
+export const platform = z.enum(['win32-x64', 'darwin-arm64', 'darwin-x64', 'linux-x64']);
+export const archive = z.enum(['zip', 'tar.xz', 'dmg']);
+// `source`: an upstream release or a package uploaded to Folio. `ready` is false while an upload is unfinished (only
+// admins see those); `profiles` counts the profiles on that version across every workspace, for admins only.
+export const Kernel = z.object({
+  id: z.string(), kind: kernel, version: z.string(), platform, archive, size: z.number(), sha256: z.string(), recommended: z.boolean(),
+  source: z.enum(['upstream', 'folio']), ready: z.boolean(), createdAt: z.string(), profiles: z.number().nullable()
+});
+export const kernelView = (k: typeof kernels.$inferSelect, profiles: number | null): z.infer<typeof Kernel> => ({
+  id: k.id, kind: k.kind as 'chromium' | 'firefox', version: k.version, platform: k.platform as z.infer<typeof platform>, archive: k.archive as z.infer<typeof archive>,
+  size: k.size, sha256: k.sha256, recommended: k.recommended, source: k.objectKey ? 'folio' : 'upstream', ready: k.ready, createdAt: k.createdAt.toISOString(), profiles
 });

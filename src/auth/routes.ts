@@ -117,7 +117,8 @@ export function authRoutes(app: FastifyInstance, deps: Deps){
     return reply.code(204).send(null);
   });
 
-  r.get('/me', { schema: { response: { 200: z.object({ user: User, workspaces: z.array(WorkspaceSummary) }) } } }, async req => {
+  // `admin`: one of the platform admins (config.yaml), who manage browser engine versions.
+  r.get('/me', { schema: { response: { 200: z.object({ user: User, workspaces: z.array(WorkspaceSummary), admin: z.boolean() }) } } }, async req => {
     const s = await requireSession(req, deps);
     const u = await verifiedWhenOff((await db.select().from(users).where(eq(users.id, s.userId)))[0]);
     const rows = await db.select({ id: workspaces.id, name: workspaces.name, role: memberships.role, plan: subscriptions.plan, status: subscriptions.status })
@@ -126,7 +127,7 @@ export function authRoutes(app: FastifyInstance, deps: Deps){
       .innerJoin(subscriptions, eq(subscriptions.workspaceId, memberships.workspaceId))
       .where(eq(memberships.userId, s.userId))
       .orderBy(asc(workspaces.createdAt));
-    return { user: userView(u), workspaces: rows as z.infer<typeof WorkspaceSummary>[] };
+    return { user: userView(u), workspaces: rows as z.infer<typeof WorkspaceSummary>[], admin: deps.config.admins.includes(u.email) };
   });
 
   r.patch('/me', { schema: { body: z.object({ locale }), response: { 200: z.object({ user: User }) } } }, async req => {

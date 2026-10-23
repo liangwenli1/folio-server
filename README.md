@@ -40,6 +40,7 @@ database_url: postgres://folio:folio@localhost:5432/folio
 | `trust_proxy` | off | Addresses or CIDRs (comma-separated, or `uniquelocal` for private networks) of the reverse proxy allowed to set `X-Forwarded-For`. Leave unset when clients connect directly, or the header can be forged |
 | `geoip_db` | unset | Path to the DB-IP City Lite `.mmdb` file (https://db-ip.com/db/download/ip-to-city-lite, CC BY 4.0; show "IP Geolocation by DB-IP" wherever locations appear). Without it, exit locations are unknown |
 | `auth_rate_limit` | `20` | Sign-in and sign-up attempts per address per minute |
+| `admins` | none | Emails of the platform admins, who add browser engine versions from the desktop app's Engines page, pick the recommended one and remove versions. Their packages go straight between the app and the object storage (under `kernels/`, not sealed) by signed URL |
 | `dev_tools` | `false` | `/dev/run-due` and other test helpers. Refused in production |
 | `dev_private_geo` | unset | Dev only: `seattle`, `london`, `tokyo` or `frankfurt`, used as the location of private and loopback addresses so proxy checks work on a local network |
 

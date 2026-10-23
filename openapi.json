@@ -1538,11 +1538,15 @@
                         ],
                         "additionalProperties": false
                       }
+                    },
+                    "admin": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
                     "user",
-                    "workspaces"
+                    "workspaces",
+                    "admin"
                   ],
                   "additionalProperties": false
                 }
@@ -6254,6 +6258,7 @@
                       "set-department",
                       "add-extension",
                       "remove-extension",
+                      "set-kernel",
                       "trash",
                       "restore",
                       "purge"
@@ -6292,6 +6297,18 @@
                     "type": "string",
                     "format": "uuid",
                     "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "kernel": {
+                    "type": "string",
+                    "enum": [
+                      "chromium",
+                      "firefox"
+                    ]
+                  },
+                  "kernelVersion": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
                   }
                 },
                 "required": [
@@ -9590,7 +9607,8 @@
                               "extension.update",
                               "extension.delete",
                               "profile.add-extension",
-                              "profile.remove-extension"
+                              "profile.remove-extension",
+                              "profile.set-kernel"
                             ]
                           },
                           "profile": {
@@ -13211,6 +13229,555 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/kernels": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "kernels": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "chromium",
+                              "firefox"
+                            ]
+                          },
+                          "version": {
+                            "type": "string"
+                          },
+                          "platform": {
+                            "type": "string",
+                            "enum": [
+                              "win32-x64",
+                              "darwin-arm64",
+                              "darwin-x64",
+                              "linux-x64"
+                            ]
+                          },
+                          "archive": {
+                            "type": "string",
+                            "enum": [
+                              "zip",
+                              "tar.xz",
+                              "dmg"
+                            ]
+                          },
+                          "size": {
+                            "type": "number"
+                          },
+                          "sha256": {
+                            "type": "string"
+                          },
+                          "recommended": {
+                            "type": "boolean"
+                          },
+                          "source": {
+                            "type": "string",
+                            "enum": [
+                              "upstream",
+                              "folio"
+                            ]
+                          },
+                          "ready": {
+                            "type": "boolean"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "profiles": {
+                            "nullable": true,
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "kind",
+                          "version",
+                          "platform",
+                          "archive",
+                          "size",
+                          "sha256",
+                          "recommended",
+                          "source",
+                          "ready",
+                          "createdAt",
+                          "profiles"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "kernels"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "chromium",
+                      "firefox"
+                    ]
+                  },
+                  "platform": {
+                    "type": "string",
+                    "enum": [
+                      "win32-x64",
+                      "darwin-arm64",
+                      "darwin-x64",
+                      "linux-x64"
+                    ]
+                  },
+                  "archive": {
+                    "type": "string",
+                    "enum": [
+                      "zip",
+                      "tar.xz",
+                      "dmg"
+                    ]
+                  },
+                  "version": {
+                    "type": "string",
+                    "pattern": "^[0-9][0-9A-Za-z.+-]{0,39}$"
+                  },
+                  "size": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5368709120
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$"
+                  }
+                },
+                "required": [
+                  "kind",
+                  "platform",
+                  "archive",
+                  "version",
+                  "size",
+                  "sha256"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "kernel": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "chromium",
+                            "firefox"
+                          ]
+                        },
+                        "version": {
+                          "type": "string"
+                        },
+                        "platform": {
+                          "type": "string",
+                          "enum": [
+                            "win32-x64",
+                            "darwin-arm64",
+                            "darwin-x64",
+                            "linux-x64"
+                          ]
+                        },
+                        "archive": {
+                          "type": "string",
+                          "enum": [
+                            "zip",
+                            "tar.xz",
+                            "dmg"
+                          ]
+                        },
+                        "size": {
+                          "type": "number"
+                        },
+                        "sha256": {
+                          "type": "string"
+                        },
+                        "recommended": {
+                          "type": "boolean"
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "upstream",
+                            "folio"
+                          ]
+                        },
+                        "ready": {
+                          "type": "boolean"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "profiles": {
+                          "nullable": true,
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "kind",
+                        "version",
+                        "platform",
+                        "archive",
+                        "size",
+                        "sha256",
+                        "recommended",
+                        "source",
+                        "ready",
+                        "createdAt",
+                        "profiles"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "uploadUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kernel",
+                    "uploadUrl"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/kernels/{id}/download": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "url"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/kernels/{id}/complete": {
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "chromium",
+                        "firefox"
+                      ]
+                    },
+                    "version": {
+                      "type": "string"
+                    },
+                    "platform": {
+                      "type": "string",
+                      "enum": [
+                        "win32-x64",
+                        "darwin-arm64",
+                        "darwin-x64",
+                        "linux-x64"
+                      ]
+                    },
+                    "archive": {
+                      "type": "string",
+                      "enum": [
+                        "zip",
+                        "tar.xz",
+                        "dmg"
+                      ]
+                    },
+                    "size": {
+                      "type": "number"
+                    },
+                    "sha256": {
+                      "type": "string"
+                    },
+                    "recommended": {
+                      "type": "boolean"
+                    },
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "upstream",
+                        "folio"
+                      ]
+                    },
+                    "ready": {
+                      "type": "boolean"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "profiles": {
+                      "nullable": true,
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "kind",
+                    "version",
+                    "platform",
+                    "archive",
+                    "size",
+                    "sha256",
+                    "recommended",
+                    "source",
+                    "ready",
+                    "createdAt",
+                    "profiles"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/kernels/{id}": {
+      "patch": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "recommended": {
+                    "type": "boolean",
+                    "enum": [
+                      true
+                    ]
+                  }
+                },
+                "required": [
+                  "recommended"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "kernels": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "chromium",
+                              "firefox"
+                            ]
+                          },
+                          "version": {
+                            "type": "string"
+                          },
+                          "platform": {
+                            "type": "string",
+                            "enum": [
+                              "win32-x64",
+                              "darwin-arm64",
+                              "darwin-x64",
+                              "linux-x64"
+                            ]
+                          },
+                          "archive": {
+                            "type": "string",
+                            "enum": [
+                              "zip",
+                              "tar.xz",
+                              "dmg"
+                            ]
+                          },
+                          "size": {
+                            "type": "number"
+                          },
+                          "sha256": {
+                            "type": "string"
+                          },
+                          "recommended": {
+                            "type": "boolean"
+                          },
+                          "source": {
+                            "type": "string",
+                            "enum": [
+                              "upstream",
+                              "folio"
+                            ]
+                          },
+                          "ready": {
+                            "type": "boolean"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "profiles": {
+                            "nullable": true,
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "kind",
+                          "version",
+                          "platform",
+                          "archive",
+                          "size",
+                          "sha256",
+                          "recommended",
+                          "source",
+                          "ready",
+                          "createdAt",
+                          "profiles"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "kernels"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
           }
         }
       }

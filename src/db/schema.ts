@@ -1,4 +1,4 @@
-import { pgTable, pgSequence, uuid, text, timestamp, integer, bigserial, boolean, jsonb, primaryKey, index, uniqueIndex, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { pgTable, pgSequence, uuid, text, timestamp, integer, bigint, bigserial, boolean, jsonb, primaryKey, index, uniqueIndex, type AnyPgColumn } from 'drizzle-orm/pg-core';
 
 const ts = () => timestamp({ withTimezone: true });
 const createdAt = () => ts().notNull().defaultNow();
@@ -336,3 +336,23 @@ export const activityLog = pgTable('activity_log', {
   profileNumber: integer(),
   detail: jsonb().notNull().default({})
 }, t => [index().on(t.workspaceId, t.seq), index().on(t.profileId, t.seq)]);
+
+// Browser engine packages the desktop app downloads, one row per version and platform ("win32-x64", "darwin-arm64"…).
+// The first ones point at their upstream releases (`url`); versions the platform admins upload are kept in object
+// storage under kernels/ (`objectKey`), as they are rather than sealed, since the app downloads them straight from
+// there. An upload is not `ready` until its size checks out. `recommended` is the version new profiles get.
+export const kernels = pgTable('kernels', {
+  id: uuid().primaryKey().defaultRandom(),
+  kind: text().notNull(),
+  version: text().notNull(),
+  platform: text().notNull(),
+  archive: text().notNull(),
+  size: bigint({ mode: 'number' }).notNull(),
+  sha256: text().notNull(),
+  url: text(),
+  objectKey: text(),
+  recommended: boolean().notNull().default(false),
+  ready: boolean().notNull().default(true),
+  createdBy: uuid().references(() => users.id, { onDelete: 'set null' }),
+  createdAt: createdAt()
+}, t => [uniqueIndex().on(t.kind, t.version, t.platform)]);

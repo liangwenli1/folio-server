@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { and, asc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import { departments, extensions, groups, profileData, profiles, proxies, users } from '../db/schema.js';
 import { record } from '../activity/service.js';
 import { ApiError, forbidden, notFound } from '../errors.js';
@@ -153,17 +153,18 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
       params: wsParams,
       body: z.object({
         ids: z.array(z.uuid()).min(1).max(2000),
-        action: z.enum(['move', 'tag', 'untag', 'set-proxy', 'assign', 'set-department', 'add-extension', 'remove-extension', 'trash', 'restore', 'purge']),
+        action: z.enum(['move', 'tag', 'untag', 'set-proxy', 'assign', 'set-department', 'add-extension', 'remove-extension', 'set-kernel', 'trash', 'restore', 'purge']),
         groupId: z.uuid().nullable().optional(), tag: tag.optional(), proxyId: z.uuid().nullable().optional(),
-        ownerId: z.uuid().nullable().optional(), departmentId: z.uuid().nullable().optional(), extensionId: z.uuid().optional()
+        ownerId: z.uuid().nullable().optional(), departmentId: z.uuid().nullable().optional(), extensionId: z.uuid().optional(),
+        kernel: kernel.optional(), kernelVersion: z.string().trim().min(1).max(40).optional()
       }),
       response: { 200: z.object({ updated: z.number() }) }
     }
   }, async req => {
     const { s, role, scope } = await member(req, req.params.id);
     const { ids, action } = req.body;
-    // Members change their own profiles' group, tags, proxy and extensions; the rest is for owners and admins.
-    if (role === 'member' && !['move', 'tag', 'untag', 'set-proxy', 'add-extension', 'remove-extension'].includes(action)) throw forbidden();
+    // Members change their own profiles' group, tags, proxy, extensions and engine version; the rest is for owners and admins.
+    if (role === 'member' && !['move', 'tag', 'untag', 'set-proxy', 'add-extension', 'remove-extension', 'set-kernel'].includes(action)) throw forbidden();
     const now = clock.now();
     const mine = and(eq(profiles.workspaceId, req.params.id), inArray(profiles.id, ids), scope);
     const bump = { version: sql`${profiles.version} + 1`, updatedAt: now };
@@ -207,6 +208,14 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
             .where(and(mine, sql`${ext.id}::uuid = any(${profiles.extensionIds})`)).returning(ref);
         break;
       }
+      // Another version of the same engine; the fingerprint stays. Profiles of the other engine are left as they are.
+      case 'set-kernel': {
+        const { kernel: k, kernelVersion } = req.body;
+        if (!k || !kernelVersion) throw new ApiError(400, 'validation', 'The engine and its version are required');
+        updated = await db.update(profiles).set({ ...bump, kernelVersion })
+          .where(and(mine, isNull(profiles.deletedAt), eq(profiles.kernel, k), ne(profiles.kernelVersion, kernelVersion))).returning(ref);
+        break;
+      }
       case 'trash':
         updated = await db.update(profiles).set({ ...bump, deletedAt: now }).where(and(mine, isNull(profiles.deletedAt))).returning(ref);
         break;
@@ -235,7 +244,8 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
       : action === 'set-department' ? { department: await name(departments, req.body.departmentId) }
       : action === 'assign' ? { to: req.body.ownerId ? (await db.select({ e: users.email }).from(users).where(eq(users.id, req.body.ownerId)))[0]?.e ?? null : null }
       : action === 'tag' || action === 'untag' ? { tag: req.body.tag }
-      : action === 'add-extension' || action === 'remove-extension' ? { extension: (await db.select({ n: extensions.name }).from(extensions).where(eq(extensions.id, req.body.extensionId!)))[0]?.n ?? null } : {};
+      : action === 'add-extension' || action === 'remove-extension' ? { extension: (await db.select({ n: extensions.name }).from(extensions).where(eq(extensions.id, req.body.extensionId!)))[0]?.n ?? null }
+      : action === 'set-kernel' ? { kernel: req.body.kernel, version: req.body.kernelVersion } : {};
     if (action !== 'purge') await record(db, { workspaceId: req.params.id, actor: s, at: now, action: `profile.${action}`, profiles: updated, detail });
     publish(req.params.id, { kind: 'profiles', ids: updated.map(u => u.id) });
     if (action === 'move') publish(req.params.id, { kind: 'groups' });

@@ -71,6 +71,13 @@
       "when": 1792659085390,
       "tag": "0009_extensions",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792759459167,
+      "tag": "0010_kernels",
+      "breakpoints": true
     }
   ]
 }
