@@ -14984,6 +14984,14 @@
                           "createdAt": {
                             "type": "string"
                           },
+                          "recommendedAt": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "note": {
+                            "nullable": true,
+                            "type": "string"
+                          },
                           "profiles": {
                             "nullable": true,
                             "type": "number"
@@ -15001,6 +15009,8 @@
                           "source",
                           "ready",
                           "createdAt",
+                          "recommendedAt",
+                          "note",
                           "profiles"
                         ],
                         "additionalProperties": false
@@ -15061,6 +15071,10 @@
                   "sha256": {
                     "type": "string",
                     "pattern": "^[0-9a-f]{64}$"
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 200
                   }
                 },
                 "required": [
@@ -15138,6 +15152,14 @@
                         "createdAt": {
                           "type": "string"
                         },
+                        "recommendedAt": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "note": {
+                          "nullable": true,
+                          "type": "string"
+                        },
                         "profiles": {
                           "nullable": true,
                           "type": "number"
@@ -15155,6 +15177,8 @@
                         "source",
                         "ready",
                         "createdAt",
+                        "recommendedAt",
+                        "note",
                         "profiles"
                       ],
                       "additionalProperties": false
@@ -15286,6 +15310,14 @@
                     "createdAt": {
                       "type": "string"
                     },
+                    "recommendedAt": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "note": {
+                      "nullable": true,
+                      "type": "string"
+                    },
                     "profiles": {
                       "nullable": true,
                       "type": "number"
@@ -15303,6 +15335,8 @@
                     "source",
                     "ready",
                     "createdAt",
+                    "recommendedAt",
+                    "note",
                     "profiles"
                   ],
                   "additionalProperties": false
@@ -15327,6 +15361,10 @@
                     "enum": [
                       true
                     ]
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 200
                   }
                 },
                 "required": [
@@ -15413,6 +15451,14 @@
                           "createdAt": {
                             "type": "string"
                           },
+                          "recommendedAt": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "note": {
+                            "nullable": true,
+                            "type": "string"
+                          },
                           "profiles": {
                             "nullable": true,
                             "type": "number"
@@ -15430,6 +15476,8 @@
                           "source",
                           "ready",
                           "createdAt",
+                          "recommendedAt",
+                          "note",
                           "profiles"
                         ],
                         "additionalProperties": false

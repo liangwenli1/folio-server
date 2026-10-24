@@ -230,11 +230,14 @@ export const platform = z.enum(['win32-x64', 'darwin-arm64', 'darwin-x64', 'linu
 export const archive = z.enum(['zip', 'tar.xz', 'dmg']);
 // `source`: an upstream release or a package uploaded to Folio. `ready` is false while an upload is unfinished (only
 // admins see those); `profiles` counts the profiles on that version across every workspace, for admins only.
+// `recommendedAt` and `note` make the engines page's history: when it was added, when it became the recommended one.
 export const Kernel = z.object({
   id: z.string(), kind: kernel, version: z.string(), platform, archive, size: z.number(), sha256: z.string(), recommended: z.boolean(),
-  source: z.enum(['upstream', 'folio']), ready: z.boolean(), createdAt: z.string(), profiles: z.number().nullable()
+  source: z.enum(['upstream', 'folio']), ready: z.boolean(), createdAt: z.string(), recommendedAt: z.string().nullable(), note: z.string().nullable(),
+  profiles: z.number().nullable()
 });
 export const kernelView = (k: typeof kernels.$inferSelect, profiles: number | null): z.infer<typeof Kernel> => ({
   id: k.id, kind: k.kind as 'chromium' | 'firefox', version: k.version, platform: k.platform as z.infer<typeof platform>, archive: k.archive as z.infer<typeof archive>,
-  size: k.size, sha256: k.sha256, recommended: k.recommended, source: k.objectKey ? 'folio' : 'upstream', ready: k.ready, createdAt: k.createdAt.toISOString(), profiles
+  size: k.size, sha256: k.sha256, recommended: k.recommended, source: k.objectKey ? 'folio' : 'upstream', ready: k.ready, createdAt: k.createdAt.toISOString(),
+  recommendedAt: k.recommendedAt?.toISOString() ?? null, note: k.note, profiles
 });

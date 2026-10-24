@@ -10,13 +10,13 @@ beforeAll(async () => { t = await setup({ admins: [ADMIN] }); admin = await sign
 afterAll(async () => { await t.teardown(); });
 
 type H = Record<string, string>;
-type K = { id: string; kind: string; version: string; platform: string; recommended: boolean; ready: boolean; source: string; profiles: number | null; size: number };
+type K = { id: string; kind: string; version: string; platform: string; recommended: boolean; ready: boolean; source: string; profiles: number | null; size: number; createdAt: string; recommendedAt: string | null; note: string | null };
 const call = (method: 'GET' | 'POST' | 'PATCH' | 'DELETE', url: string, headers: H, payload?: object) => t.app.inject({ method, url, headers, payload });
 const list = async (headers: H) => (await call('GET', '/kernels', headers)).json().kernels as K[];
 // Different bytes on every run: the bucket outlives the test database.
 const PKG = Buffer.from(`not really an engine, but the bytes are what count ${randomUUID()}`);
 const sha = createHash('sha256').update(PKG).digest('hex');
-const upload = { kind: 'chromium', version: '151.0.7900.10', platform: 'win32-x64', archive: 'zip', size: PKG.length, sha256: sha };
+const upload = { kind: 'chromium', version: '151.0.7900.10', platform: 'win32-x64', archive: 'zip', size: PKG.length, sha256: sha, note: 'Chrome 151 security fixes' };
 
 describe('the engine catalog', () => {
   it('starts with the upstream releases, recommended, and points downloads at them', async () => {
@@ -26,7 +26,9 @@ describe('the engine catalog', () => {
       'chromium 150.0.7871.186 linux-x64', 'chromium 150.0.7871.186 win32-x64', 'chromium 148.0.7778.215 darwin-arm64', 'chromium 148.0.7778.215 darwin-x64',
       'firefox 156.0.1-beta.36 darwin-arm64', 'firefox 156.0.1-beta.36 darwin-x64', 'firefox 156.0.1-beta.36 linux-x64', 'firefox 156.0.1-beta.36 win32-x64'
     ]);
-    expect(all.every(k => k.recommended && k.ready && k.source === 'upstream' && k.profiles === null)).toBe(true);
+    expect(all.every(k => k.recommended && k.ready && k.source === 'upstream' && k.profiles === null && k.note === null)).toBe(true);
+    // Recommended since they were added, for the history on the engines page.
+    expect(all.every(k => k.recommendedAt === k.createdAt)).toBe(true);
     const win = all.find(k => k.kind === 'firefox' && k.platform === 'win32-x64')!;
     expect(win.size).toBe(1311638126);
     expect((await call('GET', `/kernels/${win.id}/download`, u.headers)).json().url).toBe('https://github.com/daijro/camoufox/releases/download/v156.0.1-beta.36/camoufox-156.0.1-beta.36-win.x86_64.zip');
@@ -50,7 +52,7 @@ describe('the engine catalog', () => {
     expect((await fetch(uploadUrl, { method: 'PUT', body: PKG })).status).toBe(200);
     expect((await call('POST', `/kernels/${kernel.id}/complete`, a.headers)).json()).toMatchObject({ ready: true });
     const seen = (await list(u.headers)).find(k => k.id === kernel.id)!;
-    expect(seen).toMatchObject({ version: '151.0.7900.10', recommended: false, profiles: null });
+    expect(seen).toMatchObject({ version: '151.0.7900.10', recommended: false, profiles: null, note: 'Chrome 151 security fixes', recommendedAt: null });
     // Newest first within the engine.
     expect((await list(u.headers)).filter(k => k.kind === 'chromium').map(k => k.version)[0]).toBe('151.0.7900.10');
     const { url } = (await call('GET', `/kernels/${kernel.id}/download`, u.headers)).json();
@@ -65,8 +67,11 @@ describe('the engine catalog', () => {
     expect(mine.profiles).toBeGreaterThanOrEqual(1);
 
     expect((await call('PATCH', `/kernels/${mine.id}`, u.headers, { recommended: true })).json().error.code).toBe('forbidden');
-    await call('PATCH', `/kernels/${mine.id}`, a.headers, { recommended: true });
+    await call('PATCH', `/kernels/${mine.id}`, a.headers, { recommended: true, note: 'Now the default for Windows' });
     const after = await list(u.headers);
+    const made = after.find(k => k.id === mine.id)!;
+    expect(made.note).toBe('Now the default for Windows');
+    expect(Date.now() - Date.parse(made.recommendedAt!)).toBeLessThan(60_000);
     const rec = (platform: string) => after.filter(k => k.kind === 'chromium' && k.platform === platform && k.recommended).map(k => k.version);
     expect(rec('win32-x64')).toEqual(['151.0.7900.10']);
     expect(rec('linux-x64')).toEqual(['150.0.7871.186']);

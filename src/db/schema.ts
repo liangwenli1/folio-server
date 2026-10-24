@@ -357,7 +357,8 @@ export const activityLog = pgTable('activity_log', {
 // Browser engine packages the desktop app downloads, one row per version and platform ("win32-x64", "darwin-arm64"…).
 // The first ones point at their upstream releases (`url`); versions the platform admins upload are kept in object
 // storage under kernels/ (`objectKey`), as they are rather than sealed, since the app downloads them straight from
-// there. An upload is not `ready` until its size checks out. `recommended` is the version new profiles get.
+// there. An upload is not `ready` until its size checks out. `recommended` is the version new profiles get;
+// `recommendedAt` when it became so and `note` what the admin said about it, for the engines page's history.
 export const kernels = pgTable('kernels', {
   id: uuid().primaryKey().defaultRandom(),
   kind: text().notNull(),
@@ -369,6 +370,8 @@ export const kernels = pgTable('kernels', {
   url: text(),
   objectKey: text(),
   recommended: boolean().notNull().default(false),
+  recommendedAt: ts(),
+  note: text(),
   ready: boolean().notNull().default(true),
   createdBy: uuid().references(() => users.id, { onDelete: 'set null' }),
   createdAt: createdAt()
