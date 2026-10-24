@@ -4,7 +4,7 @@ import type { Db, Tx } from '../db/client.js';
 import { departmentMembers, departments, extensions, groups, memberships, profileData, profileLocks, profileStars, profiles, proxies, users, workspaces } from '../db/schema.js';
 import { ApiError, forbidden, notFound } from '../errors.js';
 import { requireSession, type Deps } from '../http.js';
-import { profileView, type Fingerprint } from '../views.js';
+import { profileView, type Fingerprint, type searchEngine } from '../views.js';
 import { record } from '../activity/service.js';
 import { publish } from '../events.js';
 import { requireCompany } from '../team/service.js';
@@ -118,7 +118,7 @@ export interface NewProfile {
   name: string; groupId?: string | null; tags: string[]; ownerId?: string | null; departmentId?: string | null;
   kernel: 'chromium' | 'firefox'; kernelVersion: string; os: 'windows' | 'macos' | 'linux'; fingerprint: z.infer<typeof Fingerprint>;
   proxyId?: string | null; timezoneOverride?: string | null; localeOverride?: string | null; notes?: string | null; syncMode?: 'cloud' | 'local';
-  extensionIds?: string[];
+  extensionIds?: string[]; searchEngine?: z.infer<typeof searchEngine>; restoreTabs?: boolean;
 }
 
 // Creates profiles within the plan's limit, numbered in order, assigned to whoever creates them unless said otherwise.

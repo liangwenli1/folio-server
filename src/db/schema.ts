@@ -160,6 +160,10 @@ export const profiles = pgTable('profiles', {
   timezoneOverride: text(),
   localeOverride: text(),
   notes: text(),
+  // The address bar's search engine ('none' keeps the engine's own: none), and whether opening it brings back the tabs
+  // it was closed with.
+  searchEngine: text().notNull().default('none'),
+  restoreTabs: boolean().notNull().default(true),
   // 'cloud': sign-in state is saved to Folio and follows the profile; 'local': it stays on the computer that uses it.
   syncMode: text().notNull().default('cloud'),
   // Extensions from the workspace's library installed in this profile.

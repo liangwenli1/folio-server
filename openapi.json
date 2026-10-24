@@ -4777,6 +4777,21 @@
                             "nullable": true,
                             "type": "string"
                           },
+                          "searchEngine": {
+                            "type": "string",
+                            "enum": [
+                              "none",
+                              "google",
+                              "bing",
+                              "baidu",
+                              "duckduckgo",
+                              "yahoo",
+                              "yandex"
+                            ]
+                          },
+                          "restoreTabs": {
+                            "type": "boolean"
+                          },
                           "lastOpenedAt": {
                             "nullable": true,
                             "type": "string"
@@ -5087,6 +5102,8 @@
                           "timezoneOverride",
                           "localeOverride",
                           "notes",
+                          "searchEngine",
+                          "restoreTabs",
                           "lastOpenedAt",
                           "lastOpenedBy",
                           "createdAt",
@@ -5264,6 +5281,21 @@
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     }
+                  },
+                  "searchEngine": {
+                    "type": "string",
+                    "enum": [
+                      "none",
+                      "google",
+                      "bing",
+                      "baidu",
+                      "duckduckgo",
+                      "yahoo",
+                      "yandex"
+                    ]
+                  },
+                  "restoreTabs": {
+                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -5411,6 +5443,21 @@
                     "notes": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "searchEngine": {
+                      "type": "string",
+                      "enum": [
+                        "none",
+                        "google",
+                        "bing",
+                        "baidu",
+                        "duckduckgo",
+                        "yahoo",
+                        "yandex"
+                      ]
+                    },
+                    "restoreTabs": {
+                      "type": "boolean"
                     },
                     "lastOpenedAt": {
                       "nullable": true,
@@ -5722,6 +5769,8 @@
                     "timezoneOverride",
                     "localeOverride",
                     "notes",
+                    "searchEngine",
+                    "restoreTabs",
                     "lastOpenedAt",
                     "lastOpenedBy",
                     "createdAt",
@@ -5901,6 +5950,21 @@
                             "format": "uuid",
                             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                           }
+                        },
+                        "searchEngine": {
+                          "type": "string",
+                          "enum": [
+                            "none",
+                            "google",
+                            "bing",
+                            "baidu",
+                            "duckduckgo",
+                            "yahoo",
+                            "yandex"
+                          ]
+                        },
+                        "restoreTabs": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -6059,6 +6123,21 @@
                           "notes": {
                             "nullable": true,
                             "type": "string"
+                          },
+                          "searchEngine": {
+                            "type": "string",
+                            "enum": [
+                              "none",
+                              "google",
+                              "bing",
+                              "baidu",
+                              "duckduckgo",
+                              "yahoo",
+                              "yandex"
+                            ]
+                          },
+                          "restoreTabs": {
+                            "type": "boolean"
                           },
                           "lastOpenedAt": {
                             "nullable": true,
@@ -6370,6 +6449,8 @@
                           "timezoneOverride",
                           "localeOverride",
                           "notes",
+                          "searchEngine",
+                          "restoreTabs",
                           "lastOpenedAt",
                           "lastOpenedBy",
                           "createdAt",
@@ -6546,6 +6627,21 @@
                       "format": "uuid",
                       "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     }
+                  },
+                  "searchEngine": {
+                    "type": "string",
+                    "enum": [
+                      "none",
+                      "google",
+                      "bing",
+                      "baidu",
+                      "duckduckgo",
+                      "yahoo",
+                      "yandex"
+                    ]
+                  },
+                  "restoreTabs": {
+                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -6689,6 +6785,21 @@
                     "notes": {
                       "nullable": true,
                       "type": "string"
+                    },
+                    "searchEngine": {
+                      "type": "string",
+                      "enum": [
+                        "none",
+                        "google",
+                        "bing",
+                        "baidu",
+                        "duckduckgo",
+                        "yahoo",
+                        "yandex"
+                      ]
+                    },
+                    "restoreTabs": {
+                      "type": "boolean"
                     },
                     "lastOpenedAt": {
                       "nullable": true,
@@ -7000,6 +7111,8 @@
                     "timezoneOverride",
                     "localeOverride",
                     "notes",
+                    "searchEngine",
+                    "restoreTabs",
                     "lastOpenedAt",
                     "lastOpenedBy",
                     "createdAt",
@@ -7055,6 +7168,7 @@
                       "add-extension",
                       "remove-extension",
                       "set-kernel",
+                      "set-browser",
                       "trash",
                       "restore",
                       "purge"
@@ -7105,6 +7219,21 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 40
+                  },
+                  "searchEngine": {
+                    "type": "string",
+                    "enum": [
+                      "none",
+                      "google",
+                      "bing",
+                      "baidu",
+                      "duckduckgo",
+                      "yahoo",
+                      "yandex"
+                    ]
+                  },
+                  "restoreTabs": {
+                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -7544,6 +7673,21 @@
                           "nullable": true,
                           "type": "string"
                         },
+                        "searchEngine": {
+                          "type": "string",
+                          "enum": [
+                            "none",
+                            "google",
+                            "bing",
+                            "baidu",
+                            "duckduckgo",
+                            "yahoo",
+                            "yandex"
+                          ]
+                        },
+                        "restoreTabs": {
+                          "type": "boolean"
+                        },
                         "lastOpenedAt": {
                           "nullable": true,
                           "type": "string"
@@ -7854,6 +7998,8 @@
                         "timezoneOverride",
                         "localeOverride",
                         "notes",
+                        "searchEngine",
+                        "restoreTabs",
                         "lastOpenedAt",
                         "lastOpenedBy",
                         "createdAt",
@@ -11310,7 +11456,8 @@
                               "extension.delete",
                               "profile.add-extension",
                               "profile.remove-extension",
-                              "profile.set-kernel"
+                              "profile.set-kernel",
+                              "profile.set-browser"
                             ]
                           },
                           "profile": {
@@ -11637,6 +11784,21 @@
                               "local"
                             ]
                           },
+                          "searchEngine": {
+                            "type": "string",
+                            "enum": [
+                              "none",
+                              "google",
+                              "bing",
+                              "baidu",
+                              "duckduckgo",
+                              "yahoo",
+                              "yandex"
+                            ]
+                          },
+                          "restoreTabs": {
+                            "type": "boolean"
+                          },
                           "ref": {
                             "type": "string",
                             "minLength": 1,
@@ -11943,6 +12105,21 @@
                             "cloud",
                             "local"
                           ]
+                        },
+                        "searchEngine": {
+                          "type": "string",
+                          "enum": [
+                            "none",
+                            "google",
+                            "bing",
+                            "baidu",
+                            "duckduckgo",
+                            "yahoo",
+                            "yandex"
+                          ]
+                        },
+                        "restoreTabs": {
+                          "type": "boolean"
                         },
                         "ref": {
                           "type": "string",

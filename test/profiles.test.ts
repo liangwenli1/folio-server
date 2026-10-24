@@ -106,6 +106,22 @@ describe('editing profiles', () => {
     expect((await list(headers, workspaceId)).map(p => p.name)).toEqual(['A']);
   });
 
+  it('keeps each profile’s search engine and tab setting, one at a time or in bulk', async () => {
+    const { headers, workspaceId } = await signup(t.app);
+    const [a, b] = (await post(`/workspaces/${workspaceId}/profiles/bulk`, headers, { profiles: [chromiumProfile('A'), chromiumProfile('B', { searchEngine: 'baidu', restoreTabs: false })] })).json().profiles;
+    expect([a, b].map(p => [p.searchEngine, p.restoreTabs])).toEqual([['none', true], ['baidu', false]]);
+    expect((await post(`/workspaces/${workspaceId}/profiles`, headers, chromiumProfile('C', { searchEngine: 'altavista' }))).statusCode).toBe(400);
+
+    const edited = await t.app.inject({ method: 'PATCH', url: `/profiles/${a.id}`, headers, payload: { version: 0, searchEngine: 'duckduckgo' } });
+    expect(edited.json()).toMatchObject({ searchEngine: 'duckduckgo', restoreTabs: true });
+    // Only what is given changes.
+    expect((await batch(headers, workspaceId, { ids: [a.id, b.id], action: 'set-browser', restoreTabs: true })).json().updated).toBe(2);
+    await batch(headers, workspaceId, { ids: [b.id], action: 'set-browser', searchEngine: 'google' });
+    expect((await list(headers, workspaceId)).map(p => [p.name, (p as { searchEngine?: string }).searchEngine, (p as { restoreTabs?: boolean }).restoreTabs]))
+      .toEqual([['A', 'duckduckgo', true], ['B', 'google', true]]);
+    expect((await batch(headers, workspaceId, { ids: [a.id], action: 'set-browser' })).statusCode).toBe(400);
+  });
+
   it('leaves profiles in place when their group is deleted', async () => {
     const { headers, workspaceId } = await signup(t.app);
     const group = (await post(`/workspaces/${workspaceId}/groups`, headers, { name: 'Temp' })).json();

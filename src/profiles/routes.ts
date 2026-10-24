@@ -8,7 +8,7 @@ import { ApiError, forbidden, notFound } from '../errors.js';
 import { publish } from '../events.js';
 import { requireSession, type Deps } from '../http.js';
 import { open } from '../crypto.js';
-import { Extension, Fingerprint, Geo, Group, HealthReport, Profile, ProxySecret, extensionView, kernel, os, profileView } from '../views.js';
+import { Extension, Fingerprint, Geo, Group, HealthReport, Profile, ProxySecret, extensionView, kernel, os, profileView, searchEngine } from '../views.js';
 import { requireRole, type Role } from '../workspaces/service.js';
 import { requireCompany } from '../team/service.js';
 import { access, assertOwned, checkAssignment, checkExtensions, checkFingerprint, createProfiles, loadProfiles, profileFor, reserve } from './service.js';
@@ -26,7 +26,8 @@ export const newProfile = z.object({
   ownerId: z.uuid().nullable().optional(), departmentId: z.uuid().nullable().optional(),
   kernel, kernelVersion: version, os, fingerprint: Fingerprint, proxyId: z.uuid().nullable().optional(),
   timezoneOverride: tz.nullable().optional(), localeOverride: locale.nullable().optional(), notes: z.string().max(2000).nullable().optional(),
-  syncMode: z.enum(['cloud', 'local']).optional(), extensionIds: z.array(z.uuid()).max(50).optional()
+  syncMode: z.enum(['cloud', 'local']).optional(), extensionIds: z.array(z.uuid()).max(50).optional(),
+  searchEngine: searchEngine.optional(), restoreTabs: z.boolean().optional()
 });
 // Firefox fingerprints run to tens of kilobytes each.
 export const BULK_BODY = 64 * 1024 * 1024;
@@ -122,7 +123,8 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
         ownerId: z.uuid().nullable().optional(), departmentId: z.uuid().nullable().optional(),
         proxyId: z.uuid().nullable().optional(), kernelVersion: version.optional(), os: os.optional(), fingerprint: Fingerprint.optional(),
         timezoneOverride: tz.nullable().optional(), localeOverride: locale.nullable().optional(), notes: z.string().max(2000).nullable().optional(),
-        syncMode: z.enum(['cloud', 'local']).optional(), extensionIds: z.array(z.uuid()).max(50).optional()
+        syncMode: z.enum(['cloud', 'local']).optional(), extensionIds: z.array(z.uuid()).max(50).optional(),
+        searchEngine: searchEngine.optional(), restoreTabs: z.boolean().optional()
       }),
       response: { 200: Profile }
     }
@@ -153,18 +155,19 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
       params: wsParams,
       body: z.object({
         ids: z.array(z.uuid()).min(1).max(2000),
-        action: z.enum(['move', 'tag', 'untag', 'set-proxy', 'assign', 'set-department', 'add-extension', 'remove-extension', 'set-kernel', 'trash', 'restore', 'purge']),
+        action: z.enum(['move', 'tag', 'untag', 'set-proxy', 'assign', 'set-department', 'add-extension', 'remove-extension', 'set-kernel', 'set-browser', 'trash', 'restore', 'purge']),
         groupId: z.uuid().nullable().optional(), tag: tag.optional(), proxyId: z.uuid().nullable().optional(),
         ownerId: z.uuid().nullable().optional(), departmentId: z.uuid().nullable().optional(), extensionId: z.uuid().optional(),
-        kernel: kernel.optional(), kernelVersion: z.string().trim().min(1).max(40).optional()
+        kernel: kernel.optional(), kernelVersion: z.string().trim().min(1).max(40).optional(),
+        searchEngine: searchEngine.optional(), restoreTabs: z.boolean().optional()
       }),
       response: { 200: z.object({ updated: z.number() }) }
     }
   }, async req => {
     const { s, role, scope } = await member(req, req.params.id);
     const { ids, action } = req.body;
-    // Members change their own profiles' group, tags, proxy, extensions and engine version; the rest is for owners and admins.
-    if (role === 'member' && !['move', 'tag', 'untag', 'set-proxy', 'add-extension', 'remove-extension', 'set-kernel'].includes(action)) throw forbidden();
+    // Members change their own profiles' group, tags, proxy, extensions, engine version and browser settings; the rest is for owners and admins.
+    if (role === 'member' && !['move', 'tag', 'untag', 'set-proxy', 'add-extension', 'remove-extension', 'set-kernel', 'set-browser'].includes(action)) throw forbidden();
     const now = clock.now();
     const mine = and(eq(profiles.workspaceId, req.params.id), inArray(profiles.id, ids), scope);
     const bump = { version: sql`${profiles.version} + 1`, updatedAt: now };
@@ -216,6 +219,14 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
           .where(and(mine, isNull(profiles.deletedAt), eq(profiles.kernel, k), ne(profiles.kernelVersion, kernelVersion))).returning(ref);
         break;
       }
+      // The search engine, restoring tabs, or both; whichever is given.
+      case 'set-browser': {
+        const { searchEngine: se, restoreTabs } = req.body;
+        if (se === undefined && restoreTabs === undefined) throw new ApiError(400, 'validation', 'A search engine or the tab setting is required');
+        updated = await db.update(profiles).set({ ...bump, ...(se !== undefined ? { searchEngine: se } : {}), ...(restoreTabs !== undefined ? { restoreTabs } : {}) })
+          .where(and(mine, isNull(profiles.deletedAt))).returning(ref);
+        break;
+      }
       case 'trash':
         updated = await db.update(profiles).set({ ...bump, deletedAt: now, deletedBy: s.userId }).where(and(mine, isNull(profiles.deletedAt))).returning(ref);
         break;
@@ -245,7 +256,8 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
       : action === 'assign' ? { to: req.body.ownerId ? (await db.select({ e: users.email }).from(users).where(eq(users.id, req.body.ownerId)))[0]?.e ?? null : null }
       : action === 'tag' || action === 'untag' ? { tag: req.body.tag }
       : action === 'add-extension' || action === 'remove-extension' ? { extension: (await db.select({ n: extensions.name }).from(extensions).where(eq(extensions.id, req.body.extensionId!)))[0]?.n ?? null }
-      : action === 'set-kernel' ? { kernel: req.body.kernel, version: req.body.kernelVersion } : {};
+      : action === 'set-kernel' ? { kernel: req.body.kernel, version: req.body.kernelVersion }
+      : action === 'set-browser' ? { searchEngine: req.body.searchEngine ?? null, restoreTabs: req.body.restoreTabs ?? null } : {};
     if (action !== 'purge') await record(db, { workspaceId: req.params.id, actor: s, at: now, action: `profile.${action}`, profiles: updated, detail });
     publish(req.params.id, { kind: 'profiles', ids: updated.map(u => u.id) });
     if (action === 'move') publish(req.params.id, { kind: 'groups' });

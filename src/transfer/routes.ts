@@ -18,7 +18,7 @@ import { ApiError } from '../errors.js';
 import { entitlements } from '../plans.js';
 import { readSub, toState } from '../billing/service.js';
 import { saveProxies } from '../proxies/service.js';
-import { kernel, proxyType } from '../views.js';
+import { kernel, proxyType, searchEngine } from '../views.js';
 import { requireRole } from '../workspaces/service.js';
 import { chromiumId, readPackage, sha256, signPackage } from '../extensions/package.js';
 
@@ -71,7 +71,7 @@ export function transferRoutes(app: FastifyInstance, deps: Deps){
         ref: p.id, name: p.name, group: p.groupId ? groupName.get(p.groupId) ?? null : null, tags: p.tags, kernel: p.kernel as 'chromium' | 'firefox',
         kernelVersion: p.kernelVersion, os: p.os as 'windows' | 'macos' | 'linux', fingerprint: p.fingerprint as z.infer<typeof newProfile>['fingerprint'],
         proxyRef: p.proxyId, timezoneOverride: p.timezoneOverride, localeOverride: p.localeOverride, notes: p.notes,
-        syncMode: p.syncMode as 'cloud' | 'local', extensionRefs: p.extensionIds, saved: !!saved
+        syncMode: p.syncMode as 'cloud' | 'local', searchEngine: p.searchEngine as z.infer<typeof searchEngine>, restoreTabs: p.restoreTabs, extensionRefs: p.extensionIds, saved: !!saved
       })),
       extensions: await Promise.all(extRows.map(async e => ({
         ref: e.id, kernel: e.kernel as 'chromium' | 'firefox', extId: e.extId, publicKey: e.publicKey, package: (await storage.get(e.objectKey)).toString('base64')
