@@ -110,10 +110,11 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
     return { invitations: rows.map(x => invitationView(x.i, x.inviter)) };
   });
 
-  // Emails the invitation; the link also comes back so it can be passed on another way.
+  // Emails the invitation (unless `notify` is false: the workbench's "copy link"); the link also comes back so it can be
+  // passed on another way. A new invitation to the same address replaces the earlier one and its link.
   r.post('/workspaces/:id/invitations', {
     schema: {
-      params, body: z.object({ email: z.email(), role: assignableRole, departmentIds: z.array(z.uuid()).max(50).default([]) }),
+      params, body: z.object({ email: z.email(), role: assignableRole, departmentIds: z.array(z.uuid()).max(50).default([]), notify: z.boolean().default(true) }),
       response: { 201: z.object({ invitation: Invitation, link: z.string(), emailed: z.boolean() }) }
     }
   }, async (req, reply) => {
@@ -142,7 +143,7 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
     const [ws] = await db.select({ name: workspaces.name }).from(workspaces).where(eq(workspaces.id, req.params.id));
     const locale = (existing?.locale ?? me.locale) as Locale;
     const link = `${deps.config.siteUrl}/${locale}/invite/?token=${token}`;
-    const emailed = await deps.mailer.send(email, inviteMail(locale, { workspace: ws.name, inviter: me.email, role: req.body.role, url: link }))
+    const emailed = req.body.notify && await deps.mailer.send(email, inviteMail(locale, { workspace: ws.name, inviter: me.email, role: req.body.role, url: link }))
       .then(() => true, err => { req.log.error(err, 'sending the invitation failed'); return false; });
     await record(db, { workspaceId: req.params.id, actor: s, at: now, action: 'member.invite', detail: { email, role: req.body.role } });
     publish(req.params.id, { kind: 'members' });
@@ -165,7 +166,7 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
       .innerJoin(workspaces, eq(workspaces.id, invitations.workspaceId)).leftJoin(users, eq(users.id, invitations.invitedBy))
       .where(and(eq(invitations.tokenHash, sha256(req.params.token)), isNull(invitations.acceptedAt), isNull(invitations.revokedAt)));
     if (!x) throw notFound('Invitation');
-    return { id: x.i.id, workspaceName: x.workspaceName, inviter: x.inviter, email: x.i.email, role: x.i.role as 'admin' | 'member', expired: x.i.expiresAt <= clock.now() };
+    return { id: x.i.id, workspaceName: x.workspaceName, inviter: x.inviter, email: x.i.email, role: x.i.role as 'admin' | 'member', expired: x.i.expiresAt <= clock.now(), expiresAt: x.i.expiresAt.toISOString() };
   });
 
   r.get('/me/invitations', { schema: { response: { 200: z.object({ invitations: z.array(MyInvitation) }) } } }, async req => {

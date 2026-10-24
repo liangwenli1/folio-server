@@ -161,7 +161,7 @@ export const Invitation = z.object({
 });
 // What the invitation link shows before anyone logs in, and what a person sees of invitations to their email.
 export const InvitationPreview = z.object({
-  id: z.string(), workspaceName: z.string(), inviter: z.string().nullable(), email: z.string(), role: assignableRole, expired: z.boolean()
+  id: z.string(), workspaceName: z.string(), inviter: z.string().nullable(), email: z.string(), role: assignableRole, expired: z.boolean(), expiresAt: z.string()
 });
 export const MyInvitation = z.object({
   id: z.string(), workspaceId: z.string(), workspaceName: z.string(), inviter: z.string().nullable(), role: assignableRole, expiresAt: z.string()

@@ -42,8 +42,16 @@ describe('invitations', () => {
     expect(mail.Subject).toContain(owner.email);
     const token = new URL(sent.link).searchParams.get('token')!;
     expect(mail.Text).toContain(sent.link);
-    expect((await call('GET', `/invitations/by-token/${token}`, {})).json()).toMatchObject({ id: sent.invitation.id, inviter: owner.email, role: 'member', expired: false });
+    expect((await call('GET', `/invitations/by-token/${token}`, {})).json()).toMatchObject({ id: sent.invitation.id, inviter: owner.email, role: 'member', expired: false, expiresAt: sent.invitation.expiresAt });
     expect((await call('GET', `/invitations/by-token/${new URL(first.link).searchParams.get('token')}`, {})).statusCode).toBe(404);
+
+    // A link to copy: a new invitation that isn't emailed; the one before stops working.
+    const copied = (await call('POST', `/workspaces/${owner.workspaceId}/invitations`, owner.headers, { email: invitee.email, role: 'member', notify: false })).json();
+    expect(copied.emailed).toBe(false);
+    expect((await lastMail(invitee.email)).Text).toContain(sent.link);
+    expect((await call('GET', `/invitations/by-token/${token}`, {})).statusCode).toBe(404);
+    const again = (await call('POST', `/workspaces/${owner.workspaceId}/invitations`, owner.headers, { email: invitee.email, role: 'member' })).json();
+    Object.assign(sent, again);
 
     expect(ids((await call('GET', '/me/invitations', invitee.headers)).json().invitations)).toEqual([sent.invitation.id]);
     expect(await code(call('POST', `/invitations/${sent.invitation.id}/accept`, stranger.headers))).toBe('wrong_account');
