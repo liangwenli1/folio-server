@@ -175,6 +175,8 @@ export const profiles = pgTable('profiles', {
   createdAt: createdAt(),
   updatedAt: ts().notNull().defaultNow(),
   deletedAt: ts(),
+  // Who moved it to the trash.
+  deletedBy: uuid().references(() => users.id, { onDelete: 'set null' }),
   version: integer().notNull().default(0)
 }, t => [uniqueIndex().on(t.workspaceId, t.number), index().on(t.workspaceId, t.deletedAt)]);
 

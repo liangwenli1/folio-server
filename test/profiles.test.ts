@@ -97,7 +97,11 @@ describe('editing profiles', () => {
 
     await batch(headers, workspaceId, { ids, action: 'trash' });
     expect(await list(headers, workspaceId)).toHaveLength(0);
+    // The Trash says who moved them there; restoring forgets it.
+    const me = (await t.app.inject({ url: '/me', headers })).json().user.id;
+    expect((await list(headers, workspaceId, true)).map(p => (p as { deletedBy?: string }).deletedBy)).toEqual([me, me]);
     await batch(headers, workspaceId, { ids: [ids[0]], action: 'restore' });
+    expect((await list(headers, workspaceId)).map(p => (p as { deletedBy?: string | null }).deletedBy)).toEqual([null]);
     expect((await batch(headers, workspaceId, { ids, action: 'purge' })).json().updated).toBe(1);
     expect((await list(headers, workspaceId)).map(p => p.name)).toEqual(['A']);
   });

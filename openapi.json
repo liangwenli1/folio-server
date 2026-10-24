@@ -4795,6 +4795,10 @@
                             "nullable": true,
                             "type": "string"
                           },
+                          "deletedBy": {
+                            "nullable": true,
+                            "type": "string"
+                          },
                           "version": {
                             "type": "number"
                           },
@@ -5088,6 +5092,7 @@
                           "createdAt",
                           "updatedAt",
                           "deletedAt",
+                          "deletedBy",
                           "version",
                           "syncMode",
                           "extensionIds",
@@ -5425,6 +5430,10 @@
                       "nullable": true,
                       "type": "string"
                     },
+                    "deletedBy": {
+                      "nullable": true,
+                      "type": "string"
+                    },
                     "version": {
                       "type": "number"
                     },
@@ -5718,6 +5727,7 @@
                     "createdAt",
                     "updatedAt",
                     "deletedAt",
+                    "deletedBy",
                     "version",
                     "syncMode",
                     "extensionIds",
@@ -6068,6 +6078,10 @@
                             "nullable": true,
                             "type": "string"
                           },
+                          "deletedBy": {
+                            "nullable": true,
+                            "type": "string"
+                          },
                           "version": {
                             "type": "number"
                           },
@@ -6361,6 +6375,7 @@
                           "createdAt",
                           "updatedAt",
                           "deletedAt",
+                          "deletedBy",
                           "version",
                           "syncMode",
                           "extensionIds",
@@ -6693,6 +6708,10 @@
                       "nullable": true,
                       "type": "string"
                     },
+                    "deletedBy": {
+                      "nullable": true,
+                      "type": "string"
+                    },
                     "version": {
                       "type": "number"
                     },
@@ -6986,6 +7005,7 @@
                     "createdAt",
                     "updatedAt",
                     "deletedAt",
+                    "deletedBy",
                     "version",
                     "syncMode",
                     "extensionIds",
@@ -7542,6 +7562,10 @@
                           "nullable": true,
                           "type": "string"
                         },
+                        "deletedBy": {
+                          "nullable": true,
+                          "type": "string"
+                        },
                         "version": {
                           "type": "number"
                         },
@@ -7835,6 +7859,7 @@
                         "createdAt",
                         "updatedAt",
                         "deletedAt",
+                        "deletedBy",
                         "version",
                         "syncMode",
                         "extensionIds",

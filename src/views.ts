@@ -104,7 +104,7 @@ export const Profile = z.object({
   id: z.string(), workspaceId: z.string(), number: z.number(), name: z.string(), groupId: z.string().nullable(),
   ownerId: z.string().nullable(), departmentId: z.string().nullable(), tags: z.array(z.string()), kernel, kernelVersion: z.string(), os, fingerprint: Fingerprint, proxyId: z.string().nullable(),
   timezoneOverride: z.string().nullable(), localeOverride: z.string().nullable(), notes: z.string().nullable(),
-  lastOpenedAt: iso, lastOpenedBy: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(), deletedAt: iso, version: z.number(),
+  lastOpenedAt: iso, lastOpenedBy: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(), deletedAt: iso, deletedBy: z.string().nullable(), version: z.number(),
   syncMode: z.enum(['cloud', 'local']), extensionIds: z.array(z.string()), data: SavedData.nullable(), lock: LockHolder.nullable(),
   lastExit: ProfileExit.nullable(), prevExit: ProfileExit.nullable(), report: HealthReport.nullable(), starred: z.boolean()
 });
@@ -118,7 +118,7 @@ export function profileView(p: typeof profiles.$inferSelect, state: { data: type
     fingerprint: p.fingerprint as z.infer<typeof Fingerprint>, proxyId: p.proxyId,
     timezoneOverride: p.timezoneOverride, localeOverride: p.localeOverride, notes: p.notes,
     lastOpenedAt: p.lastOpenedAt?.toISOString() ?? null, lastOpenedBy: p.lastOpenedBy,
-    createdAt: p.createdAt.toISOString(), updatedAt: p.updatedAt.toISOString(), deletedAt: p.deletedAt?.toISOString() ?? null, version: p.version,
+    createdAt: p.createdAt.toISOString(), updatedAt: p.updatedAt.toISOString(), deletedAt: p.deletedAt?.toISOString() ?? null, deletedBy: p.deletedBy, version: p.version,
     syncMode: p.syncMode as 'cloud' | 'local', extensionIds: p.extensionIds, data: state?.data ? savedDataView(state.data) : null,
     lock: lock ? { email: lock.email, deviceName: lock.deviceName, since: lock.acquiredAt.toISOString(), self: lock.sessionId === state.sessionId } : null,
     lastExit: p.lastExit as z.infer<typeof ProfileExit> | null, prevExit: p.prevExit as z.infer<typeof ProfileExit> | null,

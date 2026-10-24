@@ -217,13 +217,13 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
         break;
       }
       case 'trash':
-        updated = await db.update(profiles).set({ ...bump, deletedAt: now }).where(and(mine, isNull(profiles.deletedAt))).returning(ref);
+        updated = await db.update(profiles).set({ ...bump, deletedAt: now, deletedBy: s.userId }).where(and(mine, isNull(profiles.deletedAt))).returning(ref);
         break;
       case 'restore':
         updated = await db.transaction(async tx => {
           const trashed = await tx.select({ id: profiles.id }).from(profiles).where(and(mine, isNotNull(profiles.deletedAt)));
           await reserve(tx, req.params.id, trashed.length);
-          return tx.update(profiles).set({ ...bump, deletedAt: null }).where(and(mine, isNotNull(profiles.deletedAt))).returning(ref);
+          return tx.update(profiles).set({ ...bump, deletedAt: null, deletedBy: null }).where(and(mine, isNotNull(profiles.deletedAt))).returning(ref);
         });
         break;
       case 'purge': {
