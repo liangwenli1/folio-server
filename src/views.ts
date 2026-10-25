@@ -73,9 +73,13 @@ export const Geo = z.object({
 
 // Chromium profiles store the seed that drives the engine's fingerprint; Firefox profiles store the full
 // Camoufox config, because Camoufox draws a new identity on every launch unless it is given one.
+// Chromium's `canvas`/`webgl` 'real' and Firefox's `webrtc` 'block' are choices made in the app; left out, the defaults.
 export const Fingerprint = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('chromium'), seed: z.number().int().min(1).max(2147483647), hardwareConcurrency: z.number().int().min(1).max(64) }),
-  z.object({ kind: z.literal('firefox'), config: z.record(z.string(), z.unknown()) })
+  z.object({
+    kind: z.literal('chromium'), seed: z.number().int().min(1).max(2147483647), hardwareConcurrency: z.number().int().min(1).max(64),
+    canvas: z.enum(['noise', 'real']).optional(), webgl: z.enum(['spoof', 'real']).optional()
+  }),
+  z.object({ kind: z.literal('firefox'), config: z.record(z.string(), z.unknown()), webrtc: z.enum(['replace', 'block']).optional() })
 ]);
 export const kernel = z.enum(['chromium', 'firefox']);
 export const os = z.enum(['windows', 'macos', 'linux']);

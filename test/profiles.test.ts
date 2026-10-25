@@ -106,6 +106,15 @@ describe('editing profiles', () => {
     expect((await list(headers, workspaceId)).map(p => p.name)).toEqual(['A']);
   });
 
+  it('keeps the fingerprint choices made in the app, and refuses others', async () => {
+    const { headers, workspaceId } = await signup(t.app);
+    const p = (await post(`/workspaces/${workspaceId}/profiles`, headers, chromiumProfile('A', { fingerprint: { kind: 'chromium', seed: 7, hardwareConcurrency: 8, canvas: 'real', webgl: 'real' } }))).json();
+    expect(p.fingerprint).toMatchObject({ canvas: 'real', webgl: 'real' });
+    expect((await post(`/workspaces/${workspaceId}/profiles`, headers, chromiumProfile('B', { fingerprint: { kind: 'chromium', seed: 7, hardwareConcurrency: 8, canvas: 'off' } }))).statusCode).toBe(400);
+    const edited = await t.app.inject({ method: 'PATCH', url: `/profiles/${p.id}`, headers, payload: { version: 0, fingerprint: { kind: 'chromium', seed: 7, hardwareConcurrency: 8 } } });
+    expect(edited.json().fingerprint).toEqual({ kind: 'chromium', seed: 7, hardwareConcurrency: 8 });
+  });
+
   it('keeps each profile’s search engine and tab setting, one at a time or in bulk', async () => {
     const { headers, workspaceId } = await signup(t.app);
     const [a, b] = (await post(`/workspaces/${workspaceId}/profiles/bulk`, headers, { profiles: [chromiumProfile('A'), chromiumProfile('B', { searchEngine: 'baidu', restoreTabs: false })] })).json().profiles;

@@ -4790,6 +4790,20 @@
                                     "type": "integer",
                                     "minimum": 1,
                                     "maximum": 64
+                                  },
+                                  "canvas": {
+                                    "type": "string",
+                                    "enum": [
+                                      "noise",
+                                      "real"
+                                    ]
+                                  },
+                                  "webgl": {
+                                    "type": "string",
+                                    "enum": [
+                                      "spoof",
+                                      "real"
+                                    ]
                                   }
                                 },
                                 "required": [
@@ -4811,6 +4825,13 @@
                                   "config": {
                                     "type": "object",
                                     "additionalProperties": {}
+                                  },
+                                  "webrtc": {
+                                    "type": "string",
+                                    "enum": [
+                                      "replace",
+                                      "block"
+                                    ]
                                   }
                                 },
                                 "required": [
@@ -5274,6 +5295,20 @@
                             "type": "integer",
                             "minimum": 1,
                             "maximum": 64
+                          },
+                          "canvas": {
+                            "type": "string",
+                            "enum": [
+                              "noise",
+                              "real"
+                            ]
+                          },
+                          "webgl": {
+                            "type": "string",
+                            "enum": [
+                              "spoof",
+                              "real"
+                            ]
                           }
                         },
                         "required": [
@@ -5294,6 +5329,13 @@
                           "config": {
                             "type": "object",
                             "additionalProperties": {}
+                          },
+                          "webrtc": {
+                            "type": "string",
+                            "enum": [
+                              "replace",
+                              "block"
+                            ]
                           }
                         },
                         "required": [
@@ -5457,6 +5499,20 @@
                               "type": "integer",
                               "minimum": 1,
                               "maximum": 64
+                            },
+                            "canvas": {
+                              "type": "string",
+                              "enum": [
+                                "noise",
+                                "real"
+                              ]
+                            },
+                            "webgl": {
+                              "type": "string",
+                              "enum": [
+                                "spoof",
+                                "real"
+                              ]
                             }
                           },
                           "required": [
@@ -5478,6 +5534,13 @@
                             "config": {
                               "type": "object",
                               "additionalProperties": {}
+                            },
+                            "webrtc": {
+                              "type": "string",
+                              "enum": [
+                                "replace",
+                                "block"
+                              ]
                             }
                           },
                           "required": [
@@ -5943,6 +6006,20 @@
                                   "type": "integer",
                                   "minimum": 1,
                                   "maximum": 64
+                                },
+                                "canvas": {
+                                  "type": "string",
+                                  "enum": [
+                                    "noise",
+                                    "real"
+                                  ]
+                                },
+                                "webgl": {
+                                  "type": "string",
+                                  "enum": [
+                                    "spoof",
+                                    "real"
+                                  ]
                                 }
                               },
                               "required": [
@@ -5963,6 +6040,13 @@
                                 "config": {
                                   "type": "object",
                                   "additionalProperties": {}
+                                },
+                                "webrtc": {
+                                  "type": "string",
+                                  "enum": [
+                                    "replace",
+                                    "block"
+                                  ]
                                 }
                               },
                               "required": [
@@ -6137,6 +6221,20 @@
                                     "type": "integer",
                                     "minimum": 1,
                                     "maximum": 64
+                                  },
+                                  "canvas": {
+                                    "type": "string",
+                                    "enum": [
+                                      "noise",
+                                      "real"
+                                    ]
+                                  },
+                                  "webgl": {
+                                    "type": "string",
+                                    "enum": [
+                                      "spoof",
+                                      "real"
+                                    ]
                                   }
                                 },
                                 "required": [
@@ -6158,6 +6256,13 @@
                                   "config": {
                                     "type": "object",
                                     "additionalProperties": {}
+                                  },
+                                  "webrtc": {
+                                    "type": "string",
+                                    "enum": [
+                                      "replace",
+                                      "block"
+                                    ]
                                   }
                                 },
                                 "required": [
@@ -6626,6 +6731,20 @@
                             "type": "integer",
                             "minimum": 1,
                             "maximum": 64
+                          },
+                          "canvas": {
+                            "type": "string",
+                            "enum": [
+                              "noise",
+                              "real"
+                            ]
+                          },
+                          "webgl": {
+                            "type": "string",
+                            "enum": [
+                              "spoof",
+                              "real"
+                            ]
                           }
                         },
                         "required": [
@@ -6646,6 +6765,13 @@
                           "config": {
                             "type": "object",
                             "additionalProperties": {}
+                          },
+                          "webrtc": {
+                            "type": "string",
+                            "enum": [
+                              "replace",
+                              "block"
+                            ]
                           }
                         },
                         "required": [
@@ -6799,6 +6925,20 @@
                               "type": "integer",
                               "minimum": 1,
                               "maximum": 64
+                            },
+                            "canvas": {
+                              "type": "string",
+                              "enum": [
+                                "noise",
+                                "real"
+                              ]
+                            },
+                            "webgl": {
+                              "type": "string",
+                              "enum": [
+                                "spoof",
+                                "real"
+                              ]
                             }
                           },
                           "required": [
@@ -6820,6 +6960,13 @@
                             "config": {
                               "type": "object",
                               "additionalProperties": {}
+                            },
+                            "webrtc": {
+                              "type": "string",
+                              "enum": [
+                                "replace",
+                                "block"
+                              ]
                             }
                           },
                           "required": [
@@ -7686,6 +7833,20 @@
                                   "type": "integer",
                                   "minimum": 1,
                                   "maximum": 64
+                                },
+                                "canvas": {
+                                  "type": "string",
+                                  "enum": [
+                                    "noise",
+                                    "real"
+                                  ]
+                                },
+                                "webgl": {
+                                  "type": "string",
+                                  "enum": [
+                                    "spoof",
+                                    "real"
+                                  ]
                                 }
                               },
                               "required": [
@@ -7707,6 +7868,13 @@
                                 "config": {
                                   "type": "object",
                                   "additionalProperties": {}
+                                },
+                                "webrtc": {
+                                  "type": "string",
+                                  "enum": [
+                                    "replace",
+                                    "block"
+                                  ]
                                 }
                               },
                               "required": [
@@ -11789,6 +11957,20 @@
                                     "type": "integer",
                                     "minimum": 1,
                                     "maximum": 64
+                                  },
+                                  "canvas": {
+                                    "type": "string",
+                                    "enum": [
+                                      "noise",
+                                      "real"
+                                    ]
+                                  },
+                                  "webgl": {
+                                    "type": "string",
+                                    "enum": [
+                                      "spoof",
+                                      "real"
+                                    ]
                                   }
                                 },
                                 "required": [
@@ -11810,6 +11992,13 @@
                                   "config": {
                                     "type": "object",
                                     "additionalProperties": {}
+                                  },
+                                  "webrtc": {
+                                    "type": "string",
+                                    "enum": [
+                                      "replace",
+                                      "block"
+                                    ]
                                   }
                                 },
                                 "required": [
@@ -12113,6 +12302,20 @@
                                   "type": "integer",
                                   "minimum": 1,
                                   "maximum": 64
+                                },
+                                "canvas": {
+                                  "type": "string",
+                                  "enum": [
+                                    "noise",
+                                    "real"
+                                  ]
+                                },
+                                "webgl": {
+                                  "type": "string",
+                                  "enum": [
+                                    "spoof",
+                                    "real"
+                                  ]
                                 }
                               },
                               "required": [
@@ -12133,6 +12336,13 @@
                                 "config": {
                                   "type": "object",
                                   "additionalProperties": {}
+                                },
+                                "webrtc": {
+                                  "type": "string",
+                                  "enum": [
+                                    "replace",
+                                    "block"
+                                  ]
                                 }
                               },
                               "required": [
