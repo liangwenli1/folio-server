@@ -4444,6 +4444,18 @@
                           "name": {
                             "type": "string"
                           },
+                          "color": {
+                            "type": "string",
+                            "enum": [
+                              "red",
+                              "blue",
+                              "green",
+                              "amber",
+                              "purple",
+                              "teal",
+                              "gray"
+                            ]
+                          },
                           "profiles": {
                             "type": "number"
                           }
@@ -4451,6 +4463,7 @@
                         "required": [
                           "id",
                           "name",
+                          "color",
                           "profiles"
                         ],
                         "additionalProperties": false
@@ -4479,6 +4492,18 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 80
+                  },
+                  "color": {
+                    "type": "string",
+                    "enum": [
+                      "red",
+                      "blue",
+                      "green",
+                      "amber",
+                      "purple",
+                      "teal",
+                      "gray"
+                    ]
                   }
                 },
                 "required": [
@@ -4514,6 +4539,18 @@
                     "name": {
                       "type": "string"
                     },
+                    "color": {
+                      "type": "string",
+                      "enum": [
+                        "red",
+                        "blue",
+                        "green",
+                        "amber",
+                        "purple",
+                        "teal",
+                        "gray"
+                      ]
+                    },
                     "profiles": {
                       "type": "number"
                     }
@@ -4521,6 +4558,7 @@
                   "required": [
                     "id",
                     "name",
+                    "color",
                     "profiles"
                   ],
                   "additionalProperties": false
@@ -4544,11 +4582,20 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 80
+                  },
+                  "color": {
+                    "type": "string",
+                    "enum": [
+                      "red",
+                      "blue",
+                      "green",
+                      "amber",
+                      "purple",
+                      "teal",
+                      "gray"
+                    ]
                   }
-                },
-                "required": [
-                  "name"
-                ]
+                }
               }
             }
           }
@@ -4578,11 +4625,24 @@
                     },
                     "name": {
                       "type": "string"
+                    },
+                    "color": {
+                      "type": "string",
+                      "enum": [
+                        "red",
+                        "blue",
+                        "green",
+                        "amber",
+                        "purple",
+                        "teal",
+                        "gray"
+                      ]
                     }
                   },
                   "required": [
                     "id",
-                    "name"
+                    "name",
+                    "color"
                   ],
                   "additionalProperties": false
                 }

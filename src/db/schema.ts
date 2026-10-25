@@ -115,10 +115,13 @@ export const salesInquiries = pgTable('sales_inquiries', {
   createdAt: createdAt()
 });
 
+// The colours a group can have in the app.
+export const GROUP_COLORS = ['red', 'blue', 'green', 'amber', 'purple', 'teal', 'gray'] as const;
 export const groups = pgTable('groups', {
   id: uuid().primaryKey().defaultRandom(),
   workspaceId: uuid().notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   name: text().notNull(),
+  color: text({ enum: GROUP_COLORS }).notNull().default('gray'),
   createdAt: createdAt()
 }, t => [uniqueIndex().on(t.workspaceId, t.name)]);
 

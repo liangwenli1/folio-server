@@ -1,0 +1,1 @@
+ALTER TABLE "groups" ADD COLUMN "color" text DEFAULT 'gray' NOT NULL;

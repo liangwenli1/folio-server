@@ -1,6 +1,6 @@
 // Response shapes. These zod schemas also produce the OpenAPI document the site and desktop generate types from.
 import { z } from 'zod';
-import type { extensions, flows, kernels, profileData, profileLocks, profiles, proxies, users } from './db/schema.js';
+import { GROUP_COLORS, type extensions, type flows, type kernels, type profileData, type profileLocks, type profiles, type proxies, type users } from './db/schema.js';
 import { entitlements } from './plans.js';
 import { Step } from './flows/steps.js';
 import { toState, type PaymentRow, type SubRow } from './billing/service.js';
@@ -128,7 +128,8 @@ export function profileView(p: typeof profiles.$inferSelect, state: { data: type
   };
 }
 
-export const Group = z.object({ id: z.string(), name: z.string(), profiles: z.number() });
+export const groupColor = z.enum(GROUP_COLORS);
+export const Group = z.object({ id: z.string(), name: z.string(), color: groupColor, profiles: z.number() });
 
 export const proxyType = z.enum(['http', 'https', 'socks5']);
 export const ProxyCheck = z.object({

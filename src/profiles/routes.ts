@@ -8,7 +8,7 @@ import { ApiError, forbidden, notFound } from '../errors.js';
 import { publish } from '../events.js';
 import { requireSession, type Deps } from '../http.js';
 import { open } from '../crypto.js';
-import { Extension, Fingerprint, Geo, Group, HealthReport, Profile, ProxySecret, extensionView, kernel, os, profileView, searchEngine } from '../views.js';
+import { Extension, Fingerprint, Geo, Group, HealthReport, groupColor, Profile, ProxySecret, extensionView, kernel, os, profileView, searchEngine } from '../views.js';
 import { requireRole, type Role } from '../workspaces/service.js';
 import { requireCompany } from '../team/service.js';
 import { access, assertOwned, checkAssignment, checkExtensions, checkFingerprint, createProfiles, loadProfiles, profileFor, reserve } from './service.js';
@@ -51,31 +51,33 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
   // ---------- groups ----------
   r.get('/workspaces/:id/groups', { schema: { params: wsParams, response: { 200: z.object({ groups: z.array(Group) }) } } }, async req => {
     const { scope } = await member(req, req.params.id);
-    const rows = await db.select({ id: groups.id, name: groups.name, profiles: sql<number>`count(${profiles.id}) filter (where ${profiles.deletedAt} is null)::int` })
+    const rows = await db.select({ id: groups.id, name: groups.name, color: groups.color, profiles: sql<number>`count(${profiles.id}) filter (where ${profiles.deletedAt} is null)::int` })
       .from(groups).leftJoin(profiles, and(eq(profiles.groupId, groups.id), scope))
       .where(eq(groups.workspaceId, req.params.id)).groupBy(groups.id).orderBy(asc(groups.name));
     return { groups: rows };
   });
 
-  r.post('/workspaces/:id/groups', { schema: { params: wsParams, body: z.object({ name }), response: { 201: Group } } }, async (req, reply) => {
+  r.post('/workspaces/:id/groups', { schema: { params: wsParams, body: z.object({ name, color: groupColor.optional() }), response: { 201: Group } } }, async (req, reply) => {
     const s = await manager(req, req.params.id);
-    const [g] = await db.insert(groups).values({ workspaceId: req.params.id, name: req.body.name, createdAt: clock.now() }).onConflictDoNothing().returning();
+    const [g] = await db.insert(groups).values({ workspaceId: req.params.id, name: req.body.name, color: req.body.color, createdAt: clock.now() }).onConflictDoNothing().returning();
     if (!g) throw new ApiError(409, 'group_exists', 'A group with this name already exists');
     await record(db, { workspaceId: req.params.id, actor: s, at: clock.now(), action: 'group.create', detail: { name: g.name } });
     publish(req.params.id, { kind: 'groups' });
-    return reply.code(201).send({ id: g.id, name: g.name, profiles: 0 });
+    return reply.code(201).send({ id: g.id, name: g.name, color: g.color, profiles: 0 });
   });
 
-  r.patch('/groups/:id', { schema: { params: wsParams, body: z.object({ name }), response: { 200: z.object({ id: z.string(), name: z.string() }) } } }, async req => {
+  // A new name, a new colour, or both; a rename goes in the activity log.
+  const groupEdit = z.object({ name: name.optional(), color: groupColor.optional() }).refine(b => b.name !== undefined || b.color !== undefined, 'Nothing to change');
+  r.patch('/groups/:id', { schema: { params: wsParams, body: groupEdit, response: { 200: z.object({ id: z.string(), name: z.string(), color: groupColor }) } } }, async req => {
     const [g] = await db.select().from(groups).where(eq(groups.id, req.params.id));
     if (!g) throw notFound('Group');
     const s = await manager(req, g.workspaceId);
-    const [u] = await db.update(groups).set({ name: req.body.name }).where(eq(groups.id, g.id)).returning().catch(() => {
+    const [u] = await db.update(groups).set(req.body).where(eq(groups.id, g.id)).returning().catch(() => {
       throw new ApiError(409, 'group_exists', 'A group with this name already exists');
     });
-    await record(db, { workspaceId: g.workspaceId, actor: s, at: clock.now(), action: 'group.rename', detail: { name: u.name, from: g.name } });
+    if (u.name !== g.name) await record(db, { workspaceId: g.workspaceId, actor: s, at: clock.now(), action: 'group.rename', detail: { name: u.name, from: g.name } });
     publish(g.workspaceId, { kind: 'groups' });
-    return { id: u.id, name: u.name };
+    return { id: u.id, name: u.name, color: u.color };
   });
 
   // Profiles in a deleted group stay, without a group.
