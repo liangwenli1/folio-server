@@ -18,7 +18,7 @@ async function source(){
   const ws = o.workspaceId;
   const g = (await call('POST', `/workspaces/${ws}/groups`, o.headers, { name: 'EU stores' })).json();
   const backup = (await call('POST', `/workspaces/${ws}/proxies`, o.headers, { type: 'http', host: 'backup.example.net', port: 8080 })).json();
-  const proxy = (await call('POST', `/workspaces/${ws}/proxies`, o.headers, { type: 'socks5', host: 'main.example.net', port: 1080, username: 'u', password: 'p@ss', backupId: backup.id })).json();
+  const proxy = (await call('POST', `/workspaces/${ws}/proxies`, o.headers, { type: 'socks5', host: 'main.example.net', port: 1080, username: 'u', password: 'p@ss', backupId: backup.id, notes: 'EU line' })).json();
   const a = (await call('POST', `/workspaces/${ws}/profiles`, o.headers, { ...chromiumProfile('Shop-DE', { groupId: g.id, proxyId: proxy.id, tags: ['vip'], timezoneOverride: 'Europe/Berlin', searchEngine: 'bing', restoreTabs: false }) })).json();
   await call('POST', `/workspaces/${ws}/profiles`, o.headers, firefox('Social-01'));
   const gone = (await call('POST', `/workspaces/${ws}/profiles`, o.headers, chromiumProfile('Old'))).json();
@@ -37,7 +37,7 @@ describe('workspace export and import', () => {
     expect(out.groups).toEqual(['EU stores']);
     expect(out.profiles.map((p: { name: string; saved: boolean }) => [p.name, p.saved])).toEqual([['Shop-DE', true], ['Social-01', false]]);
     const main = out.proxies.find((p: { host: string }) => p.host === 'main.example.net');
-    expect(main).toMatchObject({ username: 'u', password: 'p@ss', backupRef: out.proxies.find((p: { host: string }) => p.host === 'backup.example.net').ref });
+    expect(main).toMatchObject({ username: 'u', password: 'p@ss', notes: 'EU line', backupRef: out.proxies.find((p: { host: string }) => p.host === 'backup.example.net').ref });
     expect(out.profiles[0]).toMatchObject({ group: 'EU stores', proxyRef: main.ref, tags: ['vip'], timezoneOverride: 'Europe/Berlin', searchEngine: 'bing', restoreTabs: false });
     const log = (await call('GET', `/workspaces/${ws}/activity?kind=cookies`, o.headers)).json().entries;
     expect(log[0]).toMatchObject({ action: 'workspace.export', detail: { profiles: 2, proxies: 2 } });
@@ -61,6 +61,7 @@ describe('workspace export and import', () => {
     const proxies = (await call('GET', `/workspaces/${tws}/proxies`, target.headers)).json().proxies;
     const main = proxies.find((p: { host: string }) => p.host === 'main.example.net');
     expect(main.backupId).toBe(proxies.find((p: { host: string }) => p.host === 'backup.example.net').id);
+    expect(main.notes).toBe('EU line');
     expect(list[1].proxyId).toBe(main.id);
     expect(res.profiles.map((p: { ref: string }) => p.ref)).toEqual(bundle.profiles.map((p: { ref: string }) => p.ref));
 

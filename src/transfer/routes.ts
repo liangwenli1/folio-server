@@ -27,7 +27,7 @@ const params = z.object({ id: z.uuid() });
 const ref = z.string().min(1).max(64);
 const ExportedProxy = z.object({
   ref, name: z.string().trim().min(1).max(80), type: proxyType, host: z.string().min(1).max(253), port: z.number().int().min(1).max(65535),
-  username: z.string().max(256).nullable(), password: z.string().max(256).nullable(), backupRef: ref.nullable()
+  username: z.string().max(256).nullable(), password: z.string().max(256).nullable(), backupRef: ref.nullable(), notes: z.string().max(500).nullable().optional()
 });
 // `saved`: the profile has a sign-in state, which travels next to this list.
 const ExportedProfile = newProfile.omit({ groupId: true, ownerId: true, proxyId: true, extensionIds: true })
@@ -66,7 +66,7 @@ export function transferRoutes(app: FastifyInstance, deps: Deps){
       workspace: w.name, exportedAt: now.toISOString(), groups: groupRows.map(g => g.name),
       proxies: proxyRows.map(p => ({
         ref: p.id, name: p.name, type: p.type as 'http' | 'https' | 'socks5', host: p.host, port: p.port, username: p.username,
-        password: p.passwordEnc ? open(p.passwordEnc) : null, backupRef: p.backupId
+        password: p.passwordEnc ? open(p.passwordEnc) : null, backupRef: p.backupId, notes: p.notes
       })),
       profiles: profileRows.map(({ p, saved }) => ({
         ref: p.id, name: p.name, group: p.groupId ? groupName.get(p.groupId) ?? null : null, tags: p.tags, kernel: p.kernel as 'chromium' | 'firefox',

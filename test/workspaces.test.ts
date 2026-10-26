@@ -16,7 +16,7 @@ describe('workspaces', () => {
     expect(ws).toMatchObject({ name: 'EU & UK stores', role: { key: 'owner' }, subscription: { plan: 'free' }, usage: { profiles: 0, members: 1 } });
     expect(ws.settings).toEqual({
       defaultKernel: null, defaultKernelVersion: null, defaultGroupId: null, defaultProxyId: null,
-      autoDownloadKernels: false, openDetailAfterLaunch: false, stopOnWindowClose: true, expiryReminder: true
+      openDetailAfterLaunch: false, stopOnWindowClose: true, expiryReminder: true
     });
     expect((await t.app.inject({ url: '/me', headers })).json().workspaces).toHaveLength(2);
   });
@@ -39,8 +39,8 @@ describe('openapi', () => {
     const { headers, workspaceId } = await signup(t.app);
     const group = (await t.app.inject({ method: 'POST', url: `/workspaces/${workspaceId}/groups`, headers, payload: { name: 'US' } })).json();
     const set = (settings: object) => t.app.inject({ method: 'PATCH', url: `/workspaces/${workspaceId}`, headers, payload: { settings } });
-    const saved = (await set({ defaultKernel: 'firefox', defaultKernelVersion: '156.0.1-beta.36', defaultGroupId: group.id, autoDownloadKernels: true, stopOnWindowClose: false })).json();
-    expect(saved.settings).toMatchObject({ defaultKernel: 'firefox', defaultKernelVersion: '156.0.1-beta.36', defaultGroupId: group.id, autoDownloadKernels: true, stopOnWindowClose: false });
+    const saved = (await set({ defaultKernel: 'firefox', defaultKernelVersion: '156.0.1-beta.36', defaultGroupId: group.id, stopOnWindowClose: false })).json();
+    expect(saved.settings).toMatchObject({ defaultKernel: 'firefox', defaultKernelVersion: '156.0.1-beta.36', defaultGroupId: group.id, stopOnWindowClose: false });
     // Reading the workspace gives them back, and the rest are untouched.
     const ws = (await t.app.inject({ url: `/workspaces/${workspaceId}`, headers })).json();
     expect(ws.settings).toMatchObject({ defaultKernel: 'firefox', defaultProxyId: null, expiryReminder: true });

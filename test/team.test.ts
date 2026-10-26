@@ -234,8 +234,17 @@ describe('roles', () => {
 describe('group authorisation', () => {
   it('is a Company feature', async () => {
     const { owner, ws } = await team('studio');
-    const g = (await call('POST', `/workspaces/${ws}/groups`, owner.headers, { name: 'Sales' })).json();
+    const g = (await call('POST', `/workspaces/${ws}/groups`, owner.headers, { name: 'Sales', description: 'Storefronts' })).json();
+    expect(g).toMatchObject({ name: 'Sales', description: 'Storefronts', memberIds: [] });
     expect(await code(call('PATCH', `/groups/${g.id}`, owner.headers, { memberIds: [] }))).toBe('plan_required');
+    expect(await code(call('POST', `/workspaces/${ws}/groups`, owner.headers, { name: 'Ops', memberIds: [] }))).toBe('plan_required');
+  });
+
+  it('can be given with a new group, which says what it holds', async () => {
+    const { owner, other, ws } = await team('company');
+    const g = (await call('POST', `/workspaces/${ws}/groups`, owner.headers, { name: 'Sales', description: 'Storefronts', memberIds: [other.userId] })).json();
+    expect(g).toMatchObject({ description: 'Storefronts', memberIds: [other.userId] });
+    expect((await call('PATCH', `/groups/${g.id}`, owner.headers, { description: null })).json().description).toBeNull();
   });
 
   it('lets someone see the profiles of the groups they are in, and of those groups’ children', async () => {

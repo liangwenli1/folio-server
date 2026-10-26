@@ -148,6 +148,13 @@
       "when": 1793006124355,
       "tag": "0020_profile_start_window",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1793013419262,
+      "tag": "0021_proxy_notes_group_description",
+      "breakpoints": true
     }
   ]
 }

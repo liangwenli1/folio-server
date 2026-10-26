@@ -49,16 +49,14 @@ export const WorkspaceSummary = z.object({ id: z.string(), name: z.string(), rol
 export const WorkspaceSettings = z.object({
   defaultKernel: kernel.nullable(), defaultKernelVersion: z.string().nullable(),
   defaultGroupId: z.string().nullable(), defaultProxyId: z.string().nullable(),
-  autoDownloadKernels: z.boolean(), openDetailAfterLaunch: z.boolean(),
-  stopOnWindowClose: z.boolean(), expiryReminder: z.boolean()
+  openDetailAfterLaunch: z.boolean(), stopOnWindowClose: z.boolean(), expiryReminder: z.boolean()
 });
 export const workspaceSettingsView = (w: {
   defaultKernel: string | null; defaultKernelVersion: string | null; defaultGroupId: string | null; defaultProxyId: string | null;
-  autoDownloadKernels: boolean; openDetailAfterLaunch: boolean; stopOnWindowClose: boolean; expiryReminder: boolean;
+  openDetailAfterLaunch: boolean; stopOnWindowClose: boolean; expiryReminder: boolean;
 }): z.infer<typeof WorkspaceSettings> => ({
   defaultKernel: w.defaultKernel as 'chromium' | 'firefox' | null, defaultKernelVersion: w.defaultKernelVersion,
-  defaultGroupId: w.defaultGroupId, defaultProxyId: w.defaultProxyId, autoDownloadKernels: w.autoDownloadKernels,
-  openDetailAfterLaunch: w.openDetailAfterLaunch, stopOnWindowClose: w.stopOnWindowClose, expiryReminder: w.expiryReminder
+  defaultGroupId: w.defaultGroupId, defaultProxyId: w.defaultProxyId, openDetailAfterLaunch: w.openDetailAfterLaunch, stopOnWindowClose: w.stopOnWindowClose, expiryReminder: w.expiryReminder
 });
 
 export const Workspace = z.object({
@@ -162,8 +160,8 @@ export function profileView(p: typeof profiles.$inferSelect, state: { data: type
 export const groupColor = z.enum(GROUP_COLORS);
 // `memberIds` is who is authorised for the group itself; a group that inherits also lets in its parent's.
 export const Group = z.object({
-  id: z.string(), name: z.string(), color: groupColor, parentId: z.string().nullable(),
-  inheritMembers: z.boolean(), memberIds: z.array(z.string()), profiles: z.number()
+  id: z.string(), name: z.string(), color: groupColor, parentId: z.string().nullable(), description: z.string().nullable(),
+  inheritMembers: z.boolean(), memberIds: z.array(z.string()), profiles: z.number(), createdAt: z.string()
 });
 
 export const proxyType = z.enum(['http', 'https', 'socks5']);
@@ -176,13 +174,13 @@ export const ProxyHistory = z.object({ at: z.string(), ok: z.boolean(), ms: z.nu
 export const ProxyExit = z.object({ ip: z.string().nullable(), geo: Geo.nullable(), at: z.string() });
 export const Proxy = z.object({
   id: z.string(), name: z.string(), type: proxyType, host: z.string(), port: z.number(), username: z.string().nullable(),
-  hasPassword: z.boolean(), backupId: z.string().nullable(), lastCheck: ProxyCheck.nullable(), history: z.array(ProxyHistory), lastExit: ProxyExit.nullable(),
+  hasPassword: z.boolean(), backupId: z.string().nullable(), notes: z.string().nullable(), lastCheck: ProxyCheck.nullable(), history: z.array(ProxyHistory), lastExit: ProxyExit.nullable(),
   profiles: z.number(), createdAt: z.string(), updatedAt: z.string()
 });
 export function proxyView(p: typeof proxies.$inferSelect, profileCount: number): z.infer<typeof Proxy> {
   return {
     id: p.id, name: p.name, type: p.type as 'http' | 'https' | 'socks5', host: p.host, port: p.port, username: p.username,
-    hasPassword: !!p.passwordEnc, backupId: p.backupId, lastCheck: (p.lastCheck as z.infer<typeof ProxyCheck> | null) ?? null,
+    hasPassword: !!p.passwordEnc, backupId: p.backupId, notes: p.notes, lastCheck: (p.lastCheck as z.infer<typeof ProxyCheck> | null) ?? null,
     history: p.history as z.infer<typeof ProxyHistory>[], lastExit: (p.lastExit as z.infer<typeof ProxyExit> | null) ?? null, profiles: profileCount, createdAt: p.createdAt.toISOString(), updatedAt: p.updatedAt.toISOString()
   };
 }

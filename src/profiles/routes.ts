@@ -16,6 +16,8 @@ import { access, assertOwned, checkAssignment, checkExtensions, checkFingerprint
 
 const wsParams = z.object({ id: z.uuid() });
 const name = z.string().trim().min(1).max(80);
+// A group's own line about what it holds; null clears it.
+const description = z.string().trim().max(200).nullable().optional();
 const tag = z.string().trim().min(1).max(24);
 const version = z.string().regex(/^[\w.-]{1,40}$/);
 const tz = z.string().regex(/^[A-Za-z_]+(\/[A-Za-z0-9_+-]+){0,2}$/).max(64);
@@ -57,7 +59,8 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
   // Groups nest and carry who is authorised for them. A profile's group decides both where it sits and who
   // may reach it; being authorised for a group is part of the Company plan.
   const groupView = (g: typeof groups.$inferSelect, memberIds: string[], count: number) => ({
-    id: g.id, name: g.name, color: g.color, parentId: g.parentId, inheritMembers: g.inheritMembers, memberIds, profiles: count
+    id: g.id, name: g.name, color: g.color, parentId: g.parentId, description: g.description, inheritMembers: g.inheritMembers, memberIds, profiles: count,
+    createdAt: g.createdAt.toISOString()
   });
   const membersOf = async (ids: string[]) => (ids.length
     ? await db.select().from(groupMembers).where(inArray(groupMembers.groupId, ids)) : []);
@@ -91,22 +94,35 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
   r.post('/workspaces/:id/groups', {
     schema: {
       params: wsParams,
-      body: z.object({ name, color: groupColor.optional(), parentId: z.uuid().nullable().optional(), inheritMembers: z.boolean().optional() }),
+      body: z.object({
+        name, color: groupColor.optional(), parentId: z.uuid().nullable().optional(), description,
+        inheritMembers: z.boolean().optional(), memberIds: z.array(z.uuid()).max(1000).optional()
+      }),
       response: { 201: Group }
     }
   }, async (req, reply) => {
     const s = await manager(req, req.params.id);
-    await parentIn(req.params.id, req.body.parentId);
-    const [g] = await db.insert(groups).values({ workspaceId: req.params.id, ...req.body, createdAt: clock.now() }).onConflictDoNothing().returning();
-    if (!g) throw new ApiError(409, 'group_exists', 'A group with this name already exists');
+    const { memberIds: wanted, ...fields } = req.body;
+    const memberIds = [...new Set(wanted ?? [])];
+    await parentIn(req.params.id, fields.parentId);
+    if (wanted){
+      await requireCompany(db, req.params.id);
+      await assertOwned(db, req.params.id, { ownerIds: memberIds });
+    }
+    const g = await db.transaction(async tx => {
+      const [row] = await tx.insert(groups).values({ workspaceId: req.params.id, ...fields, createdAt: clock.now() }).onConflictDoNothing().returning();
+      if (!row) throw new ApiError(409, 'group_exists', 'A group with this name already exists');
+      if (memberIds.length) await tx.insert(groupMembers).values(memberIds.map(userId => ({ groupId: row.id, userId })));
+      return row;
+    });
     await record(db, { workspaceId: req.params.id, actor: s, at: clock.now(), action: 'group.create', detail: { name: g.name } });
     publish(req.params.id, { kind: 'groups' });
-    return reply.code(201).send(groupView(g, [], 0));
+    return reply.code(201).send(groupView(g, memberIds, 0));
   });
 
   // A new name, colour, place in the tree, or member list; renames and member changes go in the activity log.
   const groupEdit = z.object({
-    name: name.optional(), color: groupColor.optional(), parentId: z.uuid().nullable().optional(),
+    name: name.optional(), color: groupColor.optional(), parentId: z.uuid().nullable().optional(), description,
     inheritMembers: z.boolean().optional(), memberIds: z.array(z.uuid()).max(1000).optional()
   }).refine(b => Object.keys(b).length > 0, 'Nothing to change');
   r.patch('/groups/:id', { schema: { params: wsParams, body: groupEdit, response: { 200: Group } } }, async req => {

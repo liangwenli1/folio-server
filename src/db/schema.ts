@@ -50,7 +50,6 @@ export const workspaces = pgTable('workspaces', {
   defaultGroupId: uuid().references((): AnyPgColumn => groups.id, { onDelete: 'set null' }),
   defaultProxyId: uuid().references((): AnyPgColumn => proxies.id, { onDelete: 'set null' }),
   // Fetch the recommended engine version without being asked.
-  autoDownloadKernels: boolean().notNull().default(false),
   // Opening a profile also opens its details; closing its last window stops it.
   openDetailAfterLaunch: boolean().notNull().default(false),
   stopOnWindowClose: boolean().notNull().default(true),
@@ -149,6 +148,7 @@ export const groups = pgTable('groups', {
   color: text({ enum: GROUP_COLORS }).notNull().default('gray'),
   parentId: uuid().references((): AnyPgColumn => groups.id, { onDelete: 'set null' }),
   inheritMembers: boolean().notNull().default(true),
+  description: text(),
   createdAt: createdAt()
 }, t => [uniqueIndex().on(t.workspaceId, t.name), index().on(t.parentId)]);
 
@@ -171,6 +171,7 @@ export const proxies = pgTable('proxies', {
   username: text(),
   passwordEnc: text(),
   backupId: uuid().references((): AnyPgColumn => proxies.id, { onDelete: 'set null' }),
+  notes: text(),
   lastCheck: jsonb(),
   history: jsonb().notNull().default([]),
   lastExit: jsonb(),

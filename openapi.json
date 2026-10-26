@@ -1868,9 +1868,6 @@
                           "nullable": true,
                           "type": "string"
                         },
-                        "autoDownloadKernels": {
-                          "type": "boolean"
-                        },
                         "openDetailAfterLaunch": {
                           "type": "boolean"
                         },
@@ -1886,7 +1883,6 @@
                         "defaultKernelVersion",
                         "defaultGroupId",
                         "defaultProxyId",
-                        "autoDownloadKernels",
                         "openDetailAfterLaunch",
                         "stopOnWindowClose",
                         "expiryReminder"
@@ -1962,9 +1958,6 @@
                         "nullable": true,
                         "type": "string"
                       },
-                      "autoDownloadKernels": {
-                        "type": "boolean"
-                      },
                       "openDetailAfterLaunch": {
                         "type": "boolean"
                       },
@@ -2030,9 +2023,6 @@
                           "nullable": true,
                           "type": "string"
                         },
-                        "autoDownloadKernels": {
-                          "type": "boolean"
-                        },
                         "openDetailAfterLaunch": {
                           "type": "boolean"
                         },
@@ -2048,7 +2038,6 @@
                         "defaultKernelVersion",
                         "defaultGroupId",
                         "defaultProxyId",
-                        "autoDownloadKernels",
                         "openDetailAfterLaunch",
                         "stopOnWindowClose",
                         "expiryReminder"
@@ -4716,6 +4705,10 @@
                             "nullable": true,
                             "type": "string"
                           },
+                          "description": {
+                            "nullable": true,
+                            "type": "string"
+                          },
                           "inheritMembers": {
                             "type": "boolean"
                           },
@@ -4727,6 +4720,9 @@
                           },
                           "profiles": {
                             "type": "number"
+                          },
+                          "createdAt": {
+                            "type": "string"
                           }
                         },
                         "required": [
@@ -4734,9 +4730,11 @@
                           "name",
                           "color",
                           "parentId",
+                          "description",
                           "inheritMembers",
                           "memberIds",
-                          "profiles"
+                          "profiles",
+                          "createdAt"
                         ],
                         "additionalProperties": false
                       }
@@ -4783,8 +4781,22 @@
                     "format": "uuid",
                     "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                   },
+                  "description": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 200
+                  },
                   "inheritMembers": {
                     "type": "boolean"
+                  },
+                  "memberIds": {
+                    "maxItems": 1000,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    }
                   }
                 },
                 "required": [
@@ -4836,6 +4848,10 @@
                       "nullable": true,
                       "type": "string"
                     },
+                    "description": {
+                      "nullable": true,
+                      "type": "string"
+                    },
                     "inheritMembers": {
                       "type": "boolean"
                     },
@@ -4847,6 +4863,9 @@
                     },
                     "profiles": {
                       "type": "number"
+                    },
+                    "createdAt": {
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -4854,9 +4873,11 @@
                     "name",
                     "color",
                     "parentId",
+                    "description",
                     "inheritMembers",
                     "memberIds",
-                    "profiles"
+                    "profiles",
+                    "createdAt"
                   ],
                   "additionalProperties": false
                 }
@@ -4897,6 +4918,11 @@
                     "type": "string",
                     "format": "uuid",
                     "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "description": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 200
                   },
                   "inheritMembers": {
                     "type": "boolean"
@@ -4957,6 +4983,10 @@
                       "nullable": true,
                       "type": "string"
                     },
+                    "description": {
+                      "nullable": true,
+                      "type": "string"
+                    },
                     "inheritMembers": {
                       "type": "boolean"
                     },
@@ -4968,6 +4998,9 @@
                     },
                     "profiles": {
                       "type": "number"
+                    },
+                    "createdAt": {
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -4975,9 +5008,11 @@
                     "name",
                     "color",
                     "parentId",
+                    "description",
                     "inheritMembers",
                     "memberIds",
-                    "profiles"
+                    "profiles",
+                    "createdAt"
                   ],
                   "additionalProperties": false
                 }
@@ -9005,6 +9040,10 @@
                             "nullable": true,
                             "type": "string"
                           },
+                          "notes": {
+                            "nullable": true,
+                            "type": "string"
+                          },
                           "lastCheck": {
                             "nullable": true,
                             "type": "object",
@@ -9186,6 +9225,7 @@
                           "username",
                           "hasPassword",
                           "backupId",
+                          "notes",
                           "lastCheck",
                           "history",
                           "lastExit",
@@ -9254,6 +9294,11 @@
                     "type": "string",
                     "format": "uuid",
                     "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "notes": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 500
                   }
                 },
                 "required": [
@@ -9313,6 +9358,10 @@
                       "type": "boolean"
                     },
                     "backupId": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "notes": {
                       "nullable": true,
                       "type": "string"
                     },
@@ -9497,12 +9546,162 @@
                     "username",
                     "hasPassword",
                     "backupId",
+                    "notes",
                     "lastCheck",
                     "history",
                     "lastExit",
                     "profiles",
                     "createdAt",
                     "updatedAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{id}/proxies/import/preview": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "maxLength": 200000
+                  },
+                  "defaultType": {
+                    "default": "http",
+                    "type": "string",
+                    "enum": [
+                      "http",
+                      "https",
+                      "socks5"
+                    ]
+                  }
+                },
+                "required": [
+                  "text"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "lines": {
+                      "type": "array",
+                      "items": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "ok": {
+                                "type": "boolean",
+                                "enum": [
+                                  true
+                                ]
+                              },
+                              "line": {
+                                "type": "number"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "http",
+                                  "https",
+                                  "socks5"
+                                ]
+                              },
+                              "host": {
+                                "type": "string"
+                              },
+                              "port": {
+                                "type": "number"
+                              },
+                              "username": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "saved": {
+                                "type": "boolean"
+                              },
+                              "repeat": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "ok",
+                              "line",
+                              "type",
+                              "host",
+                              "port",
+                              "username",
+                              "saved",
+                              "repeat"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "ok": {
+                                "type": "boolean",
+                                "enum": [
+                                  false
+                                ]
+                              },
+                              "line": {
+                                "type": "number"
+                              },
+                              "text": {
+                                "type": "string"
+                              },
+                              "why": {
+                                "type": "string",
+                                "enum": [
+                                  "format",
+                                  "port"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "ok",
+                              "line",
+                              "text",
+                              "why"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "lines"
                   ],
                   "additionalProperties": false
                 }
@@ -9533,6 +9732,15 @@
                       "https",
                       "socks5"
                     ]
+                  },
+                  "skipDuplicates": {
+                    "default": true,
+                    "type": "boolean"
+                  },
+                  "namePattern": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60
                   }
                 },
                 "required": [
@@ -9595,6 +9803,10 @@
                             "type": "boolean"
                           },
                           "backupId": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "notes": {
                             "nullable": true,
                             "type": "string"
                           },
@@ -9779,6 +9991,7 @@
                           "username",
                           "hasPassword",
                           "backupId",
+                          "notes",
                           "lastCheck",
                           "history",
                           "lastExit",
@@ -9873,6 +10086,11 @@
                     "type": "string",
                     "format": "uuid",
                     "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "notes": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 500
                   }
                 }
               }
@@ -9927,6 +10145,10 @@
                       "type": "boolean"
                     },
                     "backupId": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "notes": {
                       "nullable": true,
                       "type": "string"
                     },
@@ -10111,6 +10333,7 @@
                     "username",
                     "hasPassword",
                     "backupId",
+                    "notes",
                     "lastCheck",
                     "history",
                     "lastExit",
@@ -10289,6 +10512,10 @@
                       "nullable": true,
                       "type": "string"
                     },
+                    "notes": {
+                      "nullable": true,
+                      "type": "string"
+                    },
                     "lastCheck": {
                       "nullable": true,
                       "type": "object",
@@ -10470,6 +10697,7 @@
                     "username",
                     "hasPassword",
                     "backupId",
+                    "notes",
                     "lastCheck",
                     "history",
                     "lastExit",
@@ -12898,6 +13126,11 @@
                             "type": "string",
                             "minLength": 1,
                             "maxLength": 64
+                          },
+                          "notes": {
+                            "nullable": true,
+                            "type": "string",
+                            "maxLength": 500
                           }
                         },
                         "required": [
@@ -13270,6 +13503,11 @@
                           "type": "string",
                           "minLength": 1,
                           "maxLength": 64
+                        },
+                        "notes": {
+                          "nullable": true,
+                          "type": "string",
+                          "maxLength": 500
                         }
                       },
                       "required": [

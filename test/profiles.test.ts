@@ -114,7 +114,7 @@ describe('editing profiles', () => {
     expect(now.map(p => [p.name, p.groupId === group.id, p.tags, p.proxyId === proxy.id])).toEqual([['A', true, [], true], ['B', true, ['q4'], true]]);
 
     const groups = (await t.app.inject({ url: `/workspaces/${workspaceId}/groups`, headers })).json().groups;
-    expect(groups).toEqual([{ id: group.id, name: 'US stores', color: 'gray', parentId: null, inheritMembers: true, memberIds: [], profiles: 2 }]);
+    expect(groups).toEqual([{ id: group.id, name: 'US stores', color: 'gray', parentId: null, description: null, inheritMembers: true, memberIds: [], profiles: 2, createdAt: expect.any(String) }]);
 
     await batch(headers, workspaceId, { ids, action: 'trash' });
     expect(await list(headers, workspaceId)).toHaveLength(0);
