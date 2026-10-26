@@ -146,4 +146,23 @@ describe('password reset', () => {
     const login = await t.app.inject({ method: 'POST', url: '/auth/login', payload: { email, password: 'a brand new secret' }, headers: { origin: ORIGIN } });
     expect(login.statusCode).toBe(200);
   });
+
+  it('checks the code first without using it up; wrong ones count, and an unknown email reads as a wrong code', async () => {
+    const { email } = await signup(t.app);
+    const check = (payload: object) => t.app.inject({ method: 'POST', url: '/auth/password/check', payload });
+    await t.app.inject({ method: 'POST', url: '/auth/password/forgot', payload: { email } });
+    const code = await lastCode(email), wrong = code === '000000' ? '111111' : '000000';
+    expect((await check({ email, code: wrong })).json().error.code).toBe('code_invalid');
+    expect((await check({ email: 'nobody@example.com', code })).json().error.code).toBe('code_invalid');
+    expect((await check({ email, code })).statusCode).toBe(204);
+    expect((await check({ email, code })).statusCode).toBe(204);
+    const reset = await t.app.inject({ method: 'POST', url: '/auth/password/reset', payload: { email, code, password: 'a brand new secret' } });
+    expect(reset.statusCode).toBe(204);
+    expect((await check({ email, code })).json().error.code).toBe('code_invalid');
+
+    await t.app.inject({ method: 'POST', url: '/auth/password/forgot', payload: { email } });
+    const next = await lastCode(email), miss = next === '000000' ? '111111' : '000000';
+    for (let i = 0; i < 5; i++) await check({ email, code: miss });
+    expect((await check({ email, code: next })).json().error.code).toBe('too_many_attempts');
+  });
 });

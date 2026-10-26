@@ -8,11 +8,12 @@ import { ApiError } from '../errors.js';
 import { clearSessionCookie, requireSession, setSessionCookie, type Deps } from '../http.js';
 import { User, WorkspaceSummary, locale, userView } from '../views.js';
 import { createWorkspace } from '../workspaces/service.js';
-import { consumeCode, issueCode } from './codes.js';
+import { checkCode, consumeCode, issueCode } from './codes.js';
 import { codeMail, type Locale } from '../mail.js';
 import { createSession, revokeAllSessions, revokeSession } from './session.js';
 
 const password = z.string().min(8).max(200);
+const code = z.string().regex(/^\s*\d{6}\s*$/);
 const normalize = (email: string) => email.trim().toLowerCase();
 // Verifying against a fixed hash when the email is unknown keeps response times alike.
 const DUMMY_HASH = await hash('folio-dummy-password');
@@ -30,6 +31,12 @@ export function authRoutes(app: FastifyInstance, deps: Deps){
   };
   const sendCode = async (u: { id: string; email: string; locale: string }, purpose: 'verify' | 'reset') =>
     deps.mailer.send(u.email, codeMail(u.locale as Locale, purpose, await issueCode(db, u.id, purpose, clock.now())));
+  // Whose password a reset is for; an unknown email reads as a wrong code, so it does not reveal who has an account.
+  const resetUser = async (email: string) => {
+    const [u] = await db.select().from(users).where(eq(users.email, normalize(email)));
+    if (!u) throw new ApiError(400, 'code_invalid', 'That code is not valid. Request a new one.');
+    return u;
+  };
 
   r.post('/auth/register', {
     config: limited,
@@ -81,7 +88,7 @@ export function authRoutes(app: FastifyInstance, deps: Deps){
 
   r.post('/auth/verify-email', {
     config: limited,
-    schema: { body: z.object({ code: z.string().regex(/^\s*\d{6}\s*$/) }), response: { 200: z.object({ user: User }) } }
+    schema: { body: z.object({ code }), response: { 200: z.object({ user: User }) } }
   }, async req => {
     const s = await requireSession(req, deps);
     const now = clock.now();
@@ -108,13 +115,21 @@ export function authRoutes(app: FastifyInstance, deps: Deps){
     return reply.code(204).send(null);
   });
 
+  // The reset's first step: whether the emailed code is right, before a new password is chosen with it.
+  r.post('/auth/password/check', {
+    config: limited,
+    schema: { body: z.object({ email: z.email(), code }), response: { 204: z.null() } }
+  }, async (req, reply) => {
+    await checkCode(db, (await resetUser(req.body.email)).id, 'reset', req.body.code, clock.now());
+    return reply.code(204).send(null);
+  });
+
   r.post('/auth/password/reset', {
     config: limited,
-    schema: { body: z.object({ email: z.email(), code: z.string().regex(/^\s*\d{6}\s*$/), password }), response: { 204: z.null() } }
+    schema: { body: z.object({ email: z.email(), code, password }), response: { 204: z.null() } }
   }, async (req, reply) => {
     const now = clock.now();
-    const [u] = await db.select().from(users).where(eq(users.email, normalize(req.body.email)));
-    if (!u) throw new ApiError(400, 'code_invalid', 'That code is not valid. Request a new one.');
+    const u = await resetUser(req.body.email);
     await consumeCode(db, u.id, 'reset', req.body.code, now);
     await db.update(users).set({ passwordHash: await hash(req.body.password) }).where(eq(users.id, u.id));
     await revokeAllSessions(db, u.id, now);

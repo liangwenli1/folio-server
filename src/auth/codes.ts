@@ -20,7 +20,8 @@ export async function issueCode(db: Db, userId: string, purpose: CodePurpose, no
   return code;
 }
 
-export async function consumeCode(db: Db, userId: string, purpose: CodePurpose, code: string, now: Date){
+// Whether `code` is the one to use now, without using it up: a wrong one counts toward the limit.
+export async function checkCode(db: Db, userId: string, purpose: CodePurpose, code: string, now: Date){
   const [c] = await db.select().from(emailCodes)
     .where(and(eq(emailCodes.userId, userId), eq(emailCodes.purpose, purpose), isNull(emailCodes.usedAt)))
     .orderBy(desc(emailCodes.createdAt)).limit(1);
@@ -31,5 +32,10 @@ export async function consumeCode(db: Db, userId: string, purpose: CodePurpose, 
     await db.update(emailCodes).set({ attempts: sql`${emailCodes.attempts} + 1` }).where(eq(emailCodes.id, c.id));
     throw new ApiError(400, 'code_invalid', 'That code is not right. Check the email and try again.');
   }
-  await db.update(emailCodes).set({ usedAt: now }).where(eq(emailCodes.id, c.id));
+  return c.id;
+}
+
+export async function consumeCode(db: Db, userId: string, purpose: CodePurpose, code: string, now: Date){
+  const id = await checkCode(db, userId, purpose, code, now);
+  await db.update(emailCodes).set({ usedAt: now }).where(eq(emailCodes.id, id));
 }
