@@ -26,6 +26,10 @@ const Cookie = z.object({
   name: z.string().max(4096), value: z.string().max(16_384), domain: z.string().min(1).max(253), path: z.string().max(1024).default('/'),
   expires: z.number().default(-1), httpOnly: z.boolean().default(false), secure: z.boolean().default(false), sameSite: z.enum(['Strict', 'Lax', 'None']).default('Lax')
 });
+// A cookie is identified by its name, domain and path; its value is kept out of listings.
+const CookieKey = Cookie.pick({ name: true, domain: true, path: true });
+const CookieInfo = Cookie.omit({ value: true });
+const key = (c: { name: string; domain: string; path: string }) => `${c.name}\u0000${c.domain}\u0000${c.path}`;
 // `extensions` holds the data folders of the profile's extensions; the server passes it through untouched.
 type State = { cookies: z.infer<typeof Cookie>[]; origins: { origin: string }[]; extensions?: unknown };
 type Session = typeof sessions.$inferSelect;
@@ -135,33 +139,72 @@ export function syncRoutes(app: FastifyInstance, deps: Deps){
     return savedDataView(await store(p, s, body, req.query));
   });
 
-  // The saved cookies, for exporting. Owners and admins only: members can open signed-in profiles without
-  // being able to take the sign-ins away.
-  r.get('/profiles/:id/cookies', { schema: { params, response: { 200: z.object({ cookies: z.array(Cookie), savedAt: z.string() }) } } }, async req => {
-    const { p, s } = await profileFor(deps, req, req.params.id);
-    await requirePermission(db, p.workspaceId, s.userId, 'cookies.export');
+  // What a profile's saved cookies are, without their values: the Cookies page lists them, and anyone who may
+  // see the profile may see the list.
+  const saved = async (p: typeof profiles.$inferSelect) => {
     if (p.syncMode === 'local') throw localOnly();
     const [d] = await db.select().from(profileData).where(eq(profileData.profileId, p.id));
     if (!d) throw notFound('Saved state');
-    const { cookies } = await readState(d.objectKey);
+    return { d, state: await readState(d.objectKey) };
+  };
+  r.get('/profiles/:id/cookies', { schema: { params, response: { 200: z.object({ cookies: z.array(CookieInfo), savedAt: z.string() }) } } }, async req => {
+    const { p } = await profileFor(deps, req, req.params.id);
+    const { d, state } = await saved(p);
+    return { cookies: state.cookies.map(({ value: _value, ...rest }) => rest), savedAt: d.savedAt.toISOString() };
+  });
+
+  // The values as well, for exporting or for showing one. Taking sign-ins away is its own permission, and
+  // every read of the values is recorded.
+  r.get('/profiles/:id/cookies/values', {
+    schema: { params, querystring: z.object({ name: z.string().max(4096).optional(), domain: z.string().max(253).optional(), path: z.string().max(1024).optional() }),
+      response: { 200: z.object({ cookies: z.array(Cookie), savedAt: z.string() }) } }
+  }, async req => {
+    const { p, s } = await profileFor(deps, req, req.params.id, 'cookies.export');
+    const { d, state } = await saved(p);
+    const { name, domain, path } = req.query;
+    const cookies = name === undefined ? state.cookies
+      : state.cookies.filter(c => c.name === name && c.domain === domain && c.path === path);
     await record(db, { workspaceId: p.workspaceId, actor: s, at: clock.now(), action: 'cookies.export', profiles: [p], detail: { count: cookies.length } });
     return { cookies, savedAt: d.savedAt.toISOString() };
   });
 
+  // Drops the named cookies from the saved state, unless another computer has the profile open.
+  r.delete('/profiles/:id/cookies', {
+    schema: { params, body: z.object({ cookies: z.array(CookieKey).min(1).max(5000) }), response: { 200: SavedData } }
+  }, async req => {
+    const { p, s } = await profileFor(deps, req, req.params.id, 'profiles.edit');
+    const now = clock.now();
+    await notOpenElsewhere(p, s, now);
+    const { state } = await saved(p);
+    const going = new Set(req.body.cookies.map(key));
+    const left = state.cookies.filter(c => !going.has(key(c)));
+    const removed = state.cookies.length - left.length;
+    state.cookies = left;
+    const body = gzipSync(JSON.stringify(state));
+    const row = await store(p, s, body, { cookies: left.length, storageBytes: Buffer.byteLength(JSON.stringify(state.origins)), origins: state.origins.length });
+    await record(db, { workspaceId: p.workspaceId, actor: s, at: now, action: 'cookies.delete', profiles: [p], detail: { count: removed } });
+    return savedDataView(row);
+  });
+
+  // Nothing changes a profile's saved state while another computer has it open.
+  async function notOpenElsewhere(p: typeof profiles.$inferSelect, s: Session, now: Date){
+    if ((await db.select().from(profileLocks).where(and(eq(profileLocks.profileId, p.id), ne(profileLocks.sessionId, s.id), gt(profileLocks.expiresAt, now)))).length){
+      throw new ApiError(409, 'locked', 'This profile is open on another computer');
+    }
+  }
+
   // Merges cookies into the saved state (same name, domain and path replaces), unless another computer has the
-  // profile open. The computer that has it open also adds them to the running browser.
+  // profile open. The computer that has it open also adds them to the running browser. Editing one is the same
+  // call with the changed cookie.
   r.post('/profiles/:id/cookies', {
     schema: { params, body: z.object({ cookies: z.array(Cookie).min(1).max(5000) }), response: { 200: SavedData } }
   }, async req => {
     const { p, s } = await profileFor(deps, req, req.params.id, 'cookies.import');
     if (p.syncMode === 'local') throw localOnly();
     const now = clock.now();
-    if ((await db.select().from(profileLocks).where(and(eq(profileLocks.profileId, p.id), ne(profileLocks.sessionId, s.id), gt(profileLocks.expiresAt, now)))).length){
-      throw new ApiError(409, 'locked', 'This profile is open on another computer');
-    }
+    await notOpenElsewhere(p, s, now);
     const [d] = await db.select().from(profileData).where(eq(profileData.profileId, p.id));
     const state: State = d ? await readState(d.objectKey) : { cookies: [], origins: [] };
-    const key = (c: { name: string; domain: string; path: string }) => `${c.name}\u0000${c.domain}\u0000${c.path}`;
     const incoming = new Map(req.body.cookies.map(c => [key(c), c]));
     state.cookies = [...state.cookies.filter(c => !incoming.has(key(c))), ...incoming.values()];
     const body = gzipSync(JSON.stringify(state));

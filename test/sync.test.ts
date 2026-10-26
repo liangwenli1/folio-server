@@ -132,19 +132,40 @@ describe('cookies', () => {
   const cookie = (name: string, value: string, extra: object = {}) => ({ name, value, domain: '.shop.example', path: '/', expires: -1, httpOnly: true, secure: true, sameSite: 'Lax', ...extra });
   const importing = (id: string, headers: H, cookies: object[]) => t.app.inject({ method: 'POST', url: `/profiles/${id}/cookies`, headers, payload: { cookies } });
 
-  it('are exported by owners and admins only, from the saved state', async () => {
+  it('list without their values for anyone who sees the profile; the values are their own permission', async () => {
     const { owner, p, a } = await profileWithTwoComputers();
     expect((await req('GET', `/profiles/${p.id}/cookies`, owner.headers)).statusCode).toBe(404);
     await req('POST', `/profiles/${p.id}/lock`, a);
     await upload(p.id, a, state('one'));
-    const got = (await req('GET', `/profiles/${p.id}/cookies`, owner.headers)).json();
-    expect(got.cookies).toMatchObject([{ name: 'sid', value: 'one', domain: 'shop.example' }]);
+    const listed = (await req('GET', `/profiles/${p.id}/cookies`, owner.headers)).json();
+    expect(listed.cookies).toMatchObject([{ name: 'sid', domain: 'shop.example', path: '/', secure: false, httpOnly: false, sameSite: 'Lax' }]);
+    expect(listed.cookies[0]).not.toHaveProperty('value');
+
     const member = await signup(t.app);
     await join(t.db, owner.workspaceId, member.userId, 'member');
     await req('POST', `/workspaces/${owner.workspaceId}/profiles/batch`, owner.headers, { ids: [p.id], action: 'assign', ownerId: member.userId });
-    expect((await req('GET', `/profiles/${p.id}/cookies`, member.headers)).json().error.code).toBe('forbidden');
+    // A member may see the list but not take the sign-ins away.
+    expect((await req('GET', `/profiles/${p.id}/cookies`, member.headers)).json().cookies).toHaveLength(1);
+    expect((await req('GET', `/profiles/${p.id}/cookies/values`, member.headers)).json().error.code).toBe('forbidden');
+
+    const all = (await req('GET', `/profiles/${p.id}/cookies/values`, owner.headers)).json();
+    expect(all.cookies).toMatchObject([{ name: 'sid', value: 'one' }]);
+    const one = (await req('GET', `/profiles/${p.id}/cookies/values?name=sid&domain=shop.example&path=/`, owner.headers)).json();
+    expect(one.cookies).toMatchObject([{ name: 'sid', value: 'one' }]);
     const log = (await req('GET', `/workspaces/${owner.workspaceId}/activity?kind=cookies`, owner.headers)).json().entries;
-    expect(log.map((e: { action: string; detail: object }) => [e.action, e.detail])).toEqual([['cookies.export', { count: 1 }]]);
+    expect(log.map((e: { action: string; detail: object }) => [e.action, e.detail])).toEqual([['cookies.export', { count: 1 }], ['cookies.export', { count: 1 }]]);
+  });
+
+  it('are deleted one at a time from the saved state', async () => {
+    const { owner, p, a, b } = await profileWithTwoComputers();
+    await importing(p.id, owner.headers, [cookie('sid', 'one'), cookie('pref', 'dark')]);
+    const del = (list: object[], headers: H) => t.app.inject({ method: 'DELETE', url: `/profiles/${p.id}/cookies`, headers, payload: { cookies: list } });
+    expect((await del([{ name: 'pref', domain: '.shop.example', path: '/' }], owner.headers)).json()).toMatchObject({ cookies: 1 });
+    expect((await req('GET', `/profiles/${p.id}/cookies`, owner.headers)).json().cookies.map((c: { name: string }) => c.name)).toEqual(['sid']);
+    await req('POST', `/profiles/${p.id}/lock`, a);
+    expect((await del([{ name: 'sid', domain: '.shop.example', path: '/' }], b)).json().error.code).toBe('locked');
+    const log = (await req('GET', `/workspaces/${owner.workspaceId}/activity?kind=cookies`, owner.headers)).json().entries;
+    expect(log[0]).toMatchObject({ action: 'cookies.delete', detail: { count: 1 } });
   });
 
   it('are merged into the saved state on import, unless another computer has the profile open', async () => {
@@ -153,7 +174,7 @@ describe('cookies', () => {
     expect(first.json()).toMatchObject({ version: 1, cookies: 2 });
     const second = await importing(p.id, owner.headers, [cookie('sid', 'two'), cookie('sid', 'other-path', { path: '/x' })]);
     expect(second.json()).toMatchObject({ version: 2, cookies: 3 });
-    const values = (await req('GET', `/profiles/${p.id}/cookies`, owner.headers)).json().cookies.map((c: { name: string; path: string; value: string }) => `${c.name}${c.path}=${c.value}`);
+    const values = (await req('GET', `/profiles/${p.id}/cookies/values`, owner.headers)).json().cookies.map((c: { name: string; path: string; value: string }) => `${c.name}${c.path}=${c.value}`);
     expect(values.sort()).toEqual(['pref/=dark', 'sid/=two', 'sid/x=other-path']);
 
     await req('POST', `/profiles/${p.id}/lock`, a);

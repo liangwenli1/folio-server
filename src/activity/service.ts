@@ -12,7 +12,7 @@ export const ACTIONS = [
   'proxy.create', 'proxy.import', 'proxy.update', 'proxy.delete', 'group.create', 'group.rename', 'group.delete', 'group.members',
   'member.invite', 'member.join', 'member.role', 'member.remove', 'member.leave', 'invitation.withdraw',
   'role.create', 'role.update', 'role.delete',
-  'cookies.export', 'cookies.import', 'workspace.export', 'workspace.import',
+  'cookies.export', 'cookies.import', 'cookies.delete', 'workspace.export', 'workspace.import',
   'flow.create', 'flow.update', 'flow.delete', 'task.create', 'task.update', 'task.delete', 'run.start', 'run.finish',
   'extension.add', 'extension.update', 'extension.delete', 'profile.add-extension', 'profile.remove-extension', 'profile.set-kernel', 'profile.set-browser'
 ] as const;
@@ -23,7 +23,7 @@ export const KINDS = {
   profiles: ['profile.create', 'profile.update', 'profile.move', 'profile.tag', 'profile.untag', 'profile.set-proxy', 'profile.assign', 'profile.add-extension', 'profile.remove-extension', 'profile.set-kernel', 'profile.set-browser'],
   trash: ['profile.trash', 'profile.restore', 'profile.purge'],
   proxies: ['proxy.create', 'proxy.import', 'proxy.update', 'proxy.delete', 'group.create', 'group.rename', 'group.delete', 'group.members'],
-  cookies: ['cookies.export', 'cookies.import', 'workspace.export', 'workspace.import'],
+  cookies: ['cookies.export', 'cookies.import', 'cookies.delete', 'workspace.export', 'workspace.import'],
   team: ['member.invite', 'member.join', 'member.role', 'member.remove', 'member.leave', 'invitation.withdraw', 'role.create', 'role.update', 'role.delete'],
   extensions: ['extension.add', 'extension.update', 'extension.delete'],
   automation: ['flow.create', 'flow.update', 'flow.delete', 'task.create', 'task.update', 'task.delete', 'run.start', 'run.finish']
