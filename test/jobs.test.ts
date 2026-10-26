@@ -32,6 +32,15 @@ describe('batch jobs', () => {
     expect((await call('POST', `/jobs/${j.id}/retry`, o.headers)).json().error.code).toBe('nothing_failed');
   });
 
+  it('retry just the targets given', async () => {
+    const o = await signup(t.app);
+    const j = await start(o.headers, o.workspaceId, { kind: 'profile.open', items: targets(3) });
+    await call('POST', `/jobs/${j.id}/results`, o.headers, { results: [1, 2, 3].map(seq => ({ seq, ok: false, error: 'launch_failed' })) });
+    await call('POST', `/jobs/${j.id}/finish`, o.headers, {});
+    const again = (await call('POST', `/jobs/${j.id}/retry`, o.headers, { seqs: [2] })).json() as J;
+    expect(again.items!.map(i => i.status)).toEqual(['failed', 'pending', 'failed']);
+  });
+
   it('can be canceled, leaving what was not reached canceled', async () => {
     const o = await signup(t.app);
     const j = await start(o.headers, o.workspaceId, { kind: 'proxy.check', items: targets(3) });

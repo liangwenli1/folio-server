@@ -135,12 +135,16 @@ export function jobRoutes(app: FastifyInstance, deps: Deps){
     return (await view([j.id]))[0];
   });
 
-  // The failed targets go back to waiting, and only they: the app runs them again and reports as before.
-  r.post('/jobs/:id/retry', { schema: { params, response: { 200: Job.extend({ items: z.array(JobItem) }) } } }, async req => {
+  // The failed targets (or just the ones given) go back to waiting, and only they: the app runs them again and
+  // reports as before.
+  r.post('/jobs/:id/retry', {
+    schema: { params, body: z.object({ seqs: z.array(z.number().int().min(1)).max(MAX_ITEMS).optional() }).nullish(), response: { 200: Job.extend({ items: z.array(JobItem) }) } }
+  }, async req => {
     const { j } = await jobFor(req, req.params.id, true);
     if (j.status === 'running') throw new ApiError(409, 'job_running', 'This job is still running');
     const now = clock.now();
-    const back = await db.update(jobItems).set({ status: 'pending', error: null }).where(and(eq(jobItems.jobId, j.id), eq(jobItems.status, 'failed'))).returning();
+    const back = await db.update(jobItems).set({ status: 'pending', error: null })
+      .where(and(eq(jobItems.jobId, j.id), eq(jobItems.status, 'failed'), req.body?.seqs ? inArray(jobItems.seq, req.body.seqs) : undefined)).returning();
     if (!back.length) throw new ApiError(409, 'nothing_failed', 'Nothing in this job failed');
     await db.update(jobs).set({ status: 'running', updatedAt: now, finishedAt: null }).where(eq(jobs.id, j.id));
     publish(j.workspaceId, { kind: 'jobs' });
