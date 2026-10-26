@@ -165,6 +165,18 @@ export const Group = z.object({
   inheritMembers: z.boolean(), memberIds: z.array(z.string()), profiles: z.number(), createdAt: z.string()
 });
 
+// A batch operation for the task center, and one of its targets.
+export const jobKind = z.enum(['proxy.check', 'profile.open', 'proxy.import', 'profile.edit', 'kernel.download']);
+export const Job = z.object({
+  id: z.string(), kind: jobKind, detail: z.record(z.string(), z.unknown()), status: z.enum(['running', 'done', 'partial', 'canceled']),
+  startedBy: z.string().nullable(), startedById: z.string().nullable(), deviceId: z.string().nullable(), deviceName: z.string().nullable(),
+  total: z.number(), ok: z.number(), failed: z.number(), canceled: z.number(), createdAt: z.string(), finishedAt: z.string().nullable()
+});
+export const JobItem = z.object({
+  seq: z.number(), targetId: z.string().nullable(), name: z.string(), status: z.enum(['pending', 'ok', 'failed', 'canceled']),
+  error: z.string().nullable(), attempts: z.number(), at: z.string().nullable()
+});
+
 export const proxyType = z.enum(['http', 'https', 'socks5']);
 export const ProxyCheck = z.object({
   ok: z.boolean(), ms: z.number().nullable(), ip: z.string().nullable(), geo: Geo.nullable(), error: z.string().nullable(), checkedAt: z.string()

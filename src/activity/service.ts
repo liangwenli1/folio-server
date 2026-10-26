@@ -2,7 +2,7 @@
 // runs) after the plan's retention.
 import { and, asc, count, desc, eq, gte, ilike, inArray, lt, or, sql, type SQL } from 'drizzle-orm';
 import type { Db, Tx } from '../db/client.js';
-import { activityLog, profiles, taskRuns, users } from '../db/schema.js';
+import { activityLog, jobs, profiles, taskRuns, users } from '../db/schema.js';
 import { entitlements } from '../plans.js';
 import { readSub, toState } from '../billing/service.js';
 
@@ -74,17 +74,19 @@ export async function readLog(db: Db, workspaceId: string, now: Date, q: LogQuer
   })) };
 }
 
-// Daily: entries and task runs older than each workspace's retention go.
+// Daily: entries, task runs and batch jobs older than each workspace's retention go.
 export async function forgetOld(db: Db, now: Date){
   const shortest = new Date(now.getTime() - 7 * 86_400_000);
   const stale = new Set([
     ...(await db.selectDistinct({ id: activityLog.workspaceId }).from(activityLog).where(lt(activityLog.at, shortest))),
-    ...(await db.selectDistinct({ id: taskRuns.workspaceId }).from(taskRuns).where(lt(taskRuns.startedAt, shortest)))
+    ...(await db.selectDistinct({ id: taskRuns.workspaceId }).from(taskRuns).where(lt(taskRuns.startedAt, shortest))),
+    ...(await db.selectDistinct({ id: jobs.workspaceId }).from(jobs).where(lt(jobs.createdAt, shortest)))
   ].map(x => x.id));
   for (const id of stale){
     const cutoff = new Date(now.getTime() - (await retentionDays(db, id)) * 86_400_000);
     await db.delete(activityLog).where(and(eq(activityLog.workspaceId, id), lt(activityLog.at, cutoff)));
     await db.delete(taskRuns).where(and(eq(taskRuns.workspaceId, id), lt(taskRuns.startedAt, cutoff)));
+    await db.delete(jobs).where(and(eq(jobs.workspaceId, id), lt(jobs.createdAt, cutoff)));
   }
 }
 

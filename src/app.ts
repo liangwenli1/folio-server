@@ -20,6 +20,7 @@ import { activityRoutes } from './activity/routes.js';
 import { transferRoutes } from './transfer/routes.js';
 import { flowRoutes } from './flows/routes.js';
 import { taskRoutes } from './tasks/routes.js';
+import { jobRoutes } from './jobs/routes.js';
 import { extensionRoutes } from './extensions/routes.js';
 import { kernelRoutes } from './kernels/routes.js';
 
@@ -59,6 +60,7 @@ export async function buildApp(deps: Deps, opts: { logger?: boolean } = {}){
   transferRoutes(app, deps);
   flowRoutes(app, deps);
   taskRoutes(app, deps);
+  jobRoutes(app, deps);
   extensionRoutes(app, deps);
   kernelRoutes(app, deps);
   if (deps.config.devTools) devRoutes(app, deps);

@@ -376,6 +376,38 @@ export const taskRunItems = pgTable('task_run_items', {
   screenshots: text().array().notNull().default([])
 }, t => [uniqueIndex().on(t.runId, t.profileId)]);
 
+// Batch operations someone started from the workbench — checking proxies, opening profiles, importing proxies, editing
+// profiles in bulk, downloading an engine — with how each target went, for the task center. The app that runs it
+// reports each target as it finishes. Kept for as long as the activity log.
+export const jobs = pgTable('jobs', {
+  id: uuid().primaryKey().defaultRandom(),
+  workspaceId: uuid().notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  kind: text().notNull(),
+  // What it did beyond its targets (the settings a bulk edit applied, the engine version), to retry it the same way.
+  detail: jsonb().notNull().default({}),
+  // running, done, partial (something failed) or canceled.
+  status: text().notNull(),
+  startedBy: uuid().references(() => users.id, { onDelete: 'set null' }),
+  deviceId: text(),
+  deviceName: text(),
+  createdAt: ts().notNull(),
+  updatedAt: ts().notNull(),
+  finishedAt: ts()
+}, t => [index().on(t.workspaceId, t.createdAt)]);
+
+// One target of a job: a profile, a proxy, a line of an import or an engine version, named as it was then.
+export const jobItems = pgTable('job_items', {
+  jobId: uuid().notNull().references(() => jobs.id, { onDelete: 'cascade' }),
+  seq: integer().notNull(),
+  targetId: text(),
+  name: text().notNull(),
+  // pending, ok, failed or canceled.
+  status: text().notNull().default('pending'),
+  error: text(),
+  attempts: integer().notNull().default(0),
+  at: ts()
+}, t => [primaryKey({ columns: [t.jobId, t.seq] })]);
+
 // What people did in a workspace. The profile's name and number are copied in, so entries still read right
 // after renames and deletions. Kept for as long as the plan says (see activity.ts).
 export const activityLog = pgTable('activity_log', {
