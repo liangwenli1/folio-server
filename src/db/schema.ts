@@ -128,13 +128,24 @@ export const salesInquiries = pgTable('sales_inquiries', {
 
 // The colours a group can have in the app.
 export const GROUP_COLORS = ['red', 'blue', 'green', 'amber', 'purple', 'teal', 'gray'] as const;
+// Groups organise profiles and say who may reach them. They nest: `parentId` is the group above, and
+// `inheritMembers` lets a group take in whoever is authorised for that one as well.
 export const groups = pgTable('groups', {
   id: uuid().primaryKey().defaultRandom(),
   workspaceId: uuid().notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   name: text().notNull(),
   color: text({ enum: GROUP_COLORS }).notNull().default('gray'),
+  parentId: uuid().references((): AnyPgColumn => groups.id, { onDelete: 'set null' }),
+  inheritMembers: boolean().notNull().default(true),
   createdAt: createdAt()
-}, t => [uniqueIndex().on(t.workspaceId, t.name)]);
+}, t => [uniqueIndex().on(t.workspaceId, t.name), index().on(t.parentId)]);
+
+// Who is authorised for a group (Company). A role says what someone may do; the groups they are in say
+// which profiles they may do it to.
+export const groupMembers = pgTable('group_members', {
+  groupId: uuid().notNull().references(() => groups.id, { onDelete: 'cascade' }),
+  userId: uuid().notNull().references(() => users.id, { onDelete: 'cascade' })
+}, t => [primaryKey({ columns: [t.groupId, t.userId] }), index().on(t.userId)]);
 
 // Passwords are encrypted with SECRET_KEY (see crypto.ts). `backupId` is the line to fall back to. `history` keeps the
 // last 20 checks ({ at, ok, ms }); `lastExit` is where the last check that got through came out ({ ip, geo, at }).
@@ -162,9 +173,9 @@ export const profiles = pgTable('profiles', {
   number: integer().notNull(),
   name: text().notNull(),
   groupId: uuid().references(() => groups.id, { onDelete: 'set null' }),
-  // The person it is assigned to. Members see only their own profiles (and, on Company, their departments').
+  // The person it is assigned to. Without the run of the workspace, someone sees their own profiles and
+  // the ones in groups they are authorised for.
   ownerId: uuid().references(() => users.id, { onDelete: 'set null' }),
-  departmentId: uuid().references((): AnyPgColumn => departments.id, { onDelete: 'set null' }),
   tags: text().array().notNull().default([]),
   kernel: text().notNull(),
   kernelVersion: text().notNull(),
@@ -238,7 +249,7 @@ export const invitations = pgTable('invitations', {
   workspaceId: uuid().notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   email: text().notNull(),
   roleId: uuid().notNull().references(() => roles.id, { onDelete: 'cascade' }),
-  departmentIds: uuid().array().notNull().default([]),
+  groupIds: uuid().array().notNull().default([]),
   tokenHash: text().notNull().unique(),
   invitedBy: uuid().references(() => users.id, { onDelete: 'set null' }),
   createdAt: createdAt(),
@@ -246,19 +257,6 @@ export const invitations = pgTable('invitations', {
   acceptedAt: ts(),
   revokedAt: ts()
 }, t => [index().on(t.workspaceId), index().on(t.email)]);
-
-// Company plan: departments scope which profiles their members see.
-export const departments = pgTable('departments', {
-  id: uuid().primaryKey().defaultRandom(),
-  workspaceId: uuid().notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
-  name: text().notNull(),
-  createdAt: createdAt()
-}, t => [uniqueIndex().on(t.workspaceId, t.name)]);
-
-export const departmentMembers = pgTable('department_members', {
-  departmentId: uuid().notNull().references(() => departments.id, { onDelete: 'cascade' }),
-  userId: uuid().notNull().references(() => users.id, { onDelete: 'cascade' })
-}, t => [primaryKey({ columns: [t.departmentId, t.userId] }), index().on(t.userId)]);
 
 // A browser extension in the workspace's library. Its package (the zip, without a crx header) is sealed in object
 // storage; `signature` is the server's Ed25519 signature over its identity and sha256, which the desktop app checks

@@ -114,7 +114,7 @@ export const HealthReport = z.object({
 
 export const Profile = z.object({
   id: z.string(), workspaceId: z.string(), number: z.number(), name: z.string(), groupId: z.string().nullable(),
-  ownerId: z.string().nullable(), departmentId: z.string().nullable(), tags: z.array(z.string()), kernel, kernelVersion: z.string(), os, fingerprint: Fingerprint, proxyId: z.string().nullable(),
+  ownerId: z.string().nullable(), tags: z.array(z.string()), kernel, kernelVersion: z.string(), os, fingerprint: Fingerprint, proxyId: z.string().nullable(),
   timezoneOverride: z.string().nullable(), localeOverride: z.string().nullable(), notes: z.string().nullable(), searchEngine, restoreTabs: z.boolean(),
   lastOpenedAt: iso, lastOpenedBy: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(), deletedAt: iso, deletedBy: z.string().nullable(), version: z.number(),
   syncMode: z.enum(['cloud', 'local']), extensionIds: z.array(z.string()), data: SavedData.nullable(), lock: LockHolder.nullable(),
@@ -125,7 +125,7 @@ type LockRow = typeof profileLocks.$inferSelect & { email: string };
 export function profileView(p: typeof profiles.$inferSelect, state: { data: typeof profileData.$inferSelect | null; lock: LockRow | null; sessionId: string; starred: boolean } | null = null): z.infer<typeof Profile> {
   const lock = state?.lock;
   return {
-    id: p.id, workspaceId: p.workspaceId, number: p.number, name: p.name, groupId: p.groupId, ownerId: p.ownerId, departmentId: p.departmentId, tags: p.tags,
+    id: p.id, workspaceId: p.workspaceId, number: p.number, name: p.name, groupId: p.groupId, ownerId: p.ownerId, tags: p.tags,
     kernel: p.kernel as 'chromium' | 'firefox', kernelVersion: p.kernelVersion, os: p.os as 'windows' | 'macos' | 'linux',
     fingerprint: p.fingerprint as z.infer<typeof Fingerprint>, proxyId: p.proxyId,
     timezoneOverride: p.timezoneOverride, localeOverride: p.localeOverride, notes: p.notes,
@@ -140,7 +140,11 @@ export function profileView(p: typeof profiles.$inferSelect, state: { data: type
 }
 
 export const groupColor = z.enum(GROUP_COLORS);
-export const Group = z.object({ id: z.string(), name: z.string(), color: groupColor, profiles: z.number() });
+// `memberIds` is who is authorised for the group itself; a group that inherits also lets in its parent's.
+export const Group = z.object({
+  id: z.string(), name: z.string(), color: groupColor, parentId: z.string().nullable(),
+  inheritMembers: z.boolean(), memberIds: z.array(z.string()), profiles: z.number()
+});
 
 export const proxyType = z.enum(['http', 'https', 'socks5']);
 export const ProxyCheck = z.object({
@@ -167,10 +171,10 @@ export const ProxySecret = z.object({ id: z.string(), type: proxyType, host: z.s
 
 // ---------- team (P3) ----------
 export const Member = z.object({
-  userId: z.string(), email: z.string(), role: RoleRef, joinedAt: z.string(), departmentIds: z.array(z.string()), profiles: z.number()
+  userId: z.string(), email: z.string(), role: RoleRef, joinedAt: z.string(), groupIds: z.array(z.string()), profiles: z.number()
 });
 export const Invitation = z.object({
-  id: z.string(), email: z.string(), role: RoleRef, departmentIds: z.array(z.string()), invitedBy: z.string().nullable(), createdAt: z.string(), expiresAt: z.string()
+  id: z.string(), email: z.string(), role: RoleRef, groupIds: z.array(z.string()), invitedBy: z.string().nullable(), createdAt: z.string(), expiresAt: z.string()
 });
 // What the invitation link shows before anyone logs in, and what a person sees of invitations to their email.
 export const InvitationPreview = z.object({
@@ -179,7 +183,6 @@ export const InvitationPreview = z.object({
 export const MyInvitation = z.object({
   id: z.string(), workspaceId: z.string(), workspaceName: z.string(), inviter: z.string().nullable(), role: RoleRef, expiresAt: z.string()
 });
-export const Department = z.object({ id: z.string(), name: z.string(), memberIds: z.array(z.string()), profiles: z.number() });
 
 // ---------- automation (P4) ----------
 // `canEdit`: the asker created it, or is an owner or admin.

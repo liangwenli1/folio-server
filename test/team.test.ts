@@ -23,7 +23,7 @@ async function team(plan: 'studio' | 'company' = 'studio', role: 'admin' | 'memb
   return { owner, other, ws: owner.workspaceId };
 }
 const profile = async (headers: H, ws: string, name: string, extra: object = {}) => (await call('POST', `/workspaces/${ws}/profiles`, headers, chromiumProfile(name, extra))).json();
-const visible = async (headers: H, ws: string) => (await call('GET', `/workspaces/${ws}/profiles`, headers)).json().profiles as { id: string; name: string; ownerId: string }[];
+const visible = async (headers: H, ws: string) => (await call('GET', `/workspaces/${ws}/profiles`, headers)).json().profiles as { id: string; name: string; ownerId: string; groupId: string | null }[];
 
 describe('invitations', () => {
   it('need a seat on the plan', async () => {
@@ -231,34 +231,58 @@ describe('roles', () => {
   });
 });
 
-describe('departments', () => {
-  it('are a Company feature', async () => {
+describe('group authorisation', () => {
+  it('is a Company feature', async () => {
     const { owner, ws } = await team('studio');
-    expect(await code(call('POST', `/workspaces/${ws}/departments`, owner.headers, { name: 'Sales' }))).toBe('plan_required');
+    const g = (await call('POST', `/workspaces/${ws}/groups`, owner.headers, { name: 'Sales' })).json();
+    expect(await code(call('PATCH', `/groups/${g.id}`, owner.headers, { memberIds: [] }))).toBe('plan_required');
   });
 
-  it('let members see their department’s profiles', async () => {
+  it('lets someone see the profiles of the groups they are in, and of those groups’ children', async () => {
     const { owner, other, ws } = await team('company');
-    const sales = (await call('POST', `/workspaces/${ws}/departments`, owner.headers, { name: 'Sales' })).json();
-    const shared = await profile(owner.headers, ws, 'Sales-1', { departmentId: sales.id });
+    const sales = (await call('POST', `/workspaces/${ws}/groups`, owner.headers, { name: 'Sales' })).json();
+    const east = (await call('POST', `/workspaces/${ws}/groups`, owner.headers, { name: 'Sales East', parentId: sales.id })).json();
+    const west = (await call('POST', `/workspaces/${ws}/groups`, owner.headers, { name: 'Sales West', parentId: sales.id, inheritMembers: false })).json();
+    const shared = await profile(owner.headers, ws, 'Sales-1', { groupId: sales.id });
+    const below = await profile(owner.headers, ws, 'East-1', { groupId: east.id });
+    await profile(owner.headers, ws, 'West-1', { groupId: west.id });
     expect((await visible(other.headers, ws)).map(p => p.name)).toEqual([]);
-    await call('PATCH', `/departments/${sales.id}`, owner.headers, { memberIds: [other.userId] });
-    expect((await visible(other.headers, ws)).map(p => p.id)).toEqual([shared.id]);
-    expect((await call('GET', `/workspaces/${ws}/departments`, other.headers)).json().departments).toEqual([{ id: sales.id, name: 'Sales', memberIds: [other.userId], profiles: 1 }]);
-    expect((await call('GET', `/workspaces/${ws}/members`, owner.headers)).json().members[1].departmentIds).toEqual([sales.id]);
 
-    await call('DELETE', `/departments/${sales.id}`, owner.headers);
+    await call('PATCH', `/groups/${sales.id}`, owner.headers, { memberIds: [other.userId] });
+    // Sales East takes in whoever Sales lets in; Sales West does not.
+    expect((await visible(other.headers, ws)).map(p => p.id).sort()).toEqual([shared.id, below.id].sort());
+    expect((await call('GET', `/workspaces/${ws}/members`, owner.headers)).json().members[1].groupIds).toEqual([sales.id]);
+    expect((await call('GET', `/workspaces/${ws}/groups`, other.headers)).json().groups.find((g: { id: string }) => g.id === sales.id))
+      .toMatchObject({ name: 'Sales', parentId: null, inheritMembers: true, memberIds: [other.userId], profiles: 1 });
+
+    // Deleting a group says where its profiles go; the groups under it move up.
+    await call('DELETE', `/groups/${sales.id}`, owner.headers);
     expect((await visible(other.headers, ws))).toEqual([]);
+    const left = (await call('GET', `/workspaces/${ws}/groups`, owner.headers)).json().groups as { id: string; name: string; parentId: string | null }[];
+    expect(left.map(g => [g.name, g.parentId])).toEqual([['Sales East', null], ['Sales West', null]]);
+  });
+
+  it('cannot put a group inside itself, and a deleted group’s profiles go where it is told', async () => {
+    const { owner, ws } = await team('company');
+    const top = (await call('POST', `/workspaces/${ws}/groups`, owner.headers, { name: 'Top' })).json();
+    const mid = (await call('POST', `/workspaces/${ws}/groups`, owner.headers, { name: 'Mid', parentId: top.id })).json();
+    const keep = (await call('POST', `/workspaces/${ws}/groups`, owner.headers, { name: 'Keep' })).json();
+    expect(await code(call('PATCH', `/groups/${top.id}`, owner.headers, { parentId: mid.id }))).toBe('group_cycle');
+    expect(await code(call('PATCH', `/groups/${top.id}`, owner.headers, { parentId: top.id }))).toBe('group_cycle');
+
+    const p = await profile(owner.headers, ws, 'Moves', { groupId: mid.id });
+    await call('DELETE', `/groups/${mid.id}?moveTo=${keep.id}`, owner.headers);
+    expect((await visible(owner.headers, ws)).find(x => x.id === p.id)).toMatchObject({ groupId: keep.id });
   });
 
   it('can be part of an invitation', async () => {
     const owner = await signup(t.app);
     await buy(t.app, owner.headers, owner.workspaceId, { plan: 'company', period: 'monthly', addonPacks: 0 });
     const ws = owner.workspaceId;
-    const sales = (await call('POST', `/workspaces/${ws}/departments`, owner.headers, { name: 'Sales' })).json();
-    await profile(owner.headers, ws, 'Sales-1', { departmentId: sales.id });
+    const sales = (await call('POST', `/workspaces/${ws}/groups`, owner.headers, { name: 'Sales' })).json();
+    await profile(owner.headers, ws, 'Sales-1', { groupId: sales.id });
     const joiner = await signup(t.app);
-    const inv = (await call('POST', `/workspaces/${ws}/invitations`, owner.headers, { email: joiner.email, roleId: await roleId(owner.headers, ws, 'member'), departmentIds: [sales.id] })).json();
+    const inv = (await call('POST', `/workspaces/${ws}/invitations`, owner.headers, { email: joiner.email, roleId: await roleId(owner.headers, ws, 'member'), groupIds: [sales.id] })).json();
     await call('POST', `/invitations/${inv.invitation.id}/accept`, joiner.headers);
     expect((await visible(joiner.headers, ws)).map(p => p.name)).toEqual(['Sales-1']);
   });

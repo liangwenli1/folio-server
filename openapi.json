@@ -4579,6 +4579,19 @@
                               "gray"
                             ]
                           },
+                          "parentId": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "inheritMembers": {
+                            "type": "boolean"
+                          },
+                          "memberIds": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
                           "profiles": {
                             "type": "number"
                           }
@@ -4587,6 +4600,9 @@
                           "id",
                           "name",
                           "color",
+                          "parentId",
+                          "inheritMembers",
+                          "memberIds",
                           "profiles"
                         ],
                         "additionalProperties": false
@@ -4627,6 +4643,15 @@
                       "teal",
                       "gray"
                     ]
+                  },
+                  "parentId": {
+                    "nullable": true,
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "inheritMembers": {
+                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -4674,6 +4699,19 @@
                         "gray"
                       ]
                     },
+                    "parentId": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "inheritMembers": {
+                      "type": "boolean"
+                    },
+                    "memberIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
                     "profiles": {
                       "type": "number"
                     }
@@ -4682,6 +4720,9 @@
                     "id",
                     "name",
                     "color",
+                    "parentId",
+                    "inheritMembers",
+                    "memberIds",
                     "profiles"
                   ],
                   "additionalProperties": false
@@ -4717,6 +4758,24 @@
                       "teal",
                       "gray"
                     ]
+                  },
+                  "parentId": {
+                    "nullable": true,
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "inheritMembers": {
+                    "type": "boolean"
+                  },
+                  "memberIds": {
+                    "maxItems": 1000,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    }
                   }
                 }
               }
@@ -4760,12 +4819,32 @@
                         "teal",
                         "gray"
                       ]
+                    },
+                    "parentId": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "inheritMembers": {
+                      "type": "boolean"
+                    },
+                    "memberIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "profiles": {
+                      "type": "number"
                     }
                   },
                   "required": [
                     "id",
                     "name",
-                    "color"
+                    "color",
+                    "parentId",
+                    "inheritMembers",
+                    "memberIds",
+                    "profiles"
                   ],
                   "additionalProperties": false
                 }
@@ -4776,6 +4855,17 @@
       },
       "delete": {
         "parameters": [
+          {
+            "schema": {
+              "nullable": true,
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "moveTo",
+            "required": false
+          },
           {
             "schema": {
               "type": "string",
@@ -4862,10 +4952,6 @@
                             "type": "string"
                           },
                           "ownerId": {
-                            "nullable": true,
-                            "type": "string"
-                          },
-                          "departmentId": {
                             "nullable": true,
                             "type": "string"
                           },
@@ -5296,7 +5382,6 @@
                           "name",
                           "groupId",
                           "ownerId",
-                          "departmentId",
                           "tags",
                           "kernel",
                           "kernelVersion",
@@ -5368,12 +5453,6 @@
                     }
                   },
                   "ownerId": {
-                    "nullable": true,
-                    "type": "string",
-                    "format": "uuid",
-                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                  },
-                  "departmentId": {
                     "nullable": true,
                     "type": "string",
                     "format": "uuid",
@@ -5571,10 +5650,6 @@
                       "type": "string"
                     },
                     "ownerId": {
-                      "nullable": true,
-                      "type": "string"
-                    },
-                    "departmentId": {
                       "nullable": true,
                       "type": "string"
                     },
@@ -6005,7 +6080,6 @@
                     "name",
                     "groupId",
                     "ownerId",
-                    "departmentId",
                     "tags",
                     "kernel",
                     "kernelVersion",
@@ -6079,12 +6153,6 @@
                           }
                         },
                         "ownerId": {
-                          "nullable": true,
-                          "type": "string",
-                          "format": "uuid",
-                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                        },
-                        "departmentId": {
                           "nullable": true,
                           "type": "string",
                           "format": "uuid",
@@ -6296,10 +6364,6 @@
                             "nullable": true,
                             "type": "string"
                           },
-                          "departmentId": {
-                            "nullable": true,
-                            "type": "string"
-                          },
                           "tags": {
                             "type": "array",
                             "items": {
@@ -6727,7 +6791,6 @@
                           "name",
                           "groupId",
                           "ownerId",
-                          "departmentId",
                           "tags",
                           "kernel",
                           "kernelVersion",
@@ -6805,12 +6868,6 @@
                     }
                   },
                   "ownerId": {
-                    "nullable": true,
-                    "type": "string",
-                    "format": "uuid",
-                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                  },
-                  "departmentId": {
                     "nullable": true,
                     "type": "string",
                     "format": "uuid",
@@ -6997,10 +7054,6 @@
                       "type": "string"
                     },
                     "ownerId": {
-                      "nullable": true,
-                      "type": "string"
-                    },
-                    "departmentId": {
                       "nullable": true,
                       "type": "string"
                     },
@@ -7431,7 +7484,6 @@
                     "name",
                     "groupId",
                     "ownerId",
-                    "departmentId",
                     "tags",
                     "kernel",
                     "kernelVersion",
@@ -7494,7 +7546,6 @@
                       "untag",
                       "set-proxy",
                       "assign",
-                      "set-department",
                       "add-extension",
                       "remove-extension",
                       "set-kernel",
@@ -7522,12 +7573,6 @@
                     "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                   },
                   "ownerId": {
-                    "nullable": true,
-                    "type": "string",
-                    "format": "uuid",
-                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                  },
-                  "departmentId": {
                     "nullable": true,
                     "type": "string",
                     "format": "uuid",
@@ -7905,10 +7950,6 @@
                           "type": "string"
                         },
                         "ownerId": {
-                          "nullable": true,
-                          "type": "string"
-                        },
-                        "departmentId": {
                           "nullable": true,
                           "type": "string"
                         },
@@ -8339,7 +8380,6 @@
                         "name",
                         "groupId",
                         "ownerId",
-                        "departmentId",
                         "tags",
                         "kernel",
                         "kernelVersion",
@@ -10810,7 +10850,7 @@
                           "joinedAt": {
                             "type": "string"
                           },
-                          "departmentIds": {
+                          "groupIds": {
                             "type": "array",
                             "items": {
                               "type": "string"
@@ -10825,7 +10865,7 @@
                           "email",
                           "role",
                           "joinedAt",
-                          "departmentIds",
+                          "groupIds",
                           "profiles"
                         ],
                         "additionalProperties": false
@@ -11047,7 +11087,7 @@
                             ],
                             "additionalProperties": false
                           },
-                          "departmentIds": {
+                          "groupIds": {
                             "type": "array",
                             "items": {
                               "type": "string"
@@ -11068,7 +11108,7 @@
                           "id",
                           "email",
                           "role",
-                          "departmentIds",
+                          "groupIds",
                           "invitedBy",
                           "createdAt",
                           "expiresAt"
@@ -11105,7 +11145,7 @@
                     "format": "uuid",
                     "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                   },
-                  "departmentIds": {
+                  "groupIds": {
                     "default": [],
                     "maxItems": 50,
                     "type": "array",
@@ -11184,7 +11224,7 @@
                           ],
                           "additionalProperties": false
                         },
-                        "departmentIds": {
+                        "groupIds": {
                           "type": "array",
                           "items": {
                             "type": "string"
@@ -11205,7 +11245,7 @@
                         "id",
                         "email",
                         "role",
-                        "departmentIds",
+                        "groupIds",
                         "invitedBy",
                         "createdAt",
                         "expiresAt"
@@ -11927,228 +11967,6 @@
         }
       }
     },
-    "/workspaces/{id}/departments": {
-      "get": {
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-            },
-            "in": "path",
-            "name": "id",
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "departments": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "string"
-                          },
-                          "name": {
-                            "type": "string"
-                          },
-                          "memberIds": {
-                            "type": "array",
-                            "items": {
-                              "type": "string"
-                            }
-                          },
-                          "profiles": {
-                            "type": "number"
-                          }
-                        },
-                        "required": [
-                          "id",
-                          "name",
-                          "memberIds",
-                          "profiles"
-                        ],
-                        "additionalProperties": false
-                      }
-                    }
-                  },
-                  "required": [
-                    "departments"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 80
-                  }
-                },
-                "required": [
-                  "name"
-                ]
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-            },
-            "in": "path",
-            "name": "id",
-            "required": true
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "id": {
-                      "type": "string"
-                    },
-                    "name": {
-                      "type": "string"
-                    },
-                    "memberIds": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      }
-                    },
-                    "profiles": {
-                      "type": "number"
-                    }
-                  },
-                  "required": [
-                    "id",
-                    "name",
-                    "memberIds",
-                    "profiles"
-                  ],
-                  "additionalProperties": false
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/departments/{id}": {
-      "patch": {
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "minLength": 1,
-                    "maxLength": 80
-                  },
-                  "memberIds": {
-                    "maxItems": 1000,
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "format": "uuid",
-                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-            },
-            "in": "path",
-            "name": "id",
-            "required": true
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "string",
-                  "nullable": true,
-                  "enum": [
-                    null
-                  ]
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "format": "uuid",
-              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-            },
-            "in": "path",
-            "name": "id",
-            "required": true
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "Default Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "string",
-                  "nullable": true,
-                  "enum": [
-                    null
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/workspaces/{id}/activity": {
       "get": {
         "parameters": [
@@ -12259,7 +12077,6 @@
                               "profile.untag",
                               "profile.set-proxy",
                               "profile.assign",
-                              "profile.set-department",
                               "profile.trash",
                               "profile.restore",
                               "profile.purge",
@@ -12273,6 +12090,7 @@
                               "group.create",
                               "group.rename",
                               "group.delete",
+                              "group.members",
                               "member.invite",
                               "member.join",
                               "member.role",
@@ -12282,9 +12100,6 @@
                               "role.create",
                               "role.update",
                               "role.delete",
-                              "department.create",
-                              "department.update",
-                              "department.delete",
                               "cookies.export",
                               "cookies.import",
                               "workspace.export",

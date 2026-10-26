@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { and, asc, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
-import { departments, extensions, groups, profileData, profileStars, profiles, proxies, users } from '../db/schema.js';
+import { extensions, groupMembers, groups, profileData, profileStars, profiles, proxies, users } from '../db/schema.js';
 import { record } from '../activity/service.js';
 import { ApiError, forbidden, notFound } from '../errors.js';
 import { publish } from '../events.js';
@@ -23,8 +23,8 @@ const locale = z.string().regex(/^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/).max(35);
 
 export const newProfile = z.object({
   name, groupId: z.uuid().nullable().optional(), tags: z.array(tag).max(10).default([]),
-  // Defaults to the person creating it; only owners and admins assign someone else or a department.
-  ownerId: z.uuid().nullable().optional(), departmentId: z.uuid().nullable().optional(),
+  // Defaults to the person creating it; assigning it to someone else goes with administering the workspace.
+  ownerId: z.uuid().nullable().optional(),
   kernel, kernelVersion: version, os, fingerprint: Fingerprint, proxyId: z.uuid().nullable().optional(),
   timezoneOverride: tz.nullable().optional(), localeOverride: locale.nullable().optional(), notes: z.string().max(2000).nullable().optional(),
   syncMode: z.enum(['cloud', 'local']).optional(), extensionIds: z.array(z.uuid()).max(50).optional(),
@@ -49,44 +49,111 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
   }
 
   // ---------- groups ----------
+  // Groups nest and carry who is authorised for them. A profile's group decides both where it sits and who
+  // may reach it; being authorised for a group is part of the Company plan.
+  const groupView = (g: typeof groups.$inferSelect, memberIds: string[], count: number) => ({
+    id: g.id, name: g.name, color: g.color, parentId: g.parentId, inheritMembers: g.inheritMembers, memberIds, profiles: count
+  });
+  const membersOf = async (ids: string[]) => (ids.length
+    ? await db.select().from(groupMembers).where(inArray(groupMembers.groupId, ids)) : []);
+
   r.get('/workspaces/:id/groups', { schema: { params: wsParams, response: { 200: z.object({ groups: z.array(Group) }) } } }, async req => {
     const { a, scope } = await member(req, req.params.id);
     if (!a.can('profiles.view')) throw forbidden();
-    const rows = await db.select({ id: groups.id, name: groups.name, color: groups.color, profiles: sql<number>`count(${profiles.id}) filter (where ${profiles.deletedAt} is null)::int` })
+    const rows = await db.select({ g: groups, profiles: sql<number>`count(${profiles.id}) filter (where ${profiles.deletedAt} is null)::int` })
       .from(groups).leftJoin(profiles, and(eq(profiles.groupId, groups.id), scope))
       .where(eq(groups.workspaceId, req.params.id)).groupBy(groups.id).orderBy(asc(groups.name));
-    return { groups: rows };
+    const people = await membersOf(rows.map(r => r.g.id));
+    return { groups: rows.map(r => groupView(r.g, people.filter(m => m.groupId === r.g.id).map(m => m.userId), r.profiles)) };
   });
 
-  r.post('/workspaces/:id/groups', { schema: { params: wsParams, body: z.object({ name, color: groupColor.optional() }), response: { 201: Group } } }, async (req, reply) => {
+  // A group of the same workspace, for `parentId`.
+  async function parentIn(workspaceId: string, parentId: string | null | undefined){
+    if (!parentId) return;
+    const [p] = await db.select({ id: groups.id }).from(groups).where(and(eq(groups.id, parentId), eq(groups.workspaceId, workspaceId)));
+    if (!p) throw new ApiError(400, 'bad_reference', 'Unknown group');
+  }
+  // Every group under this one, so a group cannot be moved inside itself.
+  async function descendants(id: string){
+    const rows = await db.execute<{ id: string }>(sql`
+      WITH RECURSIVE below AS (
+        SELECT g.id FROM ${groups} g WHERE g.parent_id = ${id}
+        UNION SELECT c.id FROM ${groups} c JOIN below b ON c.parent_id = b.id
+      ) SELECT id FROM below`);
+    return [...rows].map(r => r.id);
+  }
+
+  r.post('/workspaces/:id/groups', {
+    schema: {
+      params: wsParams,
+      body: z.object({ name, color: groupColor.optional(), parentId: z.uuid().nullable().optional(), inheritMembers: z.boolean().optional() }),
+      response: { 201: Group }
+    }
+  }, async (req, reply) => {
     const s = await manager(req, req.params.id);
-    const [g] = await db.insert(groups).values({ workspaceId: req.params.id, name: req.body.name, color: req.body.color, createdAt: clock.now() }).onConflictDoNothing().returning();
+    await parentIn(req.params.id, req.body.parentId);
+    const [g] = await db.insert(groups).values({ workspaceId: req.params.id, ...req.body, createdAt: clock.now() }).onConflictDoNothing().returning();
     if (!g) throw new ApiError(409, 'group_exists', 'A group with this name already exists');
     await record(db, { workspaceId: req.params.id, actor: s, at: clock.now(), action: 'group.create', detail: { name: g.name } });
     publish(req.params.id, { kind: 'groups' });
-    return reply.code(201).send({ id: g.id, name: g.name, color: g.color, profiles: 0 });
+    return reply.code(201).send(groupView(g, [], 0));
   });
 
-  // A new name, a new colour, or both; a rename goes in the activity log.
-  const groupEdit = z.object({ name: name.optional(), color: groupColor.optional() }).refine(b => b.name !== undefined || b.color !== undefined, 'Nothing to change');
-  r.patch('/groups/:id', { schema: { params: wsParams, body: groupEdit, response: { 200: z.object({ id: z.string(), name: z.string(), color: groupColor }) } } }, async req => {
+  // A new name, colour, place in the tree, or member list; renames and member changes go in the activity log.
+  const groupEdit = z.object({
+    name: name.optional(), color: groupColor.optional(), parentId: z.uuid().nullable().optional(),
+    inheritMembers: z.boolean().optional(), memberIds: z.array(z.uuid()).max(1000).optional()
+  }).refine(b => Object.keys(b).length > 0, 'Nothing to change');
+  r.patch('/groups/:id', { schema: { params: wsParams, body: groupEdit, response: { 200: Group } } }, async req => {
     const [g] = await db.select().from(groups).where(eq(groups.id, req.params.id));
     if (!g) throw notFound('Group');
     const s = await manager(req, g.workspaceId);
-    const [u] = await db.update(groups).set(req.body).where(eq(groups.id, g.id)).returning().catch(() => {
-      throw new ApiError(409, 'group_exists', 'A group with this name already exists');
+    const { memberIds: wanted, ...fields } = req.body;
+    const memberIds = wanted ? [...new Set(wanted)] : undefined;
+    if (fields.parentId !== undefined){
+      await parentIn(g.workspaceId, fields.parentId);
+      if (fields.parentId === g.id || (fields.parentId && (await descendants(g.id)).includes(fields.parentId))){
+        throw new ApiError(400, 'group_cycle', 'A group cannot sit inside itself');
+      }
+    }
+    if (memberIds){
+      await requireCompany(db, g.workspaceId);
+      await assertOwned(db, g.workspaceId, { ownerIds: memberIds });
+    }
+    const u = await db.transaction(async tx => {
+      const [row] = Object.keys(fields).length
+        ? await tx.update(groups).set(fields).where(eq(groups.id, g.id)).returning().catch(() => {
+          throw new ApiError(409, 'group_exists', 'A group with this name already exists');
+        })
+        : [g];
+      if (memberIds){
+        await tx.delete(groupMembers).where(eq(groupMembers.groupId, g.id));
+        if (memberIds.length) await tx.insert(groupMembers).values(memberIds.map(userId => ({ groupId: g.id, userId })));
+      }
+      return row;
     });
     if (u.name !== g.name) await record(db, { workspaceId: g.workspaceId, actor: s, at: clock.now(), action: 'group.rename', detail: { name: u.name, from: g.name } });
-    publish(g.workspaceId, { kind: 'groups' });
-    return { id: u.id, name: u.name, color: u.color };
+    if (memberIds) await record(db, { workspaceId: g.workspaceId, actor: s, at: clock.now(), action: 'group.members', detail: { name: u.name, members: memberIds.length } });
+    publish(g.workspaceId, { kind: 'groups' }); publish(g.workspaceId, { kind: 'profiles' });
+    const [{ n }] = await db.select({ n: sql<number>`count(*) filter (where ${profiles.deletedAt} is null)::int` }).from(profiles).where(eq(profiles.groupId, g.id));
+    return groupView(u, memberIds ?? (await membersOf([g.id])).map(m => m.userId), n);
   });
 
-  // Profiles in a deleted group stay, without a group.
-  r.delete('/groups/:id', { schema: { params: wsParams, response: { 204: z.null() } } }, async (req, reply) => {
+  // Its profiles go to `moveTo` (or out of any group), and the groups under it move up to its own parent.
+  r.delete('/groups/:id', {
+    schema: { params: wsParams, querystring: z.object({ moveTo: z.uuid().nullish() }), response: { 204: z.null() } }
+  }, async (req, reply) => {
     const [g] = await db.select().from(groups).where(eq(groups.id, req.params.id));
     if (!g) throw notFound('Group');
     const s = await manager(req, g.workspaceId);
-    await db.delete(groups).where(eq(groups.id, g.id));
+    const moveTo = req.query.moveTo ?? null;
+    if (moveTo === g.id) throw new ApiError(400, 'bad_reference', 'Choose another group for its profiles');
+    await parentIn(g.workspaceId, moveTo);
+    await db.transaction(async tx => {
+      await tx.update(profiles).set({ groupId: moveTo }).where(eq(profiles.groupId, g.id));
+      await tx.update(groups).set({ parentId: g.parentId }).where(eq(groups.parentId, g.id));
+      await tx.delete(groups).where(eq(groups.id, g.id));
+    });
     await record(db, { workspaceId: g.workspaceId, actor: s, at: clock.now(), action: 'group.delete', detail: { name: g.name } });
     publish(g.workspaceId, { kind: 'groups' }); publish(g.workspaceId, { kind: 'profiles' });
     return reply.code(204).send(null);
@@ -125,7 +192,7 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
       params: wsParams,
       body: z.object({
         version: z.number().int(), name: name.optional(), groupId: z.uuid().nullable().optional(), tags: z.array(tag).max(10).optional(),
-        ownerId: z.uuid().nullable().optional(), departmentId: z.uuid().nullable().optional(),
+        ownerId: z.uuid().nullable().optional(),
         proxyId: z.uuid().nullable().optional(), kernelVersion: version.optional(), os: os.optional(), fingerprint: Fingerprint.optional(),
         timezoneOverride: tz.nullable().optional(), localeOverride: locale.nullable().optional(), notes: z.string().max(2000).nullable().optional(),
         syncMode: z.enum(['cloud', 'local']).optional(), extensionIds: z.array(z.uuid()).max(50).optional(),
@@ -160,9 +227,9 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
       params: wsParams,
       body: z.object({
         ids: z.array(z.uuid()).min(1).max(2000),
-        action: z.enum(['move', 'tag', 'untag', 'set-proxy', 'assign', 'set-department', 'add-extension', 'remove-extension', 'set-kernel', 'set-browser', 'trash', 'restore', 'purge']),
+        action: z.enum(['move', 'tag', 'untag', 'set-proxy', 'assign', 'add-extension', 'remove-extension', 'set-kernel', 'set-browser', 'trash', 'restore', 'purge']),
         groupId: z.uuid().nullable().optional(), tag: tag.optional(), proxyId: z.uuid().nullable().optional(),
-        ownerId: z.uuid().nullable().optional(), departmentId: z.uuid().nullable().optional(), extensionId: z.uuid().optional(),
+        ownerId: z.uuid().nullable().optional(), extensionId: z.uuid().optional(),
         kernel: kernel.optional(), kernelVersion: z.string().trim().min(1).max(40).optional(),
         searchEngine: searchEngine.optional(), restoreTabs: z.boolean().optional()
       }),
@@ -175,7 +242,7 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
     // it; the Trash is its own action, and assigning one to someone else goes with administering the workspace.
     const needed = ['trash', 'restore', 'purge'].includes(action) ? 'profiles.delete' : 'profiles.edit';
     if (!a.can('profiles.view') || !a.can(needed)) throw forbidden();
-    if (!a.can(MANAGE) && ['assign', 'set-department'].includes(action)) throw forbidden();
+    if (!a.can(MANAGE) && action === 'assign') throw forbidden();
     const now = clock.now();
     const mine = and(eq(profiles.workspaceId, req.params.id), inArray(profiles.id, ids), scope);
     const bump = { version: sql`${profiles.version} + 1`, updatedAt: now };
@@ -193,11 +260,6 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
       case 'assign':
         await assertOwned(db, req.params.id, { ownerIds: [req.body.ownerId] });
         updated = await db.update(profiles).set({ ...bump, ownerId: req.body.ownerId ?? null }).where(and(mine, isNull(profiles.deletedAt))).returning(ref);
-        break;
-      case 'set-department':
-        if (req.body.departmentId) await requireCompany(db, req.params.id);
-        await assertOwned(db, req.params.id, { departmentIds: [req.body.departmentId] });
-        updated = await db.update(profiles).set({ ...bump, departmentId: req.body.departmentId ?? null }).where(and(mine, isNull(profiles.deletedAt))).returning(ref);
         break;
       case 'tag': case 'untag': {
         const t = req.body.tag;
@@ -255,12 +317,11 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
       }
     }
     // What the entry says about the change, in names rather than ids.
-    const name = async (table: typeof groups | typeof proxies | typeof departments, id: string | null | undefined) =>
+    const name = async (table: typeof groups | typeof proxies, id: string | null | undefined) =>
       id ? (await db.select({ n: table.name }).from(table).where(eq(table.id, id)))[0]?.n ?? null : null;
     const detail: Record<string, unknown> =
       action === 'move' ? { group: await name(groups, req.body.groupId) }
       : action === 'set-proxy' ? { proxy: await name(proxies, req.body.proxyId) }
-      : action === 'set-department' ? { department: await name(departments, req.body.departmentId) }
       : action === 'assign' ? { to: req.body.ownerId ? (await db.select({ e: users.email }).from(users).where(eq(users.id, req.body.ownerId)))[0]?.e ?? null : null }
       : action === 'tag' || action === 'untag' ? { tag: req.body.tag }
       : action === 'add-extension' || action === 'remove-extension' ? { extension: (await db.select({ n: extensions.name }).from(extensions).where(eq(extensions.id, req.body.extensionId!)))[0]?.n ?? null }

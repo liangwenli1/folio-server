@@ -7,12 +7,12 @@ import { entitlements } from '../plans.js';
 import { readSub, toState } from '../billing/service.js';
 
 export const ACTIONS = [
-  'profile.create', 'profile.update', 'profile.move', 'profile.tag', 'profile.untag', 'profile.set-proxy', 'profile.assign', 'profile.set-department',
+  'profile.create', 'profile.update', 'profile.move', 'profile.tag', 'profile.untag', 'profile.set-proxy', 'profile.assign',
   'profile.trash', 'profile.restore', 'profile.purge', 'profile.open', 'profile.close', 'profile.takeover',
-  'proxy.create', 'proxy.import', 'proxy.update', 'proxy.delete', 'group.create', 'group.rename', 'group.delete',
+  'proxy.create', 'proxy.import', 'proxy.update', 'proxy.delete', 'group.create', 'group.rename', 'group.delete', 'group.members',
   'member.invite', 'member.join', 'member.role', 'member.remove', 'member.leave', 'invitation.withdraw',
   'role.create', 'role.update', 'role.delete',
-  'department.create', 'department.update', 'department.delete', 'cookies.export', 'cookies.import', 'workspace.export', 'workspace.import',
+  'cookies.export', 'cookies.import', 'workspace.export', 'workspace.import',
   'flow.create', 'flow.update', 'flow.delete', 'task.create', 'task.update', 'task.delete', 'run.start', 'run.finish',
   'extension.add', 'extension.update', 'extension.delete', 'profile.add-extension', 'profile.remove-extension', 'profile.set-kernel', 'profile.set-browser'
 ] as const;
@@ -20,11 +20,11 @@ export type Action = typeof ACTIONS[number];
 // Filters in the log page.
 export const KINDS = {
   open: ['profile.open', 'profile.close', 'profile.takeover'],
-  profiles: ['profile.create', 'profile.update', 'profile.move', 'profile.tag', 'profile.untag', 'profile.set-proxy', 'profile.assign', 'profile.set-department', 'profile.add-extension', 'profile.remove-extension', 'profile.set-kernel', 'profile.set-browser'],
+  profiles: ['profile.create', 'profile.update', 'profile.move', 'profile.tag', 'profile.untag', 'profile.set-proxy', 'profile.assign', 'profile.add-extension', 'profile.remove-extension', 'profile.set-kernel', 'profile.set-browser'],
   trash: ['profile.trash', 'profile.restore', 'profile.purge'],
-  proxies: ['proxy.create', 'proxy.import', 'proxy.update', 'proxy.delete', 'group.create', 'group.rename', 'group.delete'],
+  proxies: ['proxy.create', 'proxy.import', 'proxy.update', 'proxy.delete', 'group.create', 'group.rename', 'group.delete', 'group.members'],
   cookies: ['cookies.export', 'cookies.import', 'workspace.export', 'workspace.import'],
-  team: ['member.invite', 'member.join', 'member.role', 'member.remove', 'member.leave', 'invitation.withdraw', 'role.create', 'role.update', 'role.delete', 'department.create', 'department.update', 'department.delete'],
+  team: ['member.invite', 'member.join', 'member.role', 'member.remove', 'member.leave', 'invitation.withdraw', 'role.create', 'role.update', 'role.delete'],
   extensions: ['extension.add', 'extension.update', 'extension.delete'],
   automation: ['flow.create', 'flow.update', 'flow.delete', 'task.create', 'task.update', 'task.delete', 'run.start', 'run.finish']
 } satisfies Record<string, Action[]>;

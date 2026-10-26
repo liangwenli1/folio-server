@@ -30,7 +30,7 @@ const ExportedProxy = z.object({
   username: z.string().max(256).nullable(), password: z.string().max(256).nullable(), backupRef: ref.nullable()
 });
 // `saved`: the profile has a sign-in state, which travels next to this list.
-const ExportedProfile = newProfile.omit({ groupId: true, ownerId: true, departmentId: true, proxyId: true, extensionIds: true })
+const ExportedProfile = newProfile.omit({ groupId: true, ownerId: true, proxyId: true, extensionIds: true })
   .extend({ ref, group: z.string().max(80).nullable(), proxyRef: ref.nullable(), extensionRefs: z.array(ref).max(50).default([]), saved: z.boolean() });
 // `package` is the zip, base64-encoded.
 const ExportedExtension = z.object({ ref, kernel, extId: z.string().min(1).max(200), publicKey: z.string().max(1000).nullable(), package: z.string().max(40_000_000) });

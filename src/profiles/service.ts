@@ -1,13 +1,12 @@
 import { and, asc, eq, gt, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
 import type { FastifyRequest } from 'fastify';
 import type { Db, Tx } from '../db/client.js';
-import { departmentMembers, departments, extensions, groups, memberships, profileData, profileLocks, profileStars, profiles, proxies, users, workspaces } from '../db/schema.js';
+import { extensions, groupMembers, groups, memberships, profileData, profileLocks, profileStars, profiles, proxies, users, workspaces } from '../db/schema.js';
 import { ApiError, forbidden, notFound } from '../errors.js';
 import { requireSession, type Deps } from '../http.js';
 import { profileView, type Fingerprint, type searchEngine } from '../views.js';
 import { record } from '../activity/service.js';
 import { publish } from '../events.js';
-import { requireCompany } from '../team/service.js';
 import type { z } from 'zod';
 import { membership, type Access } from '../workspaces/service.js';
 import { entitlements } from '../plans.js';
@@ -37,11 +36,11 @@ export async function nextNumbers(tx: Tx, workspaceId: string, count: number){
 }
 
 // Group and proxy ids sent by a client must belong to the same workspace.
-// Group, proxy and department ids sent by a client must belong to the same workspace, and owners must be its members.
+// Group and proxy ids sent by a client must belong to the same workspace, and owners must be its members.
 type Ids = (string | null | undefined)[] | undefined;
-export async function assertOwned(db: Db | Tx, workspaceId: string, refs: { groupIds?: Ids; proxyIds?: Ids; departmentIds?: Ids; ownerIds?: Ids }){
+export async function assertOwned(db: Db | Tx, workspaceId: string, refs: { groupIds?: Ids; proxyIds?: Ids; ownerIds?: Ids }){
   const wanted = (ids: Ids) => [...new Set((ids ?? []).filter((x): x is string => !!x))];
-  const check = async (table: typeof groups | typeof proxies | typeof departments, ids: Ids, what: string) => {
+  const check = async (table: typeof groups | typeof proxies, ids: Ids, what: string) => {
     const w = wanted(ids);
     if (!w.length) return;
     const rows = await db.select({ id: table.id }).from(table).where(and(eq(table.workspaceId, workspaceId), inArray(table.id, w)));
@@ -49,7 +48,6 @@ export async function assertOwned(db: Db | Tx, workspaceId: string, refs: { grou
   };
   await check(groups, refs.groupIds, 'group');
   await check(proxies, refs.proxyIds, 'proxy');
-  await check(departments, refs.departmentIds, 'department');
   const owners = wanted(refs.ownerIds);
   if (owners.length && (await db.select({ id: memberships.userId }).from(memberships)
     .where(and(eq(memberships.workspaceId, workspaceId), inArray(memberships.userId, owners)))).length !== owners.length){
@@ -57,16 +55,28 @@ export async function assertOwned(db: Db | Tx, workspaceId: string, refs: { grou
   }
 }
 
+// The groups someone is authorised for: the ones they are in, plus the ones under those that take in whoever
+// their parent lets in.
+export async function reachableGroups(db: Db | Tx, workspaceId: string, userId: string){
+  const rows = await db.execute<{ id: string }>(sql`
+    WITH RECURSIVE reach AS (
+      SELECT g.id FROM ${groups} g JOIN ${groupMembers} m ON m.group_id = g.id
+       WHERE g.workspace_id = ${workspaceId} AND m.user_id = ${userId}
+      UNION
+      SELECT c.id FROM ${groups} c JOIN reach r ON c.parent_id = r.id WHERE c.inherit_members
+    )
+    SELECT id FROM reach`);
+  return [...rows].map(r => r.id);
+}
+
 // Which of a workspace's profiles a person may see and use: all of them for whoever administers the workspace;
-// for everyone else, the ones assigned to them and, on Company, their departments' (`scope` narrows queries on
-// profiles).
+// for everyone else, the ones assigned to them and the ones in groups they are authorised for (`scope` narrows
+// queries on profiles).
 export async function access(db: Db, workspaceId: string, userId: string){
   const a = await membership(db, workspaceId, userId);
   if (a.can(MANAGE)) return { a, scope: undefined };
-  const mine = (await db.select({ id: departmentMembers.departmentId }).from(departmentMembers)
-    .innerJoin(departments, eq(departments.id, departmentMembers.departmentId))
-    .where(and(eq(departmentMembers.userId, userId), eq(departments.workspaceId, workspaceId)))).map(d => d.id);
-  return { a, scope: mine.length ? or(eq(profiles.ownerId, userId), inArray(profiles.departmentId, mine)) : eq(profiles.ownerId, userId) };
+  const mine = await reachableGroups(db, workspaceId, userId);
+  return { a, scope: mine.length ? or(eq(profiles.ownerId, userId), inArray(profiles.groupId, mine)) : eq(profiles.ownerId, userId) };
 }
 
 // A profile by id, for someone who may see it and do `perms` to it; anyone else gets 404 (or 403 when they can
@@ -110,15 +120,14 @@ export async function checkExtensions(db: Db | Tx, workspaceId: string, items: {
   }
 }
 
-// Assigning people and departments goes with administering the workspace; departments need the Company plan.
-export async function checkAssignment(db: Db, workspaceId: string, a: Access, items: { ownerId?: string | null; departmentId?: string | null }[]){
-  if (!a.can(MANAGE) && items.some(i => i.ownerId !== undefined || i.departmentId !== undefined)) throw forbidden();
-  if (items.some(i => i.departmentId)) await requireCompany(db, workspaceId);
-  await assertOwned(db, workspaceId, { ownerIds: items.map(i => i.ownerId), departmentIds: items.map(i => i.departmentId) });
+// Assigning a profile to someone else goes with administering the workspace.
+export async function checkAssignment(db: Db, workspaceId: string, a: Access, items: { ownerId?: string | null }[]){
+  if (!a.can(MANAGE) && items.some(i => i.ownerId !== undefined)) throw forbidden();
+  await assertOwned(db, workspaceId, { ownerIds: items.map(i => i.ownerId) });
 }
 
 export interface NewProfile {
-  name: string; groupId?: string | null; tags: string[]; ownerId?: string | null; departmentId?: string | null;
+  name: string; groupId?: string | null; tags: string[]; ownerId?: string | null;
   kernel: 'chromium' | 'firefox'; kernelVersion: string; os: 'windows' | 'macos' | 'linux'; fingerprint: z.infer<typeof Fingerprint>;
   proxyId?: string | null; timezoneOverride?: string | null; localeOverride?: string | null; notes?: string | null; syncMode?: 'cloud' | 'local';
   extensionIds?: string[]; searchEngine?: z.infer<typeof searchEngine>; restoreTabs?: boolean;

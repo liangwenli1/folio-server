@@ -93,7 +93,7 @@ describe('editing profiles', () => {
     expect(now.map(p => [p.name, p.groupId === group.id, p.tags, p.proxyId === proxy.id])).toEqual([['A', true, [], true], ['B', true, ['q4'], true]]);
 
     const groups = (await t.app.inject({ url: `/workspaces/${workspaceId}/groups`, headers })).json().groups;
-    expect(groups).toEqual([{ id: group.id, name: 'US stores', color: 'gray', profiles: 2 }]);
+    expect(groups).toEqual([{ id: group.id, name: 'US stores', color: 'gray', parentId: null, inheritMembers: true, memberIds: [], profiles: 2 }]);
 
     await batch(headers, workspaceId, { ids, action: 'trash' });
     expect(await list(headers, workspaceId)).toHaveLength(0);
@@ -137,9 +137,9 @@ describe('editing profiles', () => {
     expect(group).toMatchObject({ name: 'EU', color: 'blue' });
     expect((await post(`/workspaces/${workspaceId}/groups`, headers, { name: 'Bad', color: 'neon' })).statusCode).toBe(400);
     const patch = (payload: object) => t.app.inject({ method: 'PATCH', url: `/groups/${group.id}`, headers, payload });
-    expect((await patch({ color: 'teal' })).json()).toEqual({ id: group.id, name: 'EU', color: 'teal' });
+    expect((await patch({ color: 'teal' })).json()).toMatchObject({ id: group.id, name: 'EU', color: 'teal' });
     expect((await patch({})).statusCode).toBe(400);
-    expect((await patch({ name: 'Europe' })).json()).toEqual({ id: group.id, name: 'Europe', color: 'teal' });
+    expect((await patch({ name: 'Europe' })).json()).toMatchObject({ id: group.id, name: 'Europe', color: 'teal' });
     const log = (await t.app.inject({ url: `/workspaces/${workspaceId}/activity`, headers })).json().entries.filter((e: { action: string }) => e.action === 'group.rename');
     expect(log).toHaveLength(1);
   });

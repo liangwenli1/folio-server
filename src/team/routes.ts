@@ -1,10 +1,10 @@
-// Members, invitations and departments of a workspace.
+// Members, invitations and roles of a workspace.
 import { randomBytes } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { and, asc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
-import { departmentMembers, departments, invitations, memberships, profiles, roles, users, workspaces } from '../db/schema.js';
+import { groupMembers, groups, invitations, memberships, profiles, roles, users, workspaces } from '../db/schema.js';
 import { ApiError, notFound } from '../errors.js';
 import { publish } from '../events.js';
 import { record } from '../activity/service.js';
@@ -14,7 +14,7 @@ import { entitlements } from '../plans.js';
 import { readSub, toState } from '../billing/service.js';
 import { sha256 } from '../auth/session.js';
 import { assertOwned } from '../profiles/service.js';
-import { Department, Invitation, InvitationPreview, Member, MyInvitation, Role, WorkspaceSummary } from '../views.js';
+import { Invitation, InvitationPreview, Member, MyInvitation, Role, WorkspaceSummary } from '../views.js';
 import { membership, requirePermission } from '../workspaces/service.js';
 import { MANAGE, PERMISSIONS, type Permission } from '../permissions.js';
 import { assertSeat, removeMember, requireCompany } from './service.js';
@@ -60,14 +60,14 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
     const rows = await db.select({ userId: memberships.userId, email: users.email, roleId: roles.id, key: roles.key, roleName: roles.name, joinedAt: memberships.createdAt })
       .from(memberships).innerJoin(users, eq(users.id, memberships.userId)).innerJoin(roles, eq(roles.id, memberships.roleId))
       .where(eq(memberships.workspaceId, req.params.id)).orderBy(asc(memberships.createdAt));
-    const depts = await db.select({ userId: departmentMembers.userId, id: departmentMembers.departmentId }).from(departmentMembers)
-      .innerJoin(departments, eq(departments.id, departmentMembers.departmentId)).where(eq(departments.workspaceId, req.params.id));
+    const grants = await db.select({ userId: groupMembers.userId, id: groupMembers.groupId }).from(groupMembers)
+      .innerJoin(groups, eq(groups.id, groupMembers.groupId)).where(eq(groups.workspaceId, req.params.id));
     const counts = await db.select({ ownerId: profiles.ownerId, n: sql<number>`count(*)::int` }).from(profiles)
       .where(and(eq(profiles.workspaceId, req.params.id), isNull(profiles.deletedAt))).groupBy(profiles.ownerId);
     return {
       members: rows.map(m => ({
         userId: m.userId, email: m.email, role: roleRef({ id: m.roleId, key: m.key, name: m.roleName }), joinedAt: m.joinedAt.toISOString(),
-        departmentIds: depts.filter(d => d.userId === m.userId).map(d => d.id), profiles: counts.find(c => c.ownerId === m.userId)?.n ?? 0
+        groupIds: grants.filter(g => g.userId === m.userId).map(g => g.id), profiles: counts.find(c => c.ownerId === m.userId)?.n ?? 0
       }))
     };
   });
@@ -111,7 +111,7 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
 
   // ---------- invitations ----------
   const invitationView = (i: typeof invitations.$inferSelect, role: { id: string; key: string | null; name: string }, inviter: string | null) => ({
-    id: i.id, email: i.email, role: roleRef(role), departmentIds: i.departmentIds, invitedBy: inviter,
+    id: i.id, email: i.email, role: roleRef(role), groupIds: i.groupIds, invitedBy: inviter,
     createdAt: i.createdAt.toISOString(), expiresAt: i.expiresAt.toISOString()
   });
 
@@ -127,16 +127,16 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
   // passed on another way. A new invitation to the same address replaces the earlier one and its link.
   r.post('/workspaces/:id/invitations', {
     schema: {
-      params, body: z.object({ email: z.email(), roleId: z.uuid(), departmentIds: z.array(z.uuid()).max(50).default([]), notify: z.boolean().default(true) }),
+      params, body: z.object({ email: z.email(), roleId: z.uuid(), groupIds: z.array(z.uuid()).max(50).default([]), notify: z.boolean().default(true) }),
       response: { 201: z.object({ invitation: Invitation, link: z.string(), emailed: z.boolean() }) }
     }
   }, async (req, reply) => {
     const s = await manager(req, req.params.id);
     const now = clock.now(), email = req.body.email.trim().toLowerCase();
     const role = await assignableRole(req.params.id, req.body.roleId);
-    if (req.body.departmentIds.length){
+    if (req.body.groupIds.length){
       await requireCompany(db, req.params.id);
-      await assertOwned(db, req.params.id, { departmentIds: req.body.departmentIds });
+      await assertOwned(db, req.params.id, { groupIds: req.body.groupIds });
     }
     const [existing] = await db.select({ id: users.id, locale: users.locale }).from(users).where(eq(users.email, email));
     if (existing && (await db.select().from(memberships).where(and(eq(memberships.workspaceId, req.params.id), eq(memberships.userId, existing.id)))).length){
@@ -148,7 +148,7 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
       await tx.update(invitations).set({ revokedAt: now }).where(and(eq(invitations.workspaceId, req.params.id), eq(invitations.email, email), open(now)));
       await assertSeat(tx, req.params.id, now);
       const [i] = await tx.insert(invitations).values({
-        workspaceId: req.params.id, email, roleId: role.id, departmentIds: req.body.departmentIds, tokenHash: sha256(token),
+        workspaceId: req.params.id, email, roleId: role.id, groupIds: req.body.groupIds, tokenHash: sha256(token),
         invitedBy: s.userId, createdAt: now, expiresAt: new Date(now.getTime() + INVITE_DAYS * DAY)
       }).returning();
       return i;
@@ -218,9 +218,9 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
       const [{ n }] = await tx.select({ n: sql<number>`count(*)::int` }).from(memberships).where(eq(memberships.workspaceId, i.workspaceId));
       if (limit !== null && n >= limit) throw new ApiError(403, 'seat_limit', 'This workspace has no free seat. Ask its owner to upgrade.');
       await tx.insert(memberships).values({ workspaceId: i.workspaceId, userId: u.id, roleId: i.roleId, createdAt: now }).onConflictDoNothing();
-      const depts = i.departmentIds.length
-        ? await tx.select({ id: departments.id }).from(departments).where(and(eq(departments.workspaceId, i.workspaceId), inArray(departments.id, i.departmentIds))) : [];
-      if (depts.length) await tx.insert(departmentMembers).values(depts.map(d => ({ departmentId: d.id, userId: u.id }))).onConflictDoNothing();
+      const theirs = i.groupIds.length
+        ? await tx.select({ id: groups.id }).from(groups).where(and(eq(groups.workspaceId, i.workspaceId), inArray(groups.id, i.groupIds))) : [];
+      if (theirs.length) await tx.insert(groupMembers).values(theirs.map(g => ({ groupId: g.id, userId: u.id }))).onConflictDoNothing();
       await tx.update(invitations).set({ acceptedAt: now }).where(eq(invitations.id, i.id));
       await record(tx, { workspaceId: i.workspaceId, actor: s, at: now, action: 'member.join', detail: { email: u.email, role: role.name } });
     });
@@ -296,67 +296,6 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
     await db.delete(roles).where(eq(roles.id, r0.id));
     await record(db, { workspaceId: r0.workspaceId, actor: s, at: clock.now(), action: 'role.delete', detail: { name: r0.name } });
     publish(r0.workspaceId, { kind: 'members' });
-    return reply.code(204).send(null);
-  });
-
-  // ---------- departments (Company) ----------
-  r.get('/workspaces/:id/departments', { schema: { params, response: { 200: z.object({ departments: z.array(Department) }) } } }, async req => {
-    const s = await requireSession(req, deps);
-    await membership(db, req.params.id, s.userId);
-    const rows = await db.select().from(departments).where(eq(departments.workspaceId, req.params.id)).orderBy(asc(departments.name));
-    const ids = rows.map(d => d.id);
-    const members = ids.length ? await db.select().from(departmentMembers).where(inArray(departmentMembers.departmentId, ids)) : [];
-    const counts = ids.length ? await db.select({ id: profiles.departmentId, n: sql<number>`count(*)::int` }).from(profiles)
-      .where(and(inArray(profiles.departmentId, ids), isNull(profiles.deletedAt))).groupBy(profiles.departmentId) : [];
-    return {
-      departments: rows.map(d => ({
-        id: d.id, name: d.name, memberIds: members.filter(m => m.departmentId === d.id).map(m => m.userId), profiles: counts.find(c => c.id === d.id)?.n ?? 0
-      }))
-    };
-  });
-
-  r.post('/workspaces/:id/departments', { schema: { params, body: z.object({ name }), response: { 201: Department } } }, async (req, reply) => {
-    const s = await manager(req, req.params.id);
-    await requireCompany(db, req.params.id);
-    const [d] = await db.insert(departments).values({ workspaceId: req.params.id, name: req.body.name, createdAt: clock.now() }).onConflictDoNothing().returning();
-    if (!d) throw new ApiError(409, 'department_exists', 'A department with this name already exists');
-    await record(db, { workspaceId: req.params.id, actor: s, at: clock.now(), action: 'department.create', detail: { name: d.name } });
-    publish(req.params.id, { kind: 'members' });
-    return reply.code(201).send({ id: d.id, name: d.name, memberIds: [], profiles: 0 });
-  });
-
-  // Renames, and replaces the member list when `memberIds` is given.
-  r.patch('/departments/:id', {
-    schema: { params, body: z.object({ name: name.optional(), memberIds: z.array(z.uuid()).max(1000).optional() }), response: { 204: z.null() } }
-  }, async (req, reply) => {
-    const [d] = await db.select().from(departments).where(eq(departments.id, req.params.id));
-    if (!d) throw notFound('Department');
-    const s = await manager(req, d.workspaceId);
-    await requireCompany(db, d.workspaceId);
-    const memberIds = req.body.memberIds ? [...new Set(req.body.memberIds)] : undefined;
-    if (memberIds) await assertOwned(db, d.workspaceId, { ownerIds: memberIds });
-    await db.transaction(async tx => {
-      if (req.body.name) await tx.update(departments).set({ name: req.body.name }).where(eq(departments.id, d.id)).catch(() => {
-        throw new ApiError(409, 'department_exists', 'A department with this name already exists');
-      });
-      if (memberIds){
-        await tx.delete(departmentMembers).where(eq(departmentMembers.departmentId, d.id));
-        if (memberIds.length) await tx.insert(departmentMembers).values(memberIds.map(userId => ({ departmentId: d.id, userId })));
-      }
-      await record(tx, { workspaceId: d.workspaceId, actor: s, at: clock.now(), action: 'department.update', detail: { name: req.body.name ?? d.name, ...(req.body.name ? { from: d.name } : {}), ...(memberIds ? { members: memberIds.length } : {}) } });
-    });
-    publish(d.workspaceId, { kind: 'members' }); publish(d.workspaceId, { kind: 'profiles' });
-    return reply.code(204).send(null);
-  });
-
-  // Its profiles stay, without a department.
-  r.delete('/departments/:id', { schema: { params, response: { 204: z.null() } } }, async (req, reply) => {
-    const [d] = await db.select().from(departments).where(eq(departments.id, req.params.id));
-    if (!d) throw notFound('Department');
-    const s = await manager(req, d.workspaceId);
-    await db.delete(departments).where(eq(departments.id, d.id));
-    await record(db, { workspaceId: d.workspaceId, actor: s, at: clock.now(), action: 'department.delete', detail: { name: d.name } });
-    publish(d.workspaceId, { kind: 'members' }); publish(d.workspaceId, { kind: 'profiles' });
     return reply.code(204).send(null);
   });
 

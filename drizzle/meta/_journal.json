@@ -127,6 +127,13 @@
       "when": 1792990036146,
       "tag": "0017_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792993330690,
+      "tag": "0018_groups_merge_departments",
+      "breakpoints": true
     }
   ]
 }
