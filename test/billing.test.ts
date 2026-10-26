@@ -30,7 +30,7 @@ describe('plans', () => {
 
 describe('checkout', () => {
   it('needs a verified email', async () => {
-    const { headers, workspaceId } = await signup(t.app, { verify: false });
+    const { headers, workspaceId } = await signup(t.app, { unverifiedIn: t.db });
     const res = await t.app.inject({ method: 'POST', url: `/workspaces/${workspaceId}/billing/checkout`, headers, payload: { plan: 'studio', period: 'monthly', addonPacks: 0 } });
     expect(res.json().error.code).toBe('email_not_verified');
   });

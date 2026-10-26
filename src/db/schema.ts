@@ -12,17 +12,18 @@ export const users = pgTable('users', {
   createdAt: createdAt()
 });
 
-// One-time codes sent by email: verify the address, or reset the password.
+// One-time codes sent by email, by address, since signing up comes before the account: sign up, verify an account
+// made before sign-up codes, or reset the password.
 export const emailCodes = pgTable('email_codes', {
   id: uuid().primaryKey().defaultRandom(),
-  userId: uuid().notNull().references(() => users.id, { onDelete: 'cascade' }),
+  email: text().notNull(),
   purpose: text().notNull(),
   codeHash: text().notNull(),
   attempts: integer().notNull().default(0),
   expiresAt: ts().notNull(),
   usedAt: ts(),
   createdAt: createdAt()
-}, t => [index().on(t.userId, t.purpose)]);
+}, t => [index().on(t.email, t.purpose)]);
 
 // Opaque session tokens; only the sha256 is stored. Web uses a cookie, desktop a bearer header.
 export const sessions = pgTable('sessions', {
@@ -148,6 +149,18 @@ export const docFeedback = pgTable('doc_feedback', {
   page: text().notNull(),
   helpful: boolean().notNull(),
   locale: text().notNull(),
+  createdAt: createdAt()
+});
+
+// Who asked the changelog for news of releases. It counts once the emailed link is followed (`confirmedAt`); `token`
+// is in that link and in the one to unsubscribe, which deletes the row. `sentAt`: when that email last went out.
+export const newsSubscribers = pgTable('news_subscribers', {
+  id: uuid().primaryKey().defaultRandom(),
+  email: text().notNull().unique(),
+  locale: text().notNull(),
+  token: text().notNull().unique(),
+  confirmedAt: ts(),
+  sentAt: ts().notNull(),
   createdAt: createdAt()
 });
 

@@ -176,6 +176,13 @@
       "when": 1793030534336,
       "tag": "0024_site_forms",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1793036066827,
+      "tag": "0025_codes_by_email_and_news",
+      "breakpoints": true
     }
   ]
 }

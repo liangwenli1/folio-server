@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { docFeedback, salesInquiries } from '../src/db/schema.js';
-import { setup } from './helpers.js';
+import { lastMail, setup, uniqueEmail } from './helpers.js';
 
 let t: Awaited<ReturnType<typeof setup>>;
 beforeAll(async () => { t = await setup(); });
@@ -28,5 +28,26 @@ describe('the website’s forms', () => {
     expect((await post('/doc-feedback', { page: '../etc', helpful: false })).statusCode).toBe(400);
     const rows = await t.db.select().from(docFeedback).where(eq(docFeedback.page, 'create-profile'));
     expect(rows.map(r => [r.helpful, r.locale]).sort()).toEqual([[false, 'en'], [true, 'zh']]);
+  });
+});
+
+describe('release news', () => {
+  it('counts a subscription once the emailed link is followed, and ends it by the other link', async () => {
+    const email = uniqueEmail();
+    const subscribe = () => post('/news/subscribe', { email: email.toUpperCase(), locale: 'zh' });
+    expect((await subscribe()).json()).toEqual({ status: 'pending' });
+    const m = await lastMail(email);
+    expect(m.Subject).toBe('Folio 更新通知：请确认订阅');
+    expect(m.Text).toContain(`${t.config.siteUrl}/zh/changelog/?confirm=`);
+    const confirm = m.Text.match(/\?confirm=([\w-]+)/)![1], unsubscribe = m.Text.match(/\?unsubscribe=([\w-]+)/)![1];
+    // Before the link is followed, asking again sends the email at most once a minute.
+    expect((await subscribe()).json().error.code).toBe('too_soon');
+    expect((await post('/news/confirm', { token: confirm })).statusCode).toBe(204);
+    expect((await post('/news/confirm', { token: confirm })).statusCode).toBe(204);
+    expect((await subscribe()).json()).toEqual({ status: 'subscribed' });
+    expect((await post('/news/unsubscribe', { token: unsubscribe })).statusCode).toBe(204);
+    expect((await post('/news/unsubscribe', { token: unsubscribe })).statusCode).toBe(204);
+    expect((await post('/news/confirm', { token: confirm })).json().error.code).toBe('not_found');
+    expect((await subscribe()).json()).toEqual({ status: 'pending' });
   });
 });

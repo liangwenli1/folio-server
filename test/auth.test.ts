@@ -7,42 +7,66 @@ beforeAll(async () => { t = await setup(); });
 afterAll(async () => { await t.teardown(); });
 
 describe('register and log in', () => {
-  it('creates the account, a Free workspace and a web session', async () => {
+  const askCode = (email: string, locale?: string) => t.app.inject({ method: 'POST', url: '/auth/signup-code', payload: { email, locale } });
+
+  it('signs up with a code sent to the address: a verified account, a Free workspace and a web session', async () => {
     const email = uniqueEmail();
-    const res = await t.app.inject({ method: 'POST', url: '/auth/register', payload: { email: email.toUpperCase(), password: PASSWORD, locale: 'zh' } });
+    expect((await askCode(email.toUpperCase(), 'zh')).statusCode).toBe(204);
+    const m = await lastMail(email);
+    expect(m.Subject).toMatch(/^Folio 注册验证码：\d{6}$/);
+    expect(m.HTML).toContain('注册 Folio');
+    const res = await t.app.inject({ method: 'POST', url: '/auth/register', payload: { email: email.toUpperCase(), code: m.Text.match(/\b\d{6}\b/)![0], password: PASSWORD, locale: 'zh' } });
     expect(res.statusCode).toBe(201);
-    expect(res.json().user).toMatchObject({ email, emailVerified: false, locale: 'zh' });
+    expect(res.json().user).toMatchObject({ email, emailVerified: true, locale: 'zh' });
     const cookie = res.cookies.find(c => c.name === 'folio_session')!;
     expect(cookie.httpOnly).toBe(true);
     const me = await t.app.inject({ url: '/me', headers: { cookie: `folio_session=${cookie.value}` } });
     expect(me.json().workspaces).toEqual([expect.objectContaining({ role: expect.objectContaining({ key: 'owner' }), plan: 'free', status: 'active' })]);
   });
 
-  it('with email verification off (a test server), counts new accounts as verified and sends no code', async () => {
+  it('needs the code that was sent, and a password of 8 to 64 characters', async () => {
+    const email = uniqueEmail();
+    await askCode(email);
+    const code = await lastCode(email), wrong = code === '000000' ? '111111' : '000000';
+    const register = (payload: object) => t.app.inject({ method: 'POST', url: '/auth/register', payload: { email, password: PASSWORD, ...payload } });
+    expect((await register({})).json().error.code).toBe('code_invalid');
+    expect((await register({ code: wrong })).json().error.code).toBe('code_invalid');
+    expect((await register({ code, password: 'seven77' })).statusCode).toBe(400);
+    expect((await register({ code, password: 'x'.repeat(65) })).statusCode).toBe(400);
+    expect((await register({ code })).statusCode).toBe(201);
+  });
+
+  it('tells an address that already has an account to log in, and sends codes at most once a minute', async () => {
+    const { email } = await signup(t.app);
+    expect((await askCode(email)).json().error.code).toBe('email_taken');
+    expect((await t.app.inject({ method: 'POST', url: '/auth/register', payload: { email, code: '123456', password: PASSWORD } })).json().error.code).toBe('email_taken');
+    const fresh = uniqueEmail();
+    expect((await askCode(fresh)).statusCode).toBe(204);
+    expect((await askCode(fresh)).json().error.code).toBe('too_soon');
+    t.clock.advanceDays(61 / 86400);
+    expect((await askCode(fresh)).statusCode).toBe(204);
+  });
+
+  it('with email verification off (a test server), takes no code and counts new accounts as verified', async () => {
     t.config.emailVerification = false;
     try {
+      expect((await t.app.inject({ url: '/auth/options' })).json()).toEqual({ emailVerification: false });
       const email = uniqueEmail();
       const res = await t.app.inject({ method: 'POST', url: '/auth/register', payload: { email, password: PASSWORD } });
       expect(res.json().user).toMatchObject({ email, emailVerified: true });
       await expect(lastMail(email)).rejects.toThrow('No email');
     } finally { t.config.emailVerification = true; }
+    expect((await t.app.inject({ url: '/auth/options' })).json()).toEqual({ emailVerification: true });
   });
 
   it('turning email verification off also lets in accounts made before, from their next page load', async () => {
-    const { headers } = await signup(t.app, { verify: false });
+    const { headers } = await signup(t.app, { unverifiedIn: t.db });
     expect((await t.app.inject({ url: '/me', headers })).json().user.emailVerified).toBe(false);
     t.config.emailVerification = false;
     try {
       expect((await t.app.inject({ url: '/me', headers })).json().user.emailVerified).toBe(true);
     } finally { t.config.emailVerification = true; }
     expect((await t.app.inject({ url: '/me', headers })).json().user.emailVerified).toBe(true);
-  });
-
-  it('refuses a second account with the same email', async () => {
-    const { email } = await signup(t.app);
-    const res = await t.app.inject({ method: 'POST', url: '/auth/register', payload: { email, password: PASSWORD } });
-    expect(res.statusCode).toBe(409);
-    expect(res.json().error.code).toBe('email_taken');
   });
 
   it('gives the desktop app a bearer token and no cookie', async () => {
@@ -85,9 +109,11 @@ describe('cookie-authenticated writes', () => {
   });
 });
 
-describe('email verification', () => {
-  it('accepts the emailed code and locks out after five wrong tries', async () => {
-    const { headers, email } = await signup(t.app, { verify: false });
+describe('verifying an account made before sign-up codes', () => {
+  it('sends a code when asked, accepts it, and locks out after five wrong tries', async () => {
+    const { headers, email } = await signup(t.app, { unverifiedIn: t.db });
+    expect((await t.app.inject({ method: 'POST', url: '/auth/resend-code', headers })).statusCode).toBe(204);
+    expect((await lastMail(email)).Subject).toMatch(/is your Folio code$/);
     for (let i = 0; i < 5; i++){
       const r = await t.app.inject({ method: 'POST', url: '/auth/verify-email', headers, payload: { code: '000000' } });
       if (r.json().error.code !== 'code_invalid') throw new Error(r.body);
@@ -95,13 +121,16 @@ describe('email verification', () => {
     const locked = await t.app.inject({ method: 'POST', url: '/auth/verify-email', headers, payload: { code: await lastCode(email) } });
     expect(locked.json().error.code).toBe('too_many_attempts');
 
+    expect((await t.app.inject({ method: 'POST', url: '/auth/resend-code', headers })).json().error.code).toBe('too_soon');
+    t.clock.advanceDays(61 / 86400);
     expect((await t.app.inject({ method: 'POST', url: '/auth/resend-code', headers })).statusCode).toBe(204);
     const ok = await t.app.inject({ method: 'POST', url: '/auth/verify-email', headers, payload: { code: await lastCode(email) } });
     expect(ok.json().user.emailVerified).toBe(true);
   });
 
   it('expires codes after 15 minutes', async () => {
-    const { headers, email } = await signup(t.app, { verify: false });
+    const { headers, email } = await signup(t.app, { unverifiedIn: t.db });
+    await t.app.inject({ method: 'POST', url: '/auth/resend-code', headers });
     const code = await lastCode(email);
     t.clock.advanceDays(16 / 1440);
     const res = await t.app.inject({ method: 'POST', url: '/auth/verify-email', headers, payload: { code } });
@@ -112,20 +141,18 @@ describe('email verification', () => {
 describe('emails', () => {
   it('go out over SMTP in the recipient’s language', async () => {
     const email = uniqueEmail();
-    await t.app.inject({ method: 'POST', url: '/auth/register', payload: { email, password: PASSWORD, locale: 'zh' } });
-    const m = await lastMail(email);
-    expect(m.Subject).toMatch(/^Folio 验证码：\d{6}$/);
-    expect(m.HTML).toContain('验证邮箱');
+    await t.app.inject({ method: 'POST', url: '/auth/signup-code', payload: { email, locale: 'zh' } });
+    await t.app.inject({ method: 'POST', url: '/auth/register', payload: { email, code: await lastCode(email), password: PASSWORD, locale: 'zh' } });
     await t.app.inject({ method: 'POST', url: '/auth/password/forgot', payload: { email } });
-    expect((await lastMail(email)).Subject).toMatch(/^Folio 重设密码验证码/);
+    const m = await lastMail(email);
+    expect(m.Subject).toMatch(/^Folio 重设密码验证码/);
+    expect(m.HTML).toContain('重设密码');
   });
 
-  it('that fail to send keep sign-up and password reset quiet, but a resend says so', async () => {
+  it('that fail to send say so where someone waits for the code, while a password reset stays quiet', async () => {
     const down = await buildApp({ db: t.db, clock: t.clock, config: t.config, storage: t.storage, mailer: { send: async () => { throw new Error('SMTP down'); } } }, { logger: false });
-    const email = uniqueEmail();
-    const reg = await down.inject({ method: 'POST', url: '/auth/register', payload: { email, password: PASSWORD } });
-    expect(reg.statusCode).toBe(201);
-    const headers = { cookie: `folio_session=${reg.cookies.find(c => c.name === 'folio_session')!.value}`, origin: ORIGIN };
+    expect((await down.inject({ method: 'POST', url: '/auth/signup-code', payload: { email: uniqueEmail() } })).json().error.code).toBe('mail_unavailable');
+    const { email, headers } = await signup(t.app, { unverifiedIn: t.db });
     expect((await down.inject({ method: 'POST', url: '/auth/password/forgot', payload: { email } })).statusCode).toBe(204);
     expect((await down.inject({ method: 'POST', url: '/auth/resend-code', headers })).json().error.code).toBe('mail_unavailable');
     await down.close();
@@ -147,6 +174,14 @@ describe('password reset', () => {
     expect(login.statusCode).toBe(200);
   });
 
+  it('sends reset codes at most once a minute, alike for addresses with and without an account', async () => {
+    const { email } = await signup(t.app);
+    for (const address of [email, uniqueEmail()]){
+      expect((await t.app.inject({ method: 'POST', url: '/auth/password/forgot', payload: { email: address } })).statusCode).toBe(204);
+      expect((await t.app.inject({ method: 'POST', url: '/auth/password/forgot', payload: { email: address } })).json().error.code).toBe('too_soon');
+    }
+  });
+
   it('checks the code first without using it up; wrong ones count, and an unknown email reads as a wrong code', async () => {
     const { email } = await signup(t.app);
     const check = (payload: object) => t.app.inject({ method: 'POST', url: '/auth/password/check', payload });
@@ -160,6 +195,7 @@ describe('password reset', () => {
     expect(reset.statusCode).toBe(204);
     expect((await check({ email, code })).json().error.code).toBe('code_invalid');
 
+    t.clock.advanceDays(61 / 86400);
     await t.app.inject({ method: 'POST', url: '/auth/password/forgot', payload: { email } });
     const next = await lastCode(email), miss = next === '000000' ? '111111' : '000000';
     for (let i = 0; i < 5; i++) await check({ email, code: miss });

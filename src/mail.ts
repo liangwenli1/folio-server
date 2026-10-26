@@ -32,15 +32,27 @@ ${p(lead)}${middle}${p(note, '#56636F')}
   return { text, html };
 }
 
-export function codeMail(locale: Locale, purpose: 'verify' | 'reset', code: string): Mail {
+export function codeMail(locale: Locale, purpose: 'signup' | 'verify' | 'reset', code: string): Mail {
   if (locale === 'zh'){
-    return purpose === 'verify'
-      ? { subject: `Folio 验证码：${code}`, ...layout(locale, '验证邮箱', '请在 Folio 页面输入以下验证码完成邮箱验证，15 分钟内有效。', { code }, '如非本人注册 Folio，请忽略此邮件。') }
-      : { subject: `Folio 重设密码验证码：${code}`, ...layout(locale, '重设密码', '请在 Folio 页面输入以下验证码并设置新密码，15 分钟内有效。', { code }, '如非本人操作，请忽略此邮件，密码不会变更。') };
+    return {
+      signup: { subject: `Folio 注册验证码：${code}`, ...layout(locale, '注册 Folio', '请在注册页面输入以下验证码，15 分钟内有效。', { code }, '如非本人操作，请忽略此邮件。') },
+      verify: { subject: `Folio 验证码：${code}`, ...layout(locale, '验证邮箱', '请在 Folio 页面输入以下验证码完成邮箱验证，15 分钟内有效。', { code }, '如非本人操作，请忽略此邮件。') },
+      reset: { subject: `Folio 重设密码验证码：${code}`, ...layout(locale, '重设密码', '请在 Folio 页面输入以下验证码并设置新密码，15 分钟内有效。', { code }, '如非本人操作，请忽略此邮件，密码不会变更。') }
+    }[purpose];
   }
-  return purpose === 'verify'
-    ? { subject: `${code} is your Folio code`, ...layout(locale, 'Confirm your email', 'Enter this code on the Folio page to confirm your email address. It expires in 15 minutes.', { code }, 'If you didn’t sign up for Folio, ignore this email.') }
-    : { subject: `${code} is your Folio password reset code`, ...layout(locale, 'Reset your password', 'Enter this code on the Folio page, then choose a new password. It expires in 15 minutes.', { code }, 'If you didn’t ask for this, ignore this email; your password stays the same.') };
+  return {
+    signup: { subject: `${code} is your Folio sign-up code`, ...layout(locale, 'Create your Folio account', 'Enter this code on the sign-up page. It expires in 15 minutes.', { code }, 'If you didn’t try to sign up for Folio, ignore this email.') },
+    verify: { subject: `${code} is your Folio code`, ...layout(locale, 'Confirm your email', 'Enter this code on the Folio page to confirm your email address. It expires in 15 minutes.', { code }, 'If you didn’t ask for this, ignore this email.') },
+    reset: { subject: `${code} is your Folio password reset code`, ...layout(locale, 'Reset your password', 'Enter this code on the Folio page, then choose a new password. It expires in 15 minutes.', { code }, 'If you didn’t ask for this, ignore this email; your password stays the same.') }
+  }[purpose];
+}
+
+// Confirming a subscription to release news from the changelog, with the way out for later.
+export function newsMail(locale: Locale, a: { confirm: string; unsubscribe: string }): Mail {
+  if (locale === 'zh'){
+    return { subject: 'Folio 更新通知：请确认订阅', ...layout(locale, '确认订阅', '点击下方按钮，确认订阅 Folio 的版本更新与功能动态。', { label: '确认订阅', url: a.confirm }, `如非本人操作，请忽略此邮件。订阅后如需退订，请打开：${a.unsubscribe}`) };
+  }
+  return { subject: 'Confirm your subscription to Folio news', ...layout(locale, 'Confirm your subscription', 'Click below to get news of Folio releases and features by email.', { label: 'Confirm subscription', url: a.confirm }, `If you didn’t ask for this, ignore this email. To unsubscribe later, open: ${a.unsubscribe}`) };
 }
 
 export function inviteMail(locale: Locale, a: { workspace: string; inviter: string; role: string; url: string; days: number }): Mail {

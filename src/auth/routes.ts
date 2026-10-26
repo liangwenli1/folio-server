@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyBaseLogger, FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { hash, verify } from '@node-rs/argon2';
@@ -8,11 +8,12 @@ import { ApiError } from '../errors.js';
 import { clearSessionCookie, requireSession, setSessionCookie, type Deps } from '../http.js';
 import { User, WorkspaceSummary, locale, userView } from '../views.js';
 import { createWorkspace } from '../workspaces/service.js';
-import { checkCode, consumeCode, issueCode } from './codes.js';
+import { checkCode, consumeCode, issueCode, type CodePurpose } from './codes.js';
 import { codeMail, type Locale } from '../mail.js';
 import { createSession, revokeAllSessions, revokeSession } from './session.js';
 
-const password = z.string().min(8).max(200);
+// A new password. Logging in takes any length, for passwords chosen before the limit.
+const password = z.string().min(8).max(64);
 const code = z.string().regex(/^\s*\d{6}\s*$/);
 const normalize = (email: string) => email.trim().toLowerCase();
 // Verifying against a fixed hash when the email is unknown keeps response times alike.
@@ -29,8 +30,16 @@ export function authRoutes(app: FastifyInstance, deps: Deps){
     const [v] = await db.update(users).set({ emailVerifiedAt: clock.now() }).where(eq(users.id, u.id)).returning();
     return v;
   };
-  const sendCode = async (u: { id: string; email: string; locale: string }, purpose: 'verify' | 'reset') =>
-    deps.mailer.send(u.email, codeMail(u.locale as Locale, purpose, await issueCode(db, u.id, purpose, clock.now())));
+  // Emails a new code; the person is waiting for it, so failing to send says so.
+  const sendCode = async (log: FastifyBaseLogger, email: string, locale: string, purpose: CodePurpose) => {
+    const c = await issueCode(db, email, purpose, clock.now());
+    await deps.mailer.send(email, codeMail(locale as Locale, purpose, c)).catch(err => {
+      log.error(err, 'sending a code by email failed');
+      throw new ApiError(503, 'mail_unavailable', 'We couldn’t send the email. Try again in a minute.');
+    });
+  };
+  const taken = () => new ApiError(409, 'email_taken', 'An account with this email already exists. Log in instead.');
+  const exists = async (email: string) => (await db.select({ id: users.id }).from(users).where(eq(users.email, email))).length > 0;
   // Whose password a reset is for; an unknown email reads as a wrong code, so it does not reveal who has an account.
   const resetUser = async (email: string) => {
     const [u] = await db.select().from(users).where(eq(users.email, normalize(email)));
@@ -38,23 +47,41 @@ export function authRoutes(app: FastifyInstance, deps: Deps){
     return u;
   };
 
+  // What the sign-up page needs to know: without email verification (a test server) there is no code to ask for.
+  r.get('/auth/options', { schema: { response: { 200: z.object({ emailVerification: z.boolean() }) } } }, async () => ({ emailVerification: deps.config.emailVerification }));
+
+  // Signing up starts with a code sent to the address; one that already has an account is told to log in instead.
+  r.post('/auth/signup-code', {
+    config: limited,
+    schema: { body: z.object({ email: z.email(), locale: locale.default('en') }), response: { 204: z.null() } }
+  }, async (req, reply) => {
+    const email = normalize(req.body.email);
+    if (await exists(email)) throw taken();
+    await sendCode(req.log, email, req.body.locale, 'signup');
+    return reply.code(204).send(null);
+  });
+
+  // The code from /auth/signup-code proves the address, so the account starts verified. A test server without
+  // email verification asks for no code.
   r.post('/auth/register', {
     config: limited,
-    schema: { body: z.object({ email: z.email(), password, locale: locale.default('en') }), response: { 201: z.object({ user: User }) } }
+    schema: { body: z.object({ email: z.email(), code: code.optional(), password, locale: locale.default('en') }), response: { 201: z.object({ user: User }) } }
   }, async (req, reply) => {
     const now = clock.now();
     const email = normalize(req.body.email);
+    if (await exists(email)) throw taken();
+    if (deps.config.emailVerification){
+      if (!req.body.code) throw new ApiError(400, 'code_invalid', 'Enter the code sent to your email.');
+      await consumeCode(db, email, 'signup', req.body.code, now);
+    }
     const passwordHash = await hash(req.body.password);
     const user = await db.transaction(async tx => {
-      const [u] = await tx.insert(users).values({ email, passwordHash, locale: req.body.locale, createdAt: now, emailVerifiedAt: deps.config.emailVerification ? null : now })
-        .onConflictDoNothing().returning();
-      if (!u) throw new ApiError(409, 'email_taken', 'An account with this email already exists. Log in instead.');
+      const [u] = await tx.insert(users).values({ email, passwordHash, locale: req.body.locale, createdAt: now, emailVerifiedAt: now }).onConflictDoNothing().returning();
+      if (!u) throw taken();
       await createWorkspace(tx, u.id, email.split('@')[0], now);
       return u;
     });
     setSessionCookie(reply, await createSession(db, { userId: user.id, client: 'web', deviceName: null, now }), deps.config);
-    // The account exists either way; if the email does not go out, the verify page can send it again.
-    if (deps.config.emailVerification) await sendCode(user, 'verify').catch(err => req.log.error(err, 'sending the verification email failed'));
     return reply.code(201).send({ user: userView(user) });
   });
 
@@ -86,13 +113,15 @@ export function authRoutes(app: FastifyInstance, deps: Deps){
     return reply.code(204).send(null);
   });
 
+  // Verifying an account made before sign-up codes, which started out unverified: send it a code, then take it.
   r.post('/auth/verify-email', {
     config: limited,
     schema: { body: z.object({ code }), response: { 200: z.object({ user: User }) } }
   }, async req => {
     const s = await requireSession(req, deps);
     const now = clock.now();
-    await consumeCode(db, s.userId, 'verify', req.body.code, now);
+    const [found] = await db.select().from(users).where(eq(users.id, s.userId));
+    await consumeCode(db, found.email, 'verify', req.body.code, now);
     const [u] = await db.update(users).set({ emailVerifiedAt: now }).where(eq(users.id, s.userId)).returning();
     return { user: userView(u) };
   });
@@ -101,17 +130,17 @@ export function authRoutes(app: FastifyInstance, deps: Deps){
     const s = await requireSession(req, deps);
     const [u] = await db.select().from(users).where(eq(users.id, s.userId));
     if (u.emailVerifiedAt) throw new ApiError(409, 'already_verified', 'This email is already verified');
-    await sendCode(u, 'verify').catch(err => {
-      req.log.error(err, 'sending the verification email failed');
-      throw new ApiError(503, 'mail_unavailable', 'We couldn’t send the email. Try again in a minute.');
-    });
+    await sendCode(req.log, u.email, u.locale, 'verify');
     return reply.code(204).send(null);
   });
 
-  // Always 204, so the response does not reveal whether an account exists.
+  // Always 204 and quiet about failing to send, so the answer does not reveal whether an account exists. The code is
+  // made either way, so asking again too soon is refused alike; only an account gets the email.
   r.post('/auth/password/forgot', { config: limited, schema: { body: z.object({ email: z.email() }), response: { 204: z.null() } } }, async (req, reply) => {
-    const [u] = await db.select().from(users).where(eq(users.email, normalize(req.body.email)));
-    if (u) await sendCode(u, 'reset').catch(err => req.log.error(err, 'sending the password reset email failed'));
+    const email = normalize(req.body.email);
+    const [u] = await db.select().from(users).where(eq(users.email, email));
+    const c = await issueCode(db, email, 'reset', clock.now());
+    if (u) await deps.mailer.send(email, codeMail(u.locale as Locale, 'reset', c)).catch(err => req.log.error(err, 'sending the password reset email failed'));
     return reply.code(204).send(null);
   });
 
@@ -120,7 +149,7 @@ export function authRoutes(app: FastifyInstance, deps: Deps){
     config: limited,
     schema: { body: z.object({ email: z.email(), code }), response: { 204: z.null() } }
   }, async (req, reply) => {
-    await checkCode(db, (await resetUser(req.body.email)).id, 'reset', req.body.code, clock.now());
+    await checkCode(db, (await resetUser(req.body.email)).email, 'reset', req.body.code, clock.now());
     return reply.code(204).send(null);
   });
 
@@ -130,7 +159,7 @@ export function authRoutes(app: FastifyInstance, deps: Deps){
   }, async (req, reply) => {
     const now = clock.now();
     const u = await resetUser(req.body.email);
-    await consumeCode(db, u.id, 'reset', req.body.code, now);
+    await consumeCode(db, u.email, 'reset', req.body.code, now);
     await db.update(users).set({ passwordHash: await hash(req.body.password) }).where(eq(users.id, u.id));
     await revokeAllSessions(db, u.id, now);
     return reply.code(204).send(null);

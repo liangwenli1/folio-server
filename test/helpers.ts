@@ -4,7 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app.js';
 import { config } from '../src/config.js';
 import { createDb, type Db } from '../src/db/client.js';
-import { memberships, roles } from '../src/db/schema.js';
+import { memberships, roles, users } from '../src/db/schema.js';
 import { runMigrations } from '../src/db/migrate.js';
 import { createMailer } from '../src/mail.js';
 import { createStorage } from '../src/storage.js';
@@ -53,13 +53,15 @@ export async function lastMail(email: string){
 }
 export const lastCode = async (email: string) => (await lastMail(email)).Text.match(/\b\d{6}\b/)![0];
 
-// Registers through the site flow; verifies the email unless asked not to.
-export async function signup(app: FastifyInstance, { verify = true, email = uniqueEmail() } = {}){
-  const res = await app.inject({ method: 'POST', url: '/auth/register', payload: { email, password: PASSWORD } });
+// Signs up the way the site does: a code to the address, then the account, verified. `unverifiedIn` turns it into an
+// account from before sign-up codes, one whose email is not yet verified.
+export async function signup(app: FastifyInstance, { email = uniqueEmail(), unverifiedIn }: { email?: string; unverifiedIn?: Db } = {}){
+  await app.inject({ method: 'POST', url: '/auth/signup-code', payload: { email } });
+  const res = await app.inject({ method: 'POST', url: '/auth/register', payload: { email, code: await lastCode(email), password: PASSWORD } });
   if (res.statusCode !== 201) throw new Error(`register failed: ${res.body}`);
+  if (unverifiedIn) await unverifiedIn.update(users).set({ emailVerifiedAt: null }).where(eq(users.email, email));
   const token = res.cookies.find(c => c.name === 'folio_session')!.value;
   const headers = { cookie: `folio_session=${token}`, origin: ORIGIN };
-  if (verify) await app.inject({ method: 'POST', url: '/auth/verify-email', headers, payload: { code: await lastCode(email) } });
   const me = (await app.inject({ url: '/me', headers })).json();
   return { email, headers, userId: me.user.id as string, workspaceId: me.workspaces[0].id as string };
 }

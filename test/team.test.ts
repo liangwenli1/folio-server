@@ -34,7 +34,7 @@ describe('invitations', () => {
   it('are emailed with a link, previewed from it, and accepted by the invited address only', async () => {
     const owner = await signup(t.app);
     await buy(t.app, owner.headers, owner.workspaceId, { plan: 'studio', period: 'monthly', addonPacks: 0 });
-    const invitee = await signup(t.app, { verify: false });
+    const invitee = await signup(t.app, { unverifiedIn: t.db });
     const stranger = await signup(t.app);
     const asMember = await roleId(owner.headers, owner.workspaceId, 'member');
     const first = (await call('POST', `/workspaces/${owner.workspaceId}/invitations`, owner.headers, { email: invitee.email.toUpperCase(), roleId: await roleId(owner.headers, owner.workspaceId, 'admin') })).json();
