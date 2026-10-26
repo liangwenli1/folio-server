@@ -16,7 +16,7 @@ const esc = (s: string) => s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt
 
 // One layout for every message: the name, a heading, what to do, a code or a button, and a closing note.
 function layout(locale: Locale, heading: string, lead: string, action: { code: string } | { label: string; url: string }, note: string): Pick<Mail, 'text' | 'html'> {
-  const foot = locale === 'zh' ? '此邮件由 Folio 系统自动发送，请勿直接回复。' : 'Folio sent this email automatically.';
+  const foot = locale === 'zh' ? '此邮件由 Folio 系统自动发送，请勿直接回复。' : 'Folio sent this email automatically. Please don’t reply to it.';
   const text = [heading, '', lead, '', 'code' in action ? action.code : `${action.label}: ${action.url}`, '', note, '', foot].join('\n');
   const p = (s: string, color = '#13212F') => `<p style="margin:0 0 14px;font-size:15px;line-height:1.55;color:${color}">${esc(s)}</p>`;
   const middle = 'code' in action
@@ -42,7 +42,7 @@ export function codeMail(locale: Locale, purpose: 'signup' | 'verify' | 'reset',
   }
   return {
     signup: { subject: `${code} is your Folio sign-up code`, ...layout(locale, 'Create your Folio account', 'Enter this code on the sign-up page. It expires in 15 minutes.', { code }, 'If you didn’t try to sign up for Folio, ignore this email.') },
-    verify: { subject: `${code} is your Folio code`, ...layout(locale, 'Confirm your email', 'Enter this code on the Folio page to confirm your email address. It expires in 15 minutes.', { code }, 'If you didn’t ask for this, ignore this email.') },
+    verify: { subject: `${code} is your Folio verification code`, ...layout(locale, 'Verify your email', 'Enter this code on the Folio page to verify your email address. It expires in 15 minutes.', { code }, 'If you didn’t ask for this, ignore this email.') },
     reset: { subject: `${code} is your Folio password reset code`, ...layout(locale, 'Reset your password', 'Enter this code on the Folio page, then choose a new password. It expires in 15 minutes.', { code }, 'If you didn’t ask for this, ignore this email; your password stays the same.') }
   }[purpose];
 }
@@ -55,9 +55,16 @@ export function newsMail(locale: Locale, a: { confirm: string; unsubscribe: stri
   return { subject: 'Confirm your subscription to Folio news', ...layout(locale, 'Confirm your subscription', 'Click below to get news of Folio releases and features by email.', { label: 'Confirm subscription', url: a.confirm }, `If you didn’t ask for this, ignore this email. To unsubscribe later, open: ${a.unsubscribe}`) };
 }
 
-export function inviteMail(locale: Locale, a: { workspace: string; inviter: string; role: string; url: string; days: number }): Mail {
+// The four built-in roles in the recipient's language; a workspace's own roles keep the name they were given.
+const ROLE_NAMES: Record<Locale, Record<string, string>> = {
+  en: { owner: 'the owner', admin: 'an admin', member: 'a member', viewer: 'a viewer' },
+  zh: { owner: '所有者', admin: '管理员', member: '成员', viewer: '仅查看' }
+};
+
+export function inviteMail(locale: Locale, a: { workspace: string; inviter: string; role: { key: string | null; name: string }; url: string; days: number }): Mail {
+  const role = (a.role.key && ROLE_NAMES[locale][a.role.key]) || a.role.name;
   if (locale === 'zh'){
-    return { subject: `${a.inviter} 邀请您加入 ${a.workspace}（Folio）`, ...layout(locale, `加入 ${a.workspace}`, `${a.inviter} 邀请您以${a.role}身份加入 Folio 团队「${a.workspace}」。`, { label: '接受邀请', url: a.url }, `邀请 ${a.days} 天内有效。如不认识邀请人，请忽略此邮件。`) };
+    return { subject: `${a.inviter} 邀请您加入 ${a.workspace}（Folio）`, ...layout(locale, `加入 ${a.workspace}`, `${a.inviter} 邀请您以${role}身份加入 Folio 工作空间「${a.workspace}」。`, { label: '接受邀请', url: a.url }, `邀请 ${a.days} 天内有效。如不认识邀请人，请忽略此邮件。`) };
   }
-  return { subject: `${a.inviter} invited you to ${a.workspace} on Folio`, ...layout(locale, `Join ${a.workspace}`, `${a.inviter} invited you to join the ${a.workspace} workspace on Folio as ${a.role}.`, { label: 'Accept the invitation', url: a.url }, `The invitation expires in ${a.days === 1 ? '1 day' : `${a.days} days`}. If you weren’t expecting it, ignore this email.`) };
+  return { subject: `${a.inviter} invited you to ${a.workspace} on Folio`, ...layout(locale, `Join ${a.workspace}`, `${a.inviter} invited you to join the ${a.workspace} workspace on Folio as ${role}.`, { label: 'Accept the invitation', url: a.url }, `The invitation expires in ${a.days === 1 ? '1 day' : `${a.days} days`}. If you weren’t expecting it, ignore this email.`) };
 }

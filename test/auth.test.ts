@@ -113,7 +113,7 @@ describe('verifying an account made before sign-up codes', () => {
   it('sends a code when asked, accepts it, and locks out after five wrong tries', async () => {
     const { headers, email } = await signup(t.app, { unverifiedIn: t.db });
     expect((await t.app.inject({ method: 'POST', url: '/auth/resend-code', headers })).statusCode).toBe(204);
-    expect((await lastMail(email)).Subject).toMatch(/is your Folio code$/);
+    expect((await lastMail(email)).Subject).toMatch(/is your Folio verification code$/);
     for (let i = 0; i < 5; i++){
       const r = await t.app.inject({ method: 'POST', url: '/auth/verify-email', headers, payload: { code: '000000' } });
       if (r.json().error.code !== 'code_invalid') throw new Error(r.body);

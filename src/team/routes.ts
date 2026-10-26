@@ -188,7 +188,7 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
     const [ws] = await db.select({ name: workspaces.name }).from(workspaces).where(eq(workspaces.id, req.params.id));
     const locale = (existing?.locale ?? me.locale) as Locale;
     const link = `${deps.config.siteUrl}/${locale}/invite/?token=${token}`;
-    const emailed = req.body.notify && await deps.mailer.send(email, inviteMail(locale, { workspace: ws.name, inviter: me.email, role: role.name, url: link, days: req.body.days }))
+    const emailed = req.body.notify && await deps.mailer.send(email, inviteMail(locale, { workspace: ws.name, inviter: me.email, role: { key: role.key, name: role.name }, url: link, days: req.body.days }))
       .then(() => true, err => { req.log.error(err, 'sending the invitation failed'); return false; });
     await record(db, { workspaceId: req.params.id, actor: s, at: now, action: 'member.invite', detail: { email, role: role.name } });
     publish(req.params.id, { kind: 'members' });
