@@ -13,7 +13,7 @@ describe('workspaces', () => {
     const id = created.json().id;
     await t.app.inject({ method: 'PATCH', url: `/workspaces/${id}`, headers, payload: { name: 'EU & UK stores' } });
     const ws = (await t.app.inject({ url: `/workspaces/${id}`, headers })).json();
-    expect(ws).toMatchObject({ name: 'EU & UK stores', role: 'owner', subscription: { plan: 'free' }, usage: { profiles: 0, members: 1 } });
+    expect(ws).toMatchObject({ name: 'EU & UK stores', role: { key: 'owner' }, subscription: { plan: 'free' }, usage: { profiles: 0, members: 1 } });
     expect((await t.app.inject({ url: '/me', headers })).json().workspaces).toHaveLength(2);
   });
 

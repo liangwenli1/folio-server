@@ -15,7 +15,7 @@ describe('register and log in', () => {
     const cookie = res.cookies.find(c => c.name === 'folio_session')!;
     expect(cookie.httpOnly).toBe(true);
     const me = await t.app.inject({ url: '/me', headers: { cookie: `folio_session=${cookie.value}` } });
-    expect(me.json().workspaces).toEqual([expect.objectContaining({ role: 'owner', plan: 'free', status: 'active' })]);
+    expect(me.json().workspaces).toEqual([expect.objectContaining({ role: expect.objectContaining({ key: 'owner' }), plan: 'free', status: 'active' })]);
   });
 
   it('with email verification off (a test server), counts new accounts as verified and sends no code', async () => {

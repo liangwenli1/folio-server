@@ -3,13 +3,20 @@ import { z } from 'zod';
 import { GROUP_COLORS, type extensions, type flows, type kernels, type profileData, type profileLocks, type profiles, type proxies, type users } from './db/schema.js';
 import { entitlements } from './plans.js';
 import { Step } from './flows/steps.js';
+import { BUILT_IN_ROLES, PERMISSIONS } from './permissions.js';
 import { toState, type PaymentRow, type SubRow } from './billing/service.js';
 
 const iso = z.string().nullable();
 const plan = z.enum(['free', 'studio', 'company']);
 const paidPlan = z.enum(['studio', 'company']);
 const period = z.enum(['monthly', 'yearly']);
-export const role = z.enum(['owner', 'admin', 'member']);
+// A role names a set of actions. The four a workspace starts with carry a `key`; its own roles have none and the
+// apps show their stored name.
+export const permission = z.enum(PERMISSIONS);
+export const roleKey = z.enum(BUILT_IN_ROLES);
+export const RoleRef = z.object({ id: z.string(), key: roleKey.nullable(), name: z.string() });
+export const MyRole = RoleRef.extend({ permissions: z.array(permission) });
+export const Role = MyRole.extend({ members: z.number() });
 export const locale = z.enum(['en', 'zh']);
 
 export const ErrorBody = z.object({ error: z.object({ code: z.string(), message: z.string() }) });
@@ -35,9 +42,9 @@ export function subscriptionView(r: SubRow): z.infer<typeof Subscription> {
   };
 }
 
-export const WorkspaceSummary = z.object({ id: z.string(), name: z.string(), role, plan, status: z.enum(['active', 'trialing']) });
+export const WorkspaceSummary = z.object({ id: z.string(), name: z.string(), role: MyRole, plan, status: z.enum(['active', 'trialing']) });
 export const Workspace = z.object({
-  id: z.string(), name: z.string(), role, subscription: Subscription,
+  id: z.string(), name: z.string(), role: MyRole, subscription: Subscription,
   usage: z.object({ profiles: z.number(), members: z.number() })
 });
 
@@ -159,19 +166,18 @@ export function proxyView(p: typeof proxies.$inferSelect, profileCount: number):
 export const ProxySecret = z.object({ id: z.string(), type: proxyType, host: z.string(), port: z.number(), username: z.string().nullable(), password: z.string().nullable() });
 
 // ---------- team (P3) ----------
-export const assignableRole = z.enum(['admin', 'member']);
 export const Member = z.object({
-  userId: z.string(), email: z.string(), role, joinedAt: z.string(), departmentIds: z.array(z.string()), profiles: z.number()
+  userId: z.string(), email: z.string(), role: RoleRef, joinedAt: z.string(), departmentIds: z.array(z.string()), profiles: z.number()
 });
 export const Invitation = z.object({
-  id: z.string(), email: z.string(), role: assignableRole, departmentIds: z.array(z.string()), invitedBy: z.string().nullable(), createdAt: z.string(), expiresAt: z.string()
+  id: z.string(), email: z.string(), role: RoleRef, departmentIds: z.array(z.string()), invitedBy: z.string().nullable(), createdAt: z.string(), expiresAt: z.string()
 });
 // What the invitation link shows before anyone logs in, and what a person sees of invitations to their email.
 export const InvitationPreview = z.object({
-  id: z.string(), workspaceName: z.string(), inviter: z.string().nullable(), email: z.string(), role: assignableRole, expired: z.boolean(), expiresAt: z.string()
+  id: z.string(), workspaceName: z.string(), inviter: z.string().nullable(), email: z.string(), role: RoleRef, expired: z.boolean(), expiresAt: z.string()
 });
 export const MyInvitation = z.object({
-  id: z.string(), workspaceId: z.string(), workspaceName: z.string(), inviter: z.string().nullable(), role: assignableRole, expiresAt: z.string()
+  id: z.string(), workspaceId: z.string(), workspaceName: z.string(), inviter: z.string().nullable(), role: RoleRef, expiresAt: z.string()
 });
 export const Department = z.object({ id: z.string(), name: z.string(), memberIds: z.array(z.string()), profiles: z.number() });
 

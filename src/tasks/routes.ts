@@ -16,7 +16,8 @@ import { requireSession, type Deps } from '../http.js';
 import { access } from '../profiles/service.js';
 import { itemStatus, LogLine, Run, RunError, RunItem, Schedule, Task } from '../views.js';
 import { Step } from '../flows/steps.js';
-import type { Role } from '../workspaces/service.js';
+import type { Access } from '../workspaces/service.js';
+import { MANAGE } from '../permissions.js';
 
 const params = z.object({ id: z.uuid() });
 const varName = z.string().regex(/^[A-Za-z_][A-Za-z0-9_]{0,39}$/);
@@ -35,7 +36,8 @@ type Counts = z.infer<typeof Run>['counts'];
 export function taskRoutes(app: FastifyInstance, deps: Deps){
   const r = app.withTypeProvider<ZodTypeProvider>();
   const { db, clock } = deps;
-  const canEdit = (t: typeof tasks.$inferSelect, role: Role, userId: string) => role !== 'member' || t.createdBy === userId;
+  // Whoever made a task may change it; so may anyone who administers the workspace.
+  const canEdit = (t: typeof tasks.$inferSelect, a: Access, userId: string) => a.can(MANAGE) || t.createdBy === userId;
 
   // The workspace's profiles a person sees, as ids (members' scope; everything else in the workspace otherwise).
   async function visibleIds(workspaceId: string, scope: SQL | undefined, ids: string[]){
@@ -49,9 +51,9 @@ export function taskRoutes(app: FastifyInstance, deps: Deps){
     const [t] = await db.select().from(tasks).where(eq(tasks.id, id));
     if (!t) throw notFound('Task');
     const s = await requireSession(req, deps);
-    const { role, scope } = await access(db, t.workspaceId, s.userId);
-    if (edit && !canEdit(t, role, s.userId)) throw forbidden();
-    return { t, s, role, scope };
+    const { a, scope } = await access(db, t.workspaceId, s.userId);
+    if (edit && !canEdit(t, a, s.userId)) throw forbidden();
+    return { t, s, a, scope };
   }
 
   async function runFor(req: FastifyRequest, id: string){
@@ -82,7 +84,7 @@ export function taskRoutes(app: FastifyInstance, deps: Deps){
     });
   }
 
-  async function taskViews(list: (typeof tasks.$inferSelect)[], role: Role, scope: SQL | undefined, s: Session): Promise<z.infer<typeof Task>[]> {
+  async function taskViews(list: (typeof tasks.$inferSelect)[], a: Access, scope: SQL | undefined, s: Session): Promise<z.infer<typeof Task>[]> {
     const all = [...new Set(list.flatMap(t => t.profileIds))];
     const seen = list.length ? await visibleIds(list[0].workspaceId, scope, all) : new Set<string>();
     const runners = [...new Set(list.map(t => t.runnerUserId).filter((x): x is string => !!x))];
@@ -97,7 +99,7 @@ export function taskRoutes(app: FastifyInstance, deps: Deps){
       concurrency: t.concurrency, retries: t.retries, timeoutMin: t.timeoutMin, hasVariables: !!t.variablesEnc, createdBy: t.createdBy,
       schedule: t.schedule as z.infer<typeof Schedule> | null,
       runner: t.runnerDeviceId ? { email: t.runnerUserId ? email.get(t.runnerUserId) ?? null : null, deviceName: t.runnerDeviceName, self: t.runnerUserId === s.userId && t.runnerDeviceId === s.deviceId } : null,
-      canEdit: canEdit(t, role, s.userId), version: t.version, createdAt: t.createdAt.toISOString(), updatedAt: t.updatedAt.toISOString(), lastRun: last.get(t.id) ?? null
+      canEdit: canEdit(t, a, s.userId), version: t.version, createdAt: t.createdAt.toISOString(), updatedAt: t.updatedAt.toISOString(), lastRun: last.get(t.id) ?? null
     }));
   }
 
@@ -127,14 +129,14 @@ export function taskRoutes(app: FastifyInstance, deps: Deps){
 
   r.get('/workspaces/:id/tasks', { schema: { params, response: { 200: z.object({ tasks: z.array(Task) }) } } }, async req => {
     const s = await requireSession(req, deps);
-    const { role, scope } = await access(db, req.params.id, s.userId);
+    const { a, scope } = await access(db, req.params.id, s.userId);
     const list = await db.select().from(tasks).where(eq(tasks.workspaceId, req.params.id)).orderBy(tasks.name, tasks.createdAt);
-    return { tasks: await taskViews(list, role, scope, s) };
+    return { tasks: await taskViews(list, a, scope, s) };
   });
 
   r.post('/workspaces/:id/tasks', { schema: { params, body: z.object(fields), response: { 201: Task } } }, async (req, reply) => {
     const s = await requireSession(req, deps);
-    const { role, scope } = await access(db, req.params.id, s.userId);
+    const { a, scope } = await access(db, req.params.id, s.userId);
     const { variables, schedule, ...body } = req.body;
     const ids = [...new Set(body.profileIds)];
     await checkRefs(req.params.id, body.flowId, ids, scope);
@@ -144,13 +146,13 @@ export function taskRoutes(app: FastifyInstance, deps: Deps){
     }).returning();
     await record(db, { workspaceId: t.workspaceId, actor: s, at: now, action: 'task.create', detail: { name: t.name } });
     publish(t.workspaceId, { kind: 'tasks', ids: [t.id] });
-    return reply.code(201).send((await taskViews([t], role, scope, s))[0]);
+    return reply.code(201).send((await taskViews([t], a, scope, s))[0]);
   });
 
   // `variables` replaces the stored ones when given (null clears them). A member's edit keeps the task's profiles
   // they do not see. `runHere` makes the computer saving it the one the schedule runs on.
   r.patch('/tasks/:id', { schema: { params, body: z.object({ version: z.number().int(), runHere: z.boolean().optional(), ...z.object(fields).partial().shape }), response: { 200: Task } } }, async req => {
-    const { t, s, role, scope } = await taskFor(req, req.params.id, true);
+    const { t, s, a, scope } = await taskFor(req, req.params.id, true);
     const { version, variables, schedule, runHere, ...body } = req.body;
     let ids = t.profileIds;
     if (body.profileIds){
@@ -165,7 +167,7 @@ export function taskRoutes(app: FastifyInstance, deps: Deps){
     if (!u) throw new ApiError(409, 'stale', 'Someone changed this task in the meantime. Reload it and try again.');
     await record(db, { workspaceId: t.workspaceId, actor: s, at: now, action: 'task.update', detail: { name: u.name, ...(u.name !== t.name ? { from: t.name } : {}) } });
     publish(t.workspaceId, { kind: 'tasks', ids: [t.id] });
-    return (await taskViews([u], role, scope, s))[0];
+    return (await taskViews([u], a, scope, s))[0];
   });
 
   // The per-profile values, for the people who may edit the task (the run payload carries them to whoever runs it).

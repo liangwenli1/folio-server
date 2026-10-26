@@ -14,7 +14,8 @@ import { publish } from '../events.js';
 import type { Deps } from '../http.js';
 import { profileFor } from '../profiles/service.js';
 import { SavedData, savedDataView } from '../views.js';
-import { requireRole } from '../workspaces/service.js';
+import { requirePermission } from '../workspaces/service.js';
+import { MANAGE } from '../permissions.js';
 
 export const LOCK_MS = 90_000;
 const MAX_BYTES = 50 * 1024 * 1024;
@@ -55,7 +56,7 @@ export function syncRoutes(app: FastifyInstance, deps: Deps){
 
   // `via: 'api'`: opened by a script through the desktop app's local API, which the activity log says.
   r.post('/profiles/:id/lock', { schema: { params, body: z.object({ via: z.enum(['api']).optional() }).nullish(), response: { 200: z.object({ expiresAt: z.string(), data: SavedData.nullable() }) } } }, async req => {
-    const { p, s } = await profileFor(deps, req, req.params.id);
+    const { p, s } = await profileFor(deps, req, req.params.id, 'profiles.open');
     if (p.deletedAt) throw new ApiError(409, 'in_trash', 'Restore this profile from the trash before opening it');
     const now = clock.now(), expiresAt = new Date(now.getTime() + LOCK_MS);
     const holder = { sessionId: s.id, userId: s.userId, deviceName: s.deviceName, acquiredAt: now, expiresAt };
@@ -97,7 +98,7 @@ export function syncRoutes(app: FastifyInstance, deps: Deps){
   // Owners and admins can free a profile someone else has open; that computer closes it on its next renewal.
   r.post('/profiles/:id/lock/takeover', { schema: { params, response: { 204: z.null() } } }, async (req, reply) => {
     const { p, s } = await profileFor(deps, req, req.params.id);
-    await requireRole(db, p.workspaceId, s.userId, ['owner', 'admin']);
+    await requirePermission(db, p.workspaceId, s.userId, MANAGE);
     const gone = await db.delete(profileLocks).where(eq(profileLocks.profileId, p.id)).returning();
     if (gone.length){
       const [from] = await db.select({ email: users.email }).from(users).where(eq(users.id, gone[0].userId));
@@ -138,7 +139,7 @@ export function syncRoutes(app: FastifyInstance, deps: Deps){
   // being able to take the sign-ins away.
   r.get('/profiles/:id/cookies', { schema: { params, response: { 200: z.object({ cookies: z.array(Cookie), savedAt: z.string() }) } } }, async req => {
     const { p, s } = await profileFor(deps, req, req.params.id);
-    await requireRole(db, p.workspaceId, s.userId, ['owner', 'admin']);
+    await requirePermission(db, p.workspaceId, s.userId, 'cookies.export');
     if (p.syncMode === 'local') throw localOnly();
     const [d] = await db.select().from(profileData).where(eq(profileData.profileId, p.id));
     if (!d) throw notFound('Saved state');
@@ -152,7 +153,7 @@ export function syncRoutes(app: FastifyInstance, deps: Deps){
   r.post('/profiles/:id/cookies', {
     schema: { params, body: z.object({ cookies: z.array(Cookie).min(1).max(5000) }), response: { 200: SavedData } }
   }, async req => {
-    const { p, s } = await profileFor(deps, req, req.params.id);
+    const { p, s } = await profileFor(deps, req, req.params.id, 'cookies.import');
     if (p.syncMode === 'local') throw localOnly();
     const now = clock.now();
     if ((await db.select().from(profileLocks).where(and(eq(profileLocks.profileId, p.id), ne(profileLocks.sessionId, s.id), gt(profileLocks.expiresAt, now)))).length){

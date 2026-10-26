@@ -9,7 +9,8 @@ import { publish } from '../events.js';
 import { requireSession, type Deps } from '../http.js';
 import { open } from '../crypto.js';
 import { Extension, Fingerprint, Geo, Group, HealthReport, groupColor, Profile, ProxySecret, extensionView, kernel, os, profileView, searchEngine } from '../views.js';
-import { requireRole, type Role } from '../workspaces/service.js';
+import { requirePermission } from '../workspaces/service.js';
+import { MANAGE } from '../permissions.js';
 import { requireCompany } from '../team/service.js';
 import { access, assertOwned, checkAssignment, checkExtensions, checkFingerprint, createProfiles, loadProfiles, profileFor, reserve } from './service.js';
 
@@ -36,21 +37,21 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
   const r = app.withTypeProvider<ZodTypeProvider>();
   const { db, clock, storage } = deps;
 
-  // The session, the person's role and which profiles they see (see access()).
+  // The session, what the person may do and which profiles they see (see access()).
   async function member(req: Parameters<typeof requireSession>[0], workspaceId: string){
     const s = await requireSession(req, deps);
     return { s, ...(await access(db, workspaceId, s.userId)) };
   }
-  const MANAGERS: Role[] = ['owner', 'admin'];
   async function manager(req: Parameters<typeof requireSession>[0], workspaceId: string){
     const s = await requireSession(req, deps);
-    await requireRole(db, workspaceId, s.userId, MANAGERS);
+    await requirePermission(db, workspaceId, s.userId, MANAGE);
     return s;
   }
 
   // ---------- groups ----------
   r.get('/workspaces/:id/groups', { schema: { params: wsParams, response: { 200: z.object({ groups: z.array(Group) }) } } }, async req => {
-    const { scope } = await member(req, req.params.id);
+    const { a, scope } = await member(req, req.params.id);
+    if (!a.can('profiles.view')) throw forbidden();
     const rows = await db.select({ id: groups.id, name: groups.name, color: groups.color, profiles: sql<number>`count(${profiles.id}) filter (where ${profiles.deletedAt} is null)::int` })
       .from(groups).leftJoin(profiles, and(eq(profiles.groupId, groups.id), scope))
       .where(eq(groups.workspaceId, req.params.id)).groupBy(groups.id).orderBy(asc(groups.name));
@@ -102,8 +103,9 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
 
 
   r.post('/workspaces/:id/profiles', { schema: { params: wsParams, body: newProfile, response: { 201: Profile } } }, async (req, reply) => {
-    const { s, role } = await member(req, req.params.id);
-    const [p] = await createProfiles(deps, req.params.id, s, role, [req.body]);
+    const { s, a } = await member(req, req.params.id);
+    await requirePermission(db, req.params.id, s.userId, 'profiles.create');
+    const [p] = await createProfiles(deps, req.params.id, s, a, [req.body]);
     return reply.code(201).send(profileView(p));
   });
 
@@ -112,8 +114,9 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
     bodyLimit: BULK_BODY,
     schema: { params: wsParams, body: z.object({ profiles: z.array(newProfile).min(1).max(500) }), response: { 201: z.object({ profiles: z.array(Profile) }) } }
   }, async (req, reply) => {
-    const { s, role } = await member(req, req.params.id);
-    return reply.code(201).send({ profiles: (await createProfiles(deps, req.params.id, s, role, req.body.profiles)).map(p => profileView(p)) });
+    const { s, a } = await member(req, req.params.id);
+    await requirePermission(db, req.params.id, s.userId, 'profiles.create');
+    return reply.code(201).send({ profiles: (await createProfiles(deps, req.params.id, s, a, req.body.profiles)).map(p => profileView(p)) });
   });
 
   // Optimistic concurrency: the client sends the version it edited; a newer one on the server is a conflict.
@@ -131,10 +134,10 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
       response: { 200: Profile }
     }
   }, async req => {
-    const { p, s, role } = await profileFor(deps, req, req.params.id);
+    const { p, s, a } = await profileFor(deps, req, req.params.id, 'profiles.edit');
     const { version: v, ...patch } = req.body;
     checkFingerprint({ kernel: p.kernel, fingerprint: patch.fingerprint });
-    await checkAssignment(db, p.workspaceId, role, [patch]);
+    await checkAssignment(db, p.workspaceId, a, [patch]);
     await assertOwned(db, p.workspaceId, { groupIds: [patch.groupId], proxyIds: [patch.proxyId] });
     await checkExtensions(db, p.workspaceId, [{ kernel: p.kernel, extensionIds: patch.extensionIds }]);
     const [u] = await db.update(profiles).set({ ...patch, version: sql`${profiles.version} + 1`, updatedAt: clock.now() })
@@ -166,10 +169,13 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
       response: { 200: z.object({ updated: z.number() }) }
     }
   }, async req => {
-    const { s, role, scope } = await member(req, req.params.id);
+    const { s, a, scope } = await member(req, req.params.id);
     const { ids, action } = req.body;
-    // Members change their own profiles' group, tags, proxy, extensions, engine version and browser settings; the rest is for owners and admins.
-    if (role === 'member' && !['move', 'tag', 'untag', 'set-proxy', 'add-extension', 'remove-extension', 'set-kernel', 'set-browser'].includes(action)) throw forbidden();
+    // Changing a profile's group, tags, proxy, extensions, engine version and browser settings comes with editing
+    // it; the Trash is its own action, and assigning one to someone else goes with administering the workspace.
+    const needed = ['trash', 'restore', 'purge'].includes(action) ? 'profiles.delete' : 'profiles.edit';
+    if (!a.can('profiles.view') || !a.can(needed)) throw forbidden();
+    if (!a.can(MANAGE) && ['assign', 'set-department'].includes(action)) throw forbidden();
     const now = clock.now();
     const mine = and(eq(profiles.workspaceId, req.params.id), inArray(profiles.id, ids), scope);
     const bump = { version: sql`${profiles.version} + 1`, updatedAt: now };
@@ -301,7 +307,7 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
   r.get('/profiles/:id/launch', {
     schema: { params: wsParams, response: { 200: z.object({ profile: Profile, proxy: ProxySecret.nullable(), backup: ProxySecret.nullable(), extensions: z.array(Extension) }) } }
   }, async req => {
-    const { p, s } = await profileFor(deps, req, req.params.id);
+    const { p, s } = await profileFor(deps, req, req.params.id, 'profiles.open');
     if (p.deletedAt) throw new ApiError(409, 'in_trash', 'Restore this profile from the trash before opening it');
     const secret = (x: typeof proxies.$inferSelect | undefined) => x
       ? { id: x.id, type: x.type as 'http' | 'https' | 'socks5', host: x.host, port: x.port, username: x.username, password: x.passwordEnc ? open(x.passwordEnc) : null }

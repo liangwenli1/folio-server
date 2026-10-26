@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { memberships } from '../src/db/schema.js';
-import { buy, setup, signup } from './helpers.js';
+
+import { buy, join, setup, signup } from './helpers.js';
 
 let t: Awaited<ReturnType<typeof setup>>;
 beforeAll(async () => { t = await setup(); });
@@ -21,9 +21,9 @@ const STEPS = [
 async function team(){
   const o = await signup(t.app);
   await buy(t.app, o.headers, o.workspaceId, { plan: 'studio', period: 'monthly', addonPacks: 0 });
-  const add = async (role: string) => {
+  const add = async (role: 'admin' | 'member' | 'viewer') => {
     const u = await signup(t.app);
-    await t.db.insert(memberships).values({ workspaceId: o.workspaceId, userId: u.userId, role });
+    await join(t.db, o.workspaceId, u.userId, role);
     return u;
   };
   return { o, admin: await add('admin'), m1: await add('member'), m2: await add('member'), ws: o.workspaceId };

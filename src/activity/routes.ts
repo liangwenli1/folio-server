@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { requireSession, type Deps } from '../http.js';
 import { access } from '../profiles/service.js';
 import { requireCompany } from '../team/service.js';
-import { requireRole } from '../workspaces/service.js';
+import { requirePermission } from '../workspaces/service.js';
 import { ACTIONS, KINDS, csvField, readLog } from './service.js';
 
 const params = z.object({ id: z.uuid() });
@@ -37,7 +37,7 @@ export function activityRoutes(app: FastifyInstance, deps: Deps){
   // Company: the whole retained log as CSV, for owners and admins.
   r.get('/workspaces/:id/activity.csv', { schema: { params, querystring: z.object(filters) } }, async (req, reply) => {
     const s = await requireSession(req, deps);
-    await requireRole(db, req.params.id, s.userId, ['owner', 'admin']);
+    await requirePermission(db, req.params.id, s.userId, 'activity.view');
     await requireCompany(db, req.params.id);
     const { entries } = await readLog(db, req.params.id, clock.now(), { ...req.query, userId: s.userId, limit: 100_000 });
     const lines = [['time', 'person', 'computer', 'action', 'profile number', 'profile', 'details'].join(',')]

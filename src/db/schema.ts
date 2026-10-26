@@ -47,12 +47,23 @@ export const workspaces = pgTable('workspaces', {
   createdAt: createdAt()
 });
 
+// A set of actions (see permissions.ts). Every workspace gets the four built-in roles, which carry a `key`; roles a
+// workspace makes for itself have none. The owner's role always holds every permission and cannot be changed.
+export const roles = pgTable('roles', {
+  id: uuid().primaryKey().defaultRandom(),
+  workspaceId: uuid().notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  key: text(),
+  name: text().notNull(),
+  permissions: text().array().notNull().default([]),
+  createdAt: createdAt()
+}, t => [index().on(t.workspaceId), uniqueIndex().on(t.workspaceId, t.name)]);
+
 export const memberships = pgTable('memberships', {
   workspaceId: uuid().notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   userId: uuid().notNull().references(() => users.id, { onDelete: 'cascade' }),
-  role: text().notNull(),
+  roleId: uuid().notNull().references(() => roles.id, { onDelete: 'restrict' }),
   createdAt: createdAt()
-}, t => [primaryKey({ columns: [t.workspaceId, t.userId] }), index().on(t.userId)]);
+}, t => [primaryKey({ columns: [t.workspaceId, t.userId] }), index().on(t.userId), index().on(t.roleId)]);
 
 // The subscription belongs to the workspace. Every change goes through billing/service.ts.
 export const subscriptions = pgTable('subscriptions', {
@@ -226,7 +237,7 @@ export const invitations = pgTable('invitations', {
   id: uuid().primaryKey().defaultRandom(),
   workspaceId: uuid().notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
   email: text().notNull(),
-  role: text().notNull(),
+  roleId: uuid().notNull().references(() => roles.id, { onDelete: 'cascade' }),
   departmentIds: uuid().array().notNull().default([]),
   tokenHash: text().notNull().unique(),
   invitedBy: uuid().references(() => users.id, { onDelete: 'set null' }),

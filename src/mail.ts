@@ -43,11 +43,9 @@ export function codeMail(locale: Locale, purpose: 'verify' | 'reset', code: stri
     : { subject: `${code} is your Folio password reset code`, ...layout(locale, 'Reset your password', 'Enter this code on the Folio page, then choose a new password. It expires in 15 minutes.', { code }, 'If you didn’t ask for this, ignore this email; your password stays the same.') };
 }
 
-export function inviteMail(locale: Locale, a: { workspace: string; inviter: string; role: 'admin' | 'member'; url: string }): Mail {
+export function inviteMail(locale: Locale, a: { workspace: string; inviter: string; role: string; url: string }): Mail {
   if (locale === 'zh'){
-    const role = a.role === 'admin' ? '管理员' : '成员';
-    return { subject: `${a.inviter} 邀请您加入 ${a.workspace}（Folio）`, ...layout(locale, `加入 ${a.workspace}`, `${a.inviter} 邀请您以${role}身份加入 Folio 团队「${a.workspace}」。`, { label: '接受邀请', url: a.url }, '邀请 7 天内有效。如不认识邀请人，请忽略此邮件。') };
+    return { subject: `${a.inviter} 邀请您加入 ${a.workspace}（Folio）`, ...layout(locale, `加入 ${a.workspace}`, `${a.inviter} 邀请您以${a.role}身份加入 Folio 团队「${a.workspace}」。`, { label: '接受邀请', url: a.url }, '邀请 7 天内有效。如不认识邀请人，请忽略此邮件。') };
   }
-  const role = a.role === 'admin' ? 'an admin' : 'a member';
-  return { subject: `${a.inviter} invited you to ${a.workspace} on Folio`, ...layout(locale, `Join ${a.workspace}`, `${a.inviter} invited you to join the ${a.workspace} workspace on Folio as ${role}.`, { label: 'Accept the invitation', url: a.url }, 'The invitation expires in 7 days. If you weren’t expecting it, ignore this email.') };
+  return { subject: `${a.inviter} invited you to ${a.workspace} on Folio`, ...layout(locale, `Join ${a.workspace}`, `${a.inviter} invited you to join the ${a.workspace} workspace on Folio as ${a.role}.`, { label: 'Accept the invitation', url: a.url }, 'The invitation expires in 7 days. If you weren’t expecting it, ignore this email.') };
 }

@@ -1,9 +1,10 @@
 import postgres from 'postgres';
-import { sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app.js';
 import { config } from '../src/config.js';
-import { createDb } from '../src/db/client.js';
+import { createDb, type Db } from '../src/db/client.js';
+import { memberships, roles } from '../src/db/schema.js';
 import { runMigrations } from '../src/db/migrate.js';
 import { createMailer } from '../src/mail.js';
 import { createStorage } from '../src/storage.js';
@@ -75,6 +76,13 @@ export async function buy(app: FastifyInstance, headers: Record<string, string>,
   const { checkoutId } = co.json();
   if (!checkoutId) return co;
   return app.inject({ method: 'POST', url: `/billing/checkouts/${checkoutId}/pay`, headers, payload: { card } });
+}
+
+// Puts someone into a workspace with one of its four built-in roles, the way accepting an invitation would.
+export async function join(db: Db, workspaceId: string, userId: string, key: 'admin' | 'member' | 'viewer'){
+  const [r] = await db.select().from(roles).where(and(eq(roles.workspaceId, workspaceId), eq(roles.key, key)));
+  await db.insert(memberships).values({ workspaceId, userId, roleId: r.id });
+  return r;
 }
 
 export const chromiumProfile = (name: string, extra: object = {}) => ({

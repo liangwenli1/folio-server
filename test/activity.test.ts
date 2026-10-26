@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { activityLog, memberships } from '../src/db/schema.js';
+import { activityLog } from '../src/db/schema.js';
 import { forgetOld } from '../src/activity/service.js';
-import { PASSWORD, buy, chromiumProfile, setup, signup } from './helpers.js';
+import { PASSWORD, buy, chromiumProfile, join, setup, signup } from './helpers.js';
 
 let t: Awaited<ReturnType<typeof setup>>;
 beforeAll(async () => { t = await setup(); });
@@ -61,7 +61,7 @@ describe('the activity log', () => {
     const o = await signup(t.app);
     await buy(t.app, o.headers, o.workspaceId, { plan: 'studio', period: 'monthly', addonPacks: 0 });
     const m = await signup(t.app);
-    await t.db.insert(memberships).values({ workspaceId: o.workspaceId, userId: m.userId, role: 'member' });
+    await join(t.db, o.workspaceId, m.userId, 'member');
     await call('POST', `/workspaces/${o.workspaceId}/profiles`, o.headers, chromiumProfile('Owner-1'));
     await call('POST', `/workspaces/${o.workspaceId}/profiles`, o.headers, chromiumProfile('For-M', { ownerId: m.userId }));
     await call('POST', `/workspaces/${o.workspaceId}/profiles`, m.headers, chromiumProfile('M-1'));
@@ -99,14 +99,15 @@ describe('the activity log', () => {
     const o = await signup(t.app);
     await buy(t.app, o.headers, o.workspaceId, { plan: 'studio', period: 'monthly', addonPacks: 0 });
     const m = await signup(t.app);
-    const inv = (await call('POST', `/workspaces/${o.workspaceId}/invitations`, o.headers, { email: m.email, role: 'member' })).json();
+    const roleId = async (key: string) => ((await call('GET', `/workspaces/${o.workspaceId}/roles`, o.headers)).json().roles as { id: string; key: string }[]).find(r => r.key === key)!.id;
+    const inv = (await call('POST', `/workspaces/${o.workspaceId}/invitations`, o.headers, { email: m.email, roleId: await roleId('member') })).json();
     await call('POST', `/invitations/${inv.invitation.id}/accept`, m.headers);
-    await call('PATCH', `/workspaces/${o.workspaceId}/members/${m.userId}`, o.headers, { role: 'admin' });
+    await call('PATCH', `/workspaces/${o.workspaceId}/members/${m.userId}`, o.headers, { roleId: await roleId('admin') });
     await call('DELETE', `/workspaces/${o.workspaceId}/members/${m.userId}?transferTo=${o.userId}`, o.headers);
     const { entries } = await log(o.headers, o.workspaceId, '?kind=team');
     expect(entries.map(e => [e.action, e.actor, e.detail])).toEqual([
-      ['member.remove', o.email, { email: m.email, to: o.email }], ['member.role', o.email, { email: m.email, role: 'admin' }],
-      ['member.join', m.email, { email: m.email, role: 'member' }], ['member.invite', o.email, { email: m.email, role: 'member' }]
+      ['member.remove', o.email, { email: m.email, to: o.email }], ['member.role', o.email, { email: m.email, role: 'Admin' }],
+      ['member.join', m.email, { email: m.email, role: 'Member' }], ['member.invite', o.email, { email: m.email, role: 'Member' }]
     ]);
   });
 

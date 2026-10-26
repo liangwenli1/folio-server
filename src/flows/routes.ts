@@ -10,7 +10,8 @@ import { publish } from '../events.js';
 import { record } from '../activity/service.js';
 import { requireSession, type Deps } from '../http.js';
 import { Flow, flowView } from '../views.js';
-import { requireRole, type Role } from '../workspaces/service.js';
+import { membership, type Access } from '../workspaces/service.js';
+import { MANAGE } from '../permissions.js';
 import { Steps, checkSteps } from './steps.js';
 
 const params = z.object({ id: z.uuid() });
@@ -19,27 +20,28 @@ const name = z.string().trim().min(1).max(80);
 export function flowRoutes(app: FastifyInstance, deps: Deps){
   const r = app.withTypeProvider<ZodTypeProvider>();
   const { db, clock } = deps;
-  const canEdit = (f: typeof flows.$inferSelect, role: Role, userId: string) => role !== 'member' || f.createdBy === userId;
+  // Whoever wrote a flow may change it; so may anyone who administers the workspace.
+  const canEdit = (f: typeof flows.$inferSelect, a: Access, userId: string) => a.can(MANAGE) || f.createdBy === userId;
 
   async function flowFor(req: Parameters<typeof requireSession>[0], id: string, edit = false){
     const [f] = await db.select().from(flows).where(eq(flows.id, id));
     if (!f) throw notFound('Flow');
     const s = await requireSession(req, deps);
-    const role = await requireRole(db, f.workspaceId, s.userId);
-    if (edit && !canEdit(f, role, s.userId)) throw forbidden();
-    return { f, s, role };
+    const a = await membership(db, f.workspaceId, s.userId);
+    if (edit && !canEdit(f, a, s.userId)) throw forbidden();
+    return { f, s, a };
   }
 
   r.get('/workspaces/:id/flows', { schema: { params, response: { 200: z.object({ flows: z.array(Flow) }) } } }, async req => {
     const s = await requireSession(req, deps);
-    const role = await requireRole(db, req.params.id, s.userId);
+    const a = await membership(db, req.params.id, s.userId);
     const rows = await db.select().from(flows).where(eq(flows.workspaceId, req.params.id)).orderBy(asc(flows.name), asc(flows.createdAt));
-    return { flows: rows.map(f => flowView(f, canEdit(f, role, s.userId))) };
+    return { flows: rows.map(f => flowView(f, canEdit(f, a, s.userId))) };
   });
 
   r.post('/workspaces/:id/flows', { schema: { params, body: z.object({ name, steps: Steps }), response: { 201: Flow } } }, async (req, reply) => {
     const s = await requireSession(req, deps);
-    await requireRole(db, req.params.id, s.userId);
+    await membership(db, req.params.id, s.userId);
     checkSteps(req.body.steps);
     const now = clock.now();
     const [f] = await db.insert(flows).values({ workspaceId: req.params.id, ...req.body, createdBy: s.userId, createdAt: now, updatedAt: now }).returning();

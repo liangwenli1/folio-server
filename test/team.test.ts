@@ -9,13 +9,16 @@ type H = Record<string, string>;
 const call = (method: 'GET' | 'POST' | 'PATCH' | 'DELETE', url: string, headers: H, payload?: object) => t.app.inject({ method, url, headers, payload });
 const code = async (p: ReturnType<typeof call>) => (await p).json().error?.code;
 const ids = (list: { id: string }[]) => list.map(x => x.id);
+// The id of one of a workspace's built-in roles, which invitations and role changes are given by id.
+const roleId = async (headers: H, ws: string, key: 'admin' | 'member' | 'viewer') =>
+  ((await call('GET', `/workspaces/${ws}/roles`, headers)).json().roles as { id: string; key: string }[]).find(r => r.key === key)!.id;
 
 // An owner on a paid plan, and someone they invited who accepted.
 async function team(plan: 'studio' | 'company' = 'studio', role: 'admin' | 'member' = 'member'){
   const owner = await signup(t.app);
   await buy(t.app, owner.headers, owner.workspaceId, { plan, period: 'monthly', addonPacks: 0 });
   const other = await signup(t.app);
-  const inv = (await call('POST', `/workspaces/${owner.workspaceId}/invitations`, owner.headers, { email: other.email, role })).json();
+  const inv = (await call('POST', `/workspaces/${owner.workspaceId}/invitations`, owner.headers, { email: other.email, roleId: await roleId(owner.headers, owner.workspaceId, role) })).json();
   expect((await call('POST', `/invitations/${inv.invitation.id}/accept`, other.headers)).statusCode).toBe(200);
   return { owner, other, ws: owner.workspaceId };
 }
@@ -25,7 +28,7 @@ const visible = async (headers: H, ws: string) => (await call('GET', `/workspace
 describe('invitations', () => {
   it('need a seat on the plan', async () => {
     const owner = await signup(t.app);
-    expect(await code(call('POST', `/workspaces/${owner.workspaceId}/invitations`, owner.headers, { email: 'x@example.com', role: 'member' }))).toBe('seat_limit');
+    expect(await code(call('POST', `/workspaces/${owner.workspaceId}/invitations`, owner.headers, { email: 'x@example.com', roleId: await roleId(owner.headers, owner.workspaceId, 'member') }))).toBe('seat_limit');
   });
 
   it('are emailed with a link, previewed from it, and accepted by the invited address only', async () => {
@@ -33,24 +36,25 @@ describe('invitations', () => {
     await buy(t.app, owner.headers, owner.workspaceId, { plan: 'studio', period: 'monthly', addonPacks: 0 });
     const invitee = await signup(t.app, { verify: false });
     const stranger = await signup(t.app);
-    const first = (await call('POST', `/workspaces/${owner.workspaceId}/invitations`, owner.headers, { email: invitee.email.toUpperCase(), role: 'admin' })).json();
-    const sent = (await call('POST', `/workspaces/${owner.workspaceId}/invitations`, owner.headers, { email: invitee.email, role: 'member' })).json();
-    expect(sent).toMatchObject({ emailed: true, invitation: { email: invitee.email, role: 'member', invitedBy: owner.email } });
+    const asMember = await roleId(owner.headers, owner.workspaceId, 'member');
+    const first = (await call('POST', `/workspaces/${owner.workspaceId}/invitations`, owner.headers, { email: invitee.email.toUpperCase(), roleId: await roleId(owner.headers, owner.workspaceId, 'admin') })).json();
+    const sent = (await call('POST', `/workspaces/${owner.workspaceId}/invitations`, owner.headers, { email: invitee.email, roleId: asMember })).json();
+    expect(sent).toMatchObject({ emailed: true, invitation: { email: invitee.email, role: { key: 'member' }, invitedBy: owner.email } });
     expect(ids((await call('GET', `/workspaces/${owner.workspaceId}/invitations`, owner.headers)).json().invitations)).toEqual([sent.invitation.id]);
 
     const mail = await lastMail(invitee.email);
     expect(mail.Subject).toContain(owner.email);
     const token = new URL(sent.link).searchParams.get('token')!;
     expect(mail.Text).toContain(sent.link);
-    expect((await call('GET', `/invitations/by-token/${token}`, {})).json()).toMatchObject({ id: sent.invitation.id, inviter: owner.email, role: 'member', expired: false, expiresAt: sent.invitation.expiresAt });
+    expect((await call('GET', `/invitations/by-token/${token}`, {})).json()).toMatchObject({ id: sent.invitation.id, inviter: owner.email, role: { key: 'member' }, expired: false, expiresAt: sent.invitation.expiresAt });
     expect((await call('GET', `/invitations/by-token/${new URL(first.link).searchParams.get('token')}`, {})).statusCode).toBe(404);
 
     // A link to copy: a new invitation that isn't emailed; the one before stops working.
-    const copied = (await call('POST', `/workspaces/${owner.workspaceId}/invitations`, owner.headers, { email: invitee.email, role: 'member', notify: false })).json();
+    const copied = (await call('POST', `/workspaces/${owner.workspaceId}/invitations`, owner.headers, { email: invitee.email, roleId: asMember, notify: false })).json();
     expect(copied.emailed).toBe(false);
     expect((await lastMail(invitee.email)).Text).toContain(sent.link);
     expect((await call('GET', `/invitations/by-token/${token}`, {})).statusCode).toBe(404);
-    const again = (await call('POST', `/workspaces/${owner.workspaceId}/invitations`, owner.headers, { email: invitee.email, role: 'member' })).json();
+    const again = (await call('POST', `/workspaces/${owner.workspaceId}/invitations`, owner.headers, { email: invitee.email, roleId: asMember })).json();
     Object.assign(sent, again);
 
     expect(ids((await call('GET', '/me/invitations', invitee.headers)).json().invitations)).toEqual([sent.invitation.id]);
@@ -60,9 +64,9 @@ describe('invitations', () => {
 
   it('can be accepted once verified, and then the workspace is theirs to see', async () => {
     const { owner, other, ws } = await team();
-    expect((await call('GET', '/me', other.headers)).json().workspaces.map((w: { id: string; role: string }) => [w.id === ws, w.role])).toContainEqual([true, 'member']);
+    expect((await call('GET', '/me', other.headers)).json().workspaces.map((w: { id: string; role: { key: string } }) => [w.id === ws, w.role.key])).toContainEqual([true, 'member']);
     const members = (await call('GET', `/workspaces/${ws}/members`, owner.headers)).json().members;
-    expect(members.map((m: { email: string; role: string }) => [m.email, m.role])).toEqual([[owner.email, 'owner'], [other.email, 'member']]);
+    expect(members.map((m: { email: string; role: { key: string } }) => [m.email, m.role.key])).toEqual([[owner.email, 'owner'], [other.email, 'member']]);
     expect((await call('GET', `/workspaces/${ws}/invitations`, owner.headers)).json().invitations).toEqual([]);
   });
 
@@ -70,7 +74,8 @@ describe('invitations', () => {
     const owner = await signup(t.app);
     await buy(t.app, owner.headers, owner.workspaceId, { plan: 'studio', period: 'monthly', addonPacks: 0 });
     const a = await signup(t.app), b = await signup(t.app), c = await signup(t.app);
-    const invite = async (email: string) => (await call('POST', `/workspaces/${owner.workspaceId}/invitations`, owner.headers, { email, role: 'member' })).json();
+    const asMember = await roleId(owner.headers, owner.workspaceId, 'member');
+    const invite = async (email: string) => (await call('POST', `/workspaces/${owner.workspaceId}/invitations`, owner.headers, { email, roleId: asMember })).json();
     const ia = await invite(a.email), ib = await invite(b.email), ic = await invite(c.email);
     expect((await call('POST', `/invitations/${ib.invitation.id}/decline`, b.headers)).statusCode).toBe(204);
     expect((await call('DELETE', `/invitations/${ic.invitation.id}`, owner.headers)).statusCode).toBe(204);
@@ -84,8 +89,9 @@ describe('invitations', () => {
 
   it('are for owners and admins, and not for people already in the workspace', async () => {
     const { owner, other, ws } = await team();
-    expect(await code(call('POST', `/workspaces/${ws}/invitations`, other.headers, { email: 'x@example.com', role: 'member' }))).toBe('forbidden');
-    expect(await code(call('POST', `/workspaces/${ws}/invitations`, owner.headers, { email: other.email, role: 'member' }))).toBe('already_member');
+    const asMember = await roleId(owner.headers, ws, 'member');
+    expect(await code(call('POST', `/workspaces/${ws}/invitations`, other.headers, { email: 'x@example.com', roleId: asMember }))).toBe('forbidden');
+    expect(await code(call('POST', `/workspaces/${ws}/invitations`, owner.headers, { email: other.email, roleId: asMember }))).toBe('already_member');
   });
 });
 
@@ -132,9 +138,9 @@ describe('members', () => {
   it('who become admins see everything; the owner cannot be changed', async () => {
     const { owner, other, ws } = await team();
     await profile(owner.headers, ws, 'Owner-1');
-    expect((await call('PATCH', `/workspaces/${ws}/members/${other.userId}`, owner.headers, { role: 'admin' })).statusCode).toBe(204);
+    expect((await call('PATCH', `/workspaces/${ws}/members/${other.userId}`, owner.headers, { roleId: await roleId(owner.headers, ws, 'admin') })).statusCode).toBe(204);
     expect((await visible(other.headers, ws)).map(p => p.name)).toEqual(['Owner-1']);
-    expect(await code(call('PATCH', `/workspaces/${ws}/members/${owner.userId}`, other.headers, { role: 'member' }))).toBe('owner');
+    expect(await code(call('PATCH', `/workspaces/${ws}/members/${owner.userId}`, other.headers, { roleId: await roleId(other.headers, ws, 'member') }))).toBe('owner');
     expect(await code(call('DELETE', `/workspaces/${ws}/members/${owner.userId}?transferTo=${other.userId}`, other.headers))).toBe('owner');
   });
 
@@ -158,6 +164,70 @@ describe('members', () => {
     expect((await call('POST', `/workspaces/${ws}/leave`, other.headers)).statusCode).toBe(204);
     expect((await visible(owner.headers, ws)).find(x => x.id === p.id)!.ownerId).toBe(owner.userId);
     expect(await code(call('POST', `/workspaces/${ws}/leave`, owner.headers))).toBe('owner');
+  });
+});
+
+describe('roles', () => {
+  it('come four to a workspace, and say how many people hold them', async () => {
+    const { owner, ws } = await team();
+    const list = (await call('GET', `/workspaces/${ws}/roles`, owner.headers)).json().roles as { key: string; name: string; permissions: string[]; members: number }[];
+    expect(list.map(r => [r.key, r.members])).toEqual([['owner', 1], ['admin', 0], ['member', 1], ['viewer', 0]]);
+    expect(list.find(r => r.key === 'owner')!.permissions).toContain('team.manage');
+    expect(list.find(r => r.key === 'viewer')!.permissions).toEqual(['profiles.view', 'proxies.view']);
+  });
+
+  it('decide what someone may do: taking an action away stops it, giving it back allows it', async () => {
+    const { owner, other, ws } = await team();
+    const member = await roleId(owner.headers, ws, 'member');
+    const p = await profile(other.headers, ws, 'Member-1');
+
+    expect((await call('PATCH', `/roles/${member}`, owner.headers, { permissions: ['profiles.view', 'proxies.view'] })).statusCode).toBe(200);
+    expect(await code(call('POST', `/workspaces/${ws}/profiles`, other.headers, chromiumProfile('Another')))).toBe('forbidden');
+    expect(await code(call('PATCH', `/profiles/${p.id}`, other.headers, { version: p.version, name: 'Renamed' }))).toBe('forbidden');
+    // Reading still works: the list is still theirs to see.
+    expect((await visible(other.headers, ws)).map(x => x.name)).toEqual(['Member-1']);
+
+    await call('PATCH', `/roles/${member}`, owner.headers, { permissions: ['profiles.view', 'profiles.create', 'profiles.edit'] });
+    expect((await call('POST', `/workspaces/${ws}/profiles`, other.headers, chromiumProfile('Another'))).statusCode).toBe(201);
+    // Without proxies.view the library is out of reach, even though profiles are not.
+    expect(await code(call('GET', `/workspaces/${ws}/proxies`, other.headers))).toBe('forbidden');
+    // Opening and the Trash are each their own action.
+    expect(await code(call('GET', `/profiles/${p.id}/launch`, other.headers))).toBe('forbidden');
+    expect(await code(call('POST', `/workspaces/${ws}/profiles/batch`, other.headers, { ids: [p.id], action: 'trash' }))).toBe('forbidden');
+    await call('PATCH', `/roles/${member}`, owner.headers, { permissions: ['profiles.view', 'profiles.open', 'profiles.delete'] });
+    expect((await call('GET', `/profiles/${p.id}/launch`, other.headers)).statusCode).toBe(200);
+    expect((await call('POST', `/workspaces/${ws}/profiles/batch`, other.headers, { ids: [p.id], action: 'trash' })).json().updated).toBe(1);
+  });
+
+  it('can be made, given out and removed; the built-in four stay and the owner’s never changes', async () => {
+    const { owner, other, ws } = await team();
+    const made = (await call('POST', `/workspaces/${ws}/roles`, owner.headers, { name: 'Operator', permissions: ['profiles.view', 'profiles.open'] })).json();
+    expect(made).toMatchObject({ key: null, name: 'Operator', members: 0 });
+    expect(await code(call('POST', `/workspaces/${ws}/roles`, owner.headers, { name: 'Operator', permissions: [] }))).toBe('role_exists');
+
+    expect((await call('PATCH', `/workspaces/${ws}/members/${other.userId}`, owner.headers, { roleId: made.id })).statusCode).toBe(204);
+    expect(await code(call('DELETE', `/roles/${made.id}`, owner.headers))).toBe('role_in_use');
+    expect(await code(call('POST', `/workspaces/${ws}/profiles`, other.headers, chromiumProfile('Nope')))).toBe('forbidden');
+
+    const owners = await roleId(owner.headers, ws, 'admin');
+    expect(await code(call('DELETE', `/roles/${owners}`, owner.headers))).toBe('built_in_role');
+    expect(await code(call('PATCH', `/roles/${owners}`, owner.headers, { name: 'Boss' }))).toBe('built_in_role');
+    const theOwner = ((await call('GET', `/workspaces/${ws}/roles`, owner.headers)).json().roles as { id: string; key: string }[]).find(r => r.key === 'owner')!.id;
+    expect(await code(call('PATCH', `/roles/${theOwner}`, owner.headers, { permissions: [] }))).toBe('owner');
+    expect(await code(call('PATCH', `/workspaces/${ws}/members/${other.userId}`, owner.headers, { roleId: theOwner }))).toBe('owner');
+
+    await call('PATCH', `/workspaces/${ws}/members/${other.userId}`, owner.headers, { roleId: await roleId(owner.headers, ws, 'member') });
+    expect((await call('DELETE', `/roles/${made.id}`, owner.headers)).statusCode).toBe(204);
+  });
+
+  it('are the workspace’s own: one workspace’s role cannot be given in another', async () => {
+    const { owner, other, ws } = await team();
+    const elsewhere = await signup(t.app);
+    const theirs = await roleId(elsewhere.headers, elsewhere.workspaceId, 'admin');
+    expect(await code(call('PATCH', `/workspaces/${ws}/members/${other.userId}`, owner.headers, { roleId: theirs }))).toBe('bad_reference');
+    expect(await code(call('POST', `/workspaces/${ws}/invitations`, owner.headers, { email: 'x@example.com', roleId: theirs }))).toBe('bad_reference');
+    // Not even that it exists: the asker is not in that workspace.
+    expect(await code(call('PATCH', `/roles/${theirs}`, owner.headers, { permissions: [] }))).toBe('not_found');
   });
 });
 
@@ -188,7 +258,7 @@ describe('departments', () => {
     const sales = (await call('POST', `/workspaces/${ws}/departments`, owner.headers, { name: 'Sales' })).json();
     await profile(owner.headers, ws, 'Sales-1', { departmentId: sales.id });
     const joiner = await signup(t.app);
-    const inv = (await call('POST', `/workspaces/${ws}/invitations`, owner.headers, { email: joiner.email, role: 'member', departmentIds: [sales.id] })).json();
+    const inv = (await call('POST', `/workspaces/${ws}/invitations`, owner.headers, { email: joiner.email, roleId: await roleId(owner.headers, ws, 'member'), departmentIds: [sales.id] })).json();
     await call('POST', `/invitations/${inv.invitation.id}/accept`, joiner.headers);
     expect((await visible(joiner.headers, ws)).map(p => p.name)).toEqual(['Sales-1']);
   });

@@ -9,9 +9,9 @@ import { record } from '../activity/service.js';
 import { publish } from '../events.js';
 import { requireCompany } from '../team/service.js';
 import type { z } from 'zod';
-import type { Role } from '../workspaces/service.js';
-import { requireRole } from '../workspaces/service.js';
+import { membership, type Access } from '../workspaces/service.js';
 import { entitlements } from '../plans.js';
+import { MANAGE, type Permission } from '../permissions.js';
 import { readSub, toState } from '../billing/service.js';
 
 export async function activeCount(db: Db | Tx, workspaceId: string){
@@ -57,25 +57,28 @@ export async function assertOwned(db: Db | Tx, workspaceId: string, refs: { grou
   }
 }
 
-// Which of a workspace's profiles a person may see and use: all of them for owners and admins; for members,
-// the ones assigned to them and, on Company, their departments' (`scope` narrows queries on profiles).
+// Which of a workspace's profiles a person may see and use: all of them for whoever administers the workspace;
+// for everyone else, the ones assigned to them and, on Company, their departments' (`scope` narrows queries on
+// profiles).
 export async function access(db: Db, workspaceId: string, userId: string){
-  const role = await requireRole(db, workspaceId, userId);
-  if (role !== 'member') return { role, scope: undefined };
+  const a = await membership(db, workspaceId, userId);
+  if (a.can(MANAGE)) return { a, scope: undefined };
   const mine = (await db.select({ id: departmentMembers.departmentId }).from(departmentMembers)
     .innerJoin(departments, eq(departments.id, departmentMembers.departmentId))
     .where(and(eq(departmentMembers.userId, userId), eq(departments.workspaceId, workspaceId)))).map(d => d.id);
-  return { role, scope: mine.length ? or(eq(profiles.ownerId, userId), inArray(profiles.departmentId, mine)) : eq(profiles.ownerId, userId) };
+  return { a, scope: mine.length ? or(eq(profiles.ownerId, userId), inArray(profiles.departmentId, mine)) : eq(profiles.ownerId, userId) };
 }
 
-// A profile by id, for someone who may see it; anyone else gets 404.
-export async function profileFor(deps: Deps, req: FastifyRequest, id: string){
+// A profile by id, for someone who may see it and do `perms` to it; anyone else gets 404 (or 403 when they can
+// see it but not do this).
+export async function profileFor(deps: Deps, req: FastifyRequest, id: string, ...perms: Permission[]){
   const [p] = await deps.db.select().from(profiles).where(eq(profiles.id, id));
   if (!p) throw notFound('Profile');
   const s = await requireSession(req, deps);
-  const { role, scope } = await access(deps.db, p.workspaceId, s.userId);
+  const { a, scope } = await access(deps.db, p.workspaceId, s.userId);
+  if (!a.can('profiles.view') || !perms.every(x => a.can(x))) throw forbidden();
   if (scope && !(await deps.db.select({ id: profiles.id }).from(profiles).where(and(eq(profiles.id, id), scope))).length) throw notFound('Profile');
-  return { p, s, role };
+  return { p, s, a };
 }
 
 // Profiles with their saved state, who has them open and whether the asker starred them, as the asking session sees them.
@@ -107,9 +110,9 @@ export async function checkExtensions(db: Db | Tx, workspaceId: string, items: {
   }
 }
 
-// Assigning people and departments is for owners and admins; departments need the Company plan.
-export async function checkAssignment(db: Db, workspaceId: string, role: Role, items: { ownerId?: string | null; departmentId?: string | null }[]){
-  if (role === 'member' && items.some(i => i.ownerId !== undefined || i.departmentId !== undefined)) throw forbidden();
+// Assigning people and departments goes with administering the workspace; departments need the Company plan.
+export async function checkAssignment(db: Db, workspaceId: string, a: Access, items: { ownerId?: string | null; departmentId?: string | null }[]){
+  if (!a.can(MANAGE) && items.some(i => i.ownerId !== undefined || i.departmentId !== undefined)) throw forbidden();
   if (items.some(i => i.departmentId)) await requireCompany(db, workspaceId);
   await assertOwned(db, workspaceId, { ownerIds: items.map(i => i.ownerId), departmentIds: items.map(i => i.departmentId) });
 }
@@ -122,10 +125,10 @@ export interface NewProfile {
 }
 
 // Creates profiles within the plan's limit, numbered in order, assigned to whoever creates them unless said otherwise.
-export async function createProfiles(deps: Deps, workspaceId: string, s: { userId: string; deviceName: string | null }, role: Role, items: NewProfile[]){
+export async function createProfiles(deps: Deps, workspaceId: string, s: { userId: string; deviceName: string | null }, a: Access, items: NewProfile[]){
   const { db, clock } = deps;
   items.forEach(checkFingerprint);
-  await checkAssignment(db, workspaceId, role, items);
+  await checkAssignment(db, workspaceId, a, items);
   await assertOwned(db, workspaceId, { groupIds: items.map(i => i.groupId), proxyIds: items.map(i => i.proxyId) });
   await checkExtensions(db, workspaceId, items);
   const now = clock.now();

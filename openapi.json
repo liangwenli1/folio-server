@@ -1506,12 +1506,53 @@
                             "type": "string"
                           },
                           "role": {
-                            "type": "string",
-                            "enum": [
-                              "owner",
-                              "admin",
-                              "member"
-                            ]
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "key": {
+                                "nullable": true,
+                                "type": "string",
+                                "enum": [
+                                  "owner",
+                                  "admin",
+                                  "member",
+                                  "viewer"
+                                ]
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "permissions": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "profiles.view",
+                                    "profiles.create",
+                                    "profiles.edit",
+                                    "profiles.open",
+                                    "profiles.delete",
+                                    "cookies.import",
+                                    "cookies.export",
+                                    "profiles.export",
+                                    "proxies.view",
+                                    "proxies.bind",
+                                    "proxies.edit",
+                                    "team.manage",
+                                    "activity.view"
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "key",
+                              "name",
+                              "permissions"
+                            ],
+                            "additionalProperties": false
                           },
                           "plan": {
                             "type": "string",
@@ -1655,12 +1696,53 @@
                       "type": "string"
                     },
                     "role": {
-                      "type": "string",
-                      "enum": [
-                        "owner",
-                        "admin",
-                        "member"
-                      ]
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "key": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "owner",
+                            "admin",
+                            "member",
+                            "viewer"
+                          ]
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "permissions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "profiles.view",
+                              "profiles.create",
+                              "profiles.edit",
+                              "profiles.open",
+                              "profiles.delete",
+                              "cookies.import",
+                              "cookies.export",
+                              "profiles.export",
+                              "proxies.view",
+                              "proxies.bind",
+                              "proxies.edit",
+                              "team.manage",
+                              "activity.view"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "key",
+                        "name",
+                        "permissions"
+                      ],
+                      "additionalProperties": false
                     },
                     "subscription": {
                       "type": "object",
@@ -1891,12 +1973,53 @@
                       "type": "string"
                     },
                     "role": {
-                      "type": "string",
-                      "enum": [
-                        "owner",
-                        "admin",
-                        "member"
-                      ]
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "key": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "owner",
+                            "admin",
+                            "member",
+                            "viewer"
+                          ]
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "permissions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "profiles.view",
+                              "profiles.create",
+                              "profiles.edit",
+                              "profiles.open",
+                              "profiles.delete",
+                              "cookies.import",
+                              "cookies.export",
+                              "profiles.export",
+                              "proxies.view",
+                              "proxies.bind",
+                              "proxies.edit",
+                              "team.manage",
+                              "activity.view"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "key",
+                        "name",
+                        "permissions"
+                      ],
+                      "additionalProperties": false
                     },
                     "plan": {
                       "type": "string",
@@ -10658,12 +10781,31 @@
                             "type": "string"
                           },
                           "role": {
-                            "type": "string",
-                            "enum": [
-                              "owner",
-                              "admin",
-                              "member"
-                            ]
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "key": {
+                                "nullable": true,
+                                "type": "string",
+                                "enum": [
+                                  "owner",
+                                  "admin",
+                                  "member",
+                                  "viewer"
+                                ]
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "key",
+                              "name"
+                            ],
+                            "additionalProperties": false
                           },
                           "joinedAt": {
                             "type": "string"
@@ -10710,16 +10852,14 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "role": {
+                  "roleId": {
                     "type": "string",
-                    "enum": [
-                      "admin",
-                      "member"
-                    ]
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                   }
                 },
                 "required": [
-                  "role"
+                  "roleId"
                 ]
               }
             }
@@ -10881,11 +11021,31 @@
                             "type": "string"
                           },
                           "role": {
-                            "type": "string",
-                            "enum": [
-                              "admin",
-                              "member"
-                            ]
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "key": {
+                                "nullable": true,
+                                "type": "string",
+                                "enum": [
+                                  "owner",
+                                  "admin",
+                                  "member",
+                                  "viewer"
+                                ]
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "key",
+                              "name"
+                            ],
+                            "additionalProperties": false
                           },
                           "departmentIds": {
                             "type": "array",
@@ -10940,12 +11100,10 @@
                     "format": "email",
                     "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
                   },
-                  "role": {
+                  "roleId": {
                     "type": "string",
-                    "enum": [
-                      "admin",
-                      "member"
-                    ]
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                   },
                   "departmentIds": {
                     "default": [],
@@ -10964,7 +11122,7 @@
                 },
                 "required": [
                   "email",
-                  "role"
+                  "roleId"
                 ]
               }
             }
@@ -11000,11 +11158,31 @@
                           "type": "string"
                         },
                         "role": {
-                          "type": "string",
-                          "enum": [
-                            "admin",
-                            "member"
-                          ]
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "key": {
+                              "nullable": true,
+                              "type": "string",
+                              "enum": [
+                                "owner",
+                                "admin",
+                                "member",
+                                "viewer"
+                              ]
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "key",
+                            "name"
+                          ],
+                          "additionalProperties": false
                         },
                         "departmentIds": {
                           "type": "array",
@@ -11121,11 +11299,31 @@
                       "type": "string"
                     },
                     "role": {
-                      "type": "string",
-                      "enum": [
-                        "admin",
-                        "member"
-                      ]
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "key": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "owner",
+                            "admin",
+                            "member",
+                            "viewer"
+                          ]
+                        },
+                        "name": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "key",
+                        "name"
+                      ],
+                      "additionalProperties": false
                     },
                     "expired": {
                       "type": "boolean"
@@ -11180,11 +11378,31 @@
                             "type": "string"
                           },
                           "role": {
-                            "type": "string",
-                            "enum": [
-                              "admin",
-                              "member"
-                            ]
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "key": {
+                                "nullable": true,
+                                "type": "string",
+                                "enum": [
+                                  "owner",
+                                  "admin",
+                                  "member",
+                                  "viewer"
+                                ]
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "key",
+                              "name"
+                            ],
+                            "additionalProperties": false
                           },
                           "expiresAt": {
                             "type": "string"
@@ -11242,12 +11460,53 @@
                       "type": "string"
                     },
                     "role": {
-                      "type": "string",
-                      "enum": [
-                        "owner",
-                        "admin",
-                        "member"
-                      ]
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "key": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "owner",
+                            "admin",
+                            "member",
+                            "viewer"
+                          ]
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "permissions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "profiles.view",
+                              "profiles.create",
+                              "profiles.edit",
+                              "profiles.open",
+                              "profiles.delete",
+                              "cookies.import",
+                              "cookies.export",
+                              "profiles.export",
+                              "proxies.view",
+                              "proxies.bind",
+                              "proxies.edit",
+                              "team.manage",
+                              "activity.view"
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "key",
+                        "name",
+                        "permissions"
+                      ],
+                      "additionalProperties": false
                     },
                     "plan": {
                       "type": "string",
@@ -11282,6 +11541,362 @@
     },
     "/invitations/{id}/decline": {
       "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "nullable": true,
+                  "enum": [
+                    null
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspaces/{id}/roles": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "roles": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "key": {
+                            "nullable": true,
+                            "type": "string",
+                            "enum": [
+                              "owner",
+                              "admin",
+                              "member",
+                              "viewer"
+                            ]
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "permissions": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "profiles.view",
+                                "profiles.create",
+                                "profiles.edit",
+                                "profiles.open",
+                                "profiles.delete",
+                                "cookies.import",
+                                "cookies.export",
+                                "profiles.export",
+                                "proxies.view",
+                                "proxies.bind",
+                                "proxies.edit",
+                                "team.manage",
+                                "activity.view"
+                              ]
+                            }
+                          },
+                          "members": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "key",
+                          "name",
+                          "permissions",
+                          "members"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "roles"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "permissions": {
+                    "maxItems": 13,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "profiles.view",
+                        "profiles.create",
+                        "profiles.edit",
+                        "profiles.open",
+                        "profiles.delete",
+                        "cookies.import",
+                        "cookies.export",
+                        "profiles.export",
+                        "proxies.view",
+                        "proxies.bind",
+                        "proxies.edit",
+                        "team.manage",
+                        "activity.view"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "name",
+                  "permissions"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "key": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "owner",
+                        "admin",
+                        "member",
+                        "viewer"
+                      ]
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "permissions": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "profiles.view",
+                          "profiles.create",
+                          "profiles.edit",
+                          "profiles.open",
+                          "profiles.delete",
+                          "cookies.import",
+                          "cookies.export",
+                          "profiles.export",
+                          "proxies.view",
+                          "proxies.bind",
+                          "proxies.edit",
+                          "team.manage",
+                          "activity.view"
+                        ]
+                      }
+                    },
+                    "members": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "key",
+                    "name",
+                    "permissions",
+                    "members"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/roles/{id}": {
+      "patch": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "permissions": {
+                    "maxItems": 13,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "profiles.view",
+                        "profiles.create",
+                        "profiles.edit",
+                        "profiles.open",
+                        "profiles.delete",
+                        "cookies.import",
+                        "cookies.export",
+                        "profiles.export",
+                        "proxies.view",
+                        "proxies.bind",
+                        "proxies.edit",
+                        "team.manage",
+                        "activity.view"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "key": {
+                      "nullable": true,
+                      "type": "string",
+                      "enum": [
+                        "owner",
+                        "admin",
+                        "member",
+                        "viewer"
+                      ]
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "permissions": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "profiles.view",
+                          "profiles.create",
+                          "profiles.edit",
+                          "profiles.open",
+                          "profiles.delete",
+                          "cookies.import",
+                          "cookies.export",
+                          "profiles.export",
+                          "proxies.view",
+                          "proxies.bind",
+                          "proxies.edit",
+                          "team.manage",
+                          "activity.view"
+                        ]
+                      }
+                    },
+                    "members": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "key",
+                    "name",
+                    "permissions",
+                    "members"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
         "parameters": [
           {
             "schema": {
@@ -11664,6 +12279,9 @@
                               "member.remove",
                               "member.leave",
                               "invitation.withdraw",
+                              "role.create",
+                              "role.update",
+                              "role.delete",
                               "department.create",
                               "department.update",
                               "department.delete",

@@ -1,8 +1,8 @@
 import { gunzipSync, gzipSync } from 'node:zlib';
 import { strToU8, zipSync } from 'fflate';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { memberships } from '../src/db/schema.js';
-import { buy, chromiumProfile, setup, signup } from './helpers.js';
+
+import { buy, chromiumProfile, join, setup, signup } from './helpers.js';
 
 let t: Awaited<ReturnType<typeof setup>>;
 beforeAll(async () => { t = await setup(); });
@@ -31,7 +31,7 @@ describe('workspace export and import', () => {
   it('exports everything but the Trash, passwords included, to owners and admins', async () => {
     const { o, ws } = await source();
     const member = await signup(t.app);
-    await t.db.insert(memberships).values({ workspaceId: ws, userId: member.userId, role: 'member' });
+    await join(t.db, ws, member.userId, 'member');
     expect((await call('GET', `/workspaces/${ws}/export`, member.headers)).json().error.code).toBe('forbidden');
     const out = (await call('GET', `/workspaces/${ws}/export`, o.headers)).json();
     expect(out.groups).toEqual(['EU stores']);

@@ -19,7 +19,8 @@ import { entitlements } from '../plans.js';
 import { readSub, toState } from '../billing/service.js';
 import { saveProxies } from '../proxies/service.js';
 import { kernel, proxyType, searchEngine } from '../views.js';
-import { requireRole } from '../workspaces/service.js';
+import { requirePermission } from '../workspaces/service.js';
+import { MANAGE, type Permission } from '../permissions.js';
 import { chromiumId, readPackage, sha256, signPackage } from '../extensions/package.js';
 
 const params = z.object({ id: z.uuid() });
@@ -41,15 +42,15 @@ const Bundle = z.object({
 export function transferRoutes(app: FastifyInstance, deps: Deps){
   const r = app.withTypeProvider<ZodTypeProvider>();
   const { db, clock, storage } = deps;
-  const manager = async (req: Parameters<typeof requireSession>[0], workspaceId: string) => {
+  const allowed = async (req: Parameters<typeof requireSession>[0], workspaceId: string, ...perms: Permission[]) => {
     const s = await requireSession(req, deps);
-    const role = await requireRole(db, workspaceId, s.userId, ['owner', 'admin']);
-    return { s, role };
+    const a = await requirePermission(db, workspaceId, s.userId, ...perms);
+    return { s, a };
   };
 
   // Profiles in the Trash stay behind.
   r.get('/workspaces/:id/export', { schema: { params, response: { 200: Bundle.extend({ workspace: z.string(), exportedAt: z.string() }) } } }, async req => {
-    const { s } = await manager(req, req.params.id);
+    const { s } = await allowed(req, req.params.id, 'profiles.export');
     const ws = req.params.id;
     const [w] = await db.select({ name: workspaces.name }).from(workspaces).where(eq(workspaces.id, ws));
     const groupRows = await db.select().from(groups).where(eq(groups.workspaceId, ws)).orderBy(asc(groups.name));
@@ -89,7 +90,7 @@ export function transferRoutes(app: FastifyInstance, deps: Deps){
       response: { 200: z.object({ profiles: z.array(z.object({ ref, id: z.string() })), added: z.object({ profiles: z.number(), proxies: z.number(), groups: z.number(), extensions: z.number() }) }) }
     }
   }, async req => {
-    const { s, role } = await manager(req, req.params.id);
+    const { s, a } = await allowed(req, req.params.id, MANAGE, 'profiles.create');
     const ws = req.params.id, now = clock.now(), bundle = req.body;
     // Checked before anything is written, so a file that does not fit leaves no half-import behind.
     const limit = entitlements(toState(await readSub(db, ws))).profiles;
@@ -129,7 +130,7 @@ export function transferRoutes(app: FastifyInstance, deps: Deps){
       addedExtensions++;
     }
 
-    const created = bundle.profiles.length ? await createProfiles(deps, ws, s, role, bundle.profiles.map(({ ref: _ref, group, proxyRef, extensionRefs, saved: _saved, ...p }) => ({
+    const created = bundle.profiles.length ? await createProfiles(deps, ws, s, a, bundle.profiles.map(({ ref: _ref, group, proxyRef, extensionRefs, saved: _saved, ...p }) => ({
       ...p, groupId: group ? groupId.get(group) ?? null : null, proxyId: proxyRef ? proxyId.get(proxyRef) ?? null : null,
       extensionIds: extensionRefs.flatMap(r => extensionId.get(r) ?? [])
     }))) : [];

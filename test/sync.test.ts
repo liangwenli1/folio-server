@@ -1,8 +1,7 @@
 import { gzipSync } from 'node:zlib';
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { memberships } from '../src/db/schema.js';
-import { PASSWORD, chromiumProfile, setup, signup } from './helpers.js';
+import { PASSWORD, chromiumProfile, join, setup, signup } from './helpers.js';
 
 let t: Awaited<ReturnType<typeof setup>>;
 beforeAll(async () => { t = await setup(); });
@@ -58,7 +57,7 @@ describe('profile locks', () => {
   it('can be taken over by owners and admins, not members', async () => {
     const { owner, p, a } = await profileWithTwoComputers();
     const member = await signup(t.app);
-    await t.db.insert(memberships).values({ workspaceId: owner.workspaceId, userId: member.userId, role: 'member' });
+    await join(t.db, owner.workspaceId, member.userId, 'member');
     await req('POST', `/workspaces/${owner.workspaceId}/profiles/batch`, owner.headers, { ids: [p.id], action: 'assign', ownerId: member.userId });
     await req('POST', `/profiles/${p.id}/lock`, a);
     expect((await req('POST', `/profiles/${p.id}/lock/takeover`, member.headers)).json().error.code).toBe('forbidden');
@@ -141,7 +140,7 @@ describe('cookies', () => {
     const got = (await req('GET', `/profiles/${p.id}/cookies`, owner.headers)).json();
     expect(got.cookies).toMatchObject([{ name: 'sid', value: 'one', domain: 'shop.example' }]);
     const member = await signup(t.app);
-    await t.db.insert(memberships).values({ workspaceId: owner.workspaceId, userId: member.userId, role: 'member' });
+    await join(t.db, owner.workspaceId, member.userId, 'member');
     await req('POST', `/workspaces/${owner.workspaceId}/profiles/batch`, owner.headers, { ids: [p.id], action: 'assign', ownerId: member.userId });
     expect((await req('GET', `/profiles/${p.id}/cookies`, member.headers)).json().error.code).toBe('forbidden');
     const log = (await req('GET', `/workspaces/${owner.workspaceId}/activity?kind=cookies`, owner.headers)).json().entries;

@@ -12,7 +12,8 @@ import { publish } from '../events.js';
 import { record } from '../activity/service.js';
 import { requireSession, type Deps } from '../http.js';
 import { Extension, extensionView, kernel } from '../views.js';
-import { requireRole } from '../workspaces/service.js';
+import { membership, requirePermission } from '../workspaces/service.js';
+import { MANAGE } from '../permissions.js';
 import { identity, readPackage, sha256, signPackage } from './package.js';
 
 const params = z.object({ id: z.uuid() });
@@ -30,7 +31,7 @@ export function extensionRoutes(app: FastifyInstance, deps: Deps){
     const [e] = await db.select().from(extensions).where(eq(extensions.id, id));
     if (!e) throw notFound('Extension');
     const s = await requireSession(req, deps);
-    await requireRole(db, e.workspaceId, s.userId, manage ? ['owner', 'admin'] : undefined);
+    await (manage ? requirePermission(db, e.workspaceId, s.userId, MANAGE) : membership(db, e.workspaceId, s.userId));
     return { e, s };
   }
   const uses = async (workspaceId: string) => new Map((await db.select({ id: sql<string>`unnest(${profiles.extensionIds})`, n: sql<number>`count(*)::int` }).from(profiles)
@@ -38,7 +39,7 @@ export function extensionRoutes(app: FastifyInstance, deps: Deps){
 
   r.get('/workspaces/:id/extensions', { schema: { params, response: { 200: z.object({ extensions: z.array(Extension) }) } } }, async req => {
     const s = await requireSession(req, deps);
-    await requireRole(db, req.params.id, s.userId);
+    await membership(db, req.params.id, s.userId);
     const count = await uses(req.params.id);
     const rows = await db.select().from(extensions).where(eq(extensions.workspaceId, req.params.id)).orderBy(asc(extensions.name));
     return { extensions: rows.map(e => extensionView(e, count.get(e.id) ?? 0)) };
@@ -47,7 +48,7 @@ export function extensionRoutes(app: FastifyInstance, deps: Deps){
   // A new extension. A Firefox add-on already in the library is updated instead (409 extension_exists).
   r.post('/workspaces/:id/extensions', { schema: { params, querystring: from.extend({ kernel }), response: { 201: Extension } } }, async (req, reply) => {
     const s = await requireSession(req, deps);
-    await requireRole(db, req.params.id, s.userId, ['owner', 'admin']);
+    await requirePermission(db, req.params.id, s.userId, MANAGE);
     const p = readPackage(bytes(req.body));
     const who = identity(req.query.kernel, p.geckoId);
     const [dup] = await db.select({ id: extensions.id }).from(extensions)

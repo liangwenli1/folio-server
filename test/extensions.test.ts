@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createHash, createPublicKey, verify } from 'node:crypto';
 import { strToU8, unzipSync, zipSync } from 'fflate';
-import { memberships } from '../src/db/schema.js';
+
 import { chromiumId } from '../src/extensions/package.js';
-import { buy, chromiumProfile, setup, signup } from './helpers.js';
+import { buy, chromiumProfile, join, setup, signup } from './helpers.js';
 
 let t: Awaited<ReturnType<typeof setup>>;
 beforeAll(async () => { t = await setup(); });
@@ -32,7 +32,7 @@ async function team(){
   const o = await signup(t.app);
   await buy(t.app, o.headers, o.workspaceId, { plan: 'studio', period: 'monthly', addonPacks: 0 });
   const m = await signup(t.app);
-  await t.db.insert(memberships).values({ workspaceId: o.workspaceId, userId: m.userId, role: 'member' });
+  await join(t.db, o.workspaceId, m.userId, 'member');
   return { o, m, ws: o.workspaceId };
 }
 

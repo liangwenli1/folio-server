@@ -3,7 +3,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { hash, verify } from '@node-rs/argon2';
 import { asc, eq } from 'drizzle-orm';
-import { memberships, subscriptions, users, workspaces } from '../db/schema.js';
+import { memberships, roles, subscriptions, users, workspaces } from '../db/schema.js';
 import { ApiError } from '../errors.js';
 import { clearSessionCookie, requireSession, setSessionCookie, type Deps } from '../http.js';
 import { User, WorkspaceSummary, locale, userView } from '../views.js';
@@ -121,13 +121,21 @@ export function authRoutes(app: FastifyInstance, deps: Deps){
   r.get('/me', { schema: { response: { 200: z.object({ user: User, workspaces: z.array(WorkspaceSummary), admin: z.boolean() }) } } }, async req => {
     const s = await requireSession(req, deps);
     const u = await verifiedWhenOff((await db.select().from(users).where(eq(users.id, s.userId)))[0]);
-    const rows = await db.select({ id: workspaces.id, name: workspaces.name, role: memberships.role, plan: subscriptions.plan, status: subscriptions.status })
+    const rows = await db.select({
+      id: workspaces.id, name: workspaces.name, plan: subscriptions.plan, status: subscriptions.status,
+      roleId: roles.id, roleKey: roles.key, roleName: roles.name, permissions: roles.permissions
+    })
       .from(memberships)
       .innerJoin(workspaces, eq(workspaces.id, memberships.workspaceId))
+      .innerJoin(roles, eq(roles.id, memberships.roleId))
       .innerJoin(subscriptions, eq(subscriptions.workspaceId, memberships.workspaceId))
       .where(eq(memberships.userId, s.userId))
       .orderBy(asc(workspaces.createdAt));
-    return { user: userView(u), workspaces: rows as z.infer<typeof WorkspaceSummary>[], admin: deps.config.admins.includes(u.email) };
+    const list = rows.map(w => ({
+      id: w.id, name: w.name, plan: w.plan, status: w.status,
+      role: { id: w.roleId, key: w.roleKey, name: w.roleName, permissions: w.permissions }
+    }));
+    return { user: userView(u), workspaces: list as z.infer<typeof WorkspaceSummary>[], admin: deps.config.admins.includes(u.email) };
   });
 
   r.patch('/me', { schema: { body: z.object({ locale }), response: { 200: z.object({ user: User }) } } }, async req => {

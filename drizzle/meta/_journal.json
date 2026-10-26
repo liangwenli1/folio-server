@@ -120,6 +120,13 @@
       "when": 1792931141326,
       "tag": "0016_group_color",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792990036146,
+      "tag": "0017_roles",
+      "breakpoints": true
     }
   ]
 }
