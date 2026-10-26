@@ -87,6 +87,16 @@ describe('invitations', () => {
     expect(await code(call('POST', `/invitations/${ia.invitation.id}/accept`, aNow))).toBe('invitation_expired');
   });
 
+  it('last as long as the inviter chose, and the email says so', async () => {
+    const owner = await signup(t.app);
+    await buy(t.app, owner.headers, owner.workspaceId, { plan: 'studio', period: 'monthly', addonPacks: 0 });
+    const email = `short-${Date.now()}@example.com`;
+    const res = (await call('POST', `/workspaces/${owner.workspaceId}/invitations`, owner.headers, { email, roleId: await roleId(owner.headers, owner.workspaceId, 'member'), days: 1 })).json();
+    expect(Date.parse(res.invitation.expiresAt) - Date.parse(res.invitation.createdAt)).toBe(86_400_000);
+    expect((await lastMail(email)).Text).toContain('expires in 1 day');
+    expect(await code(call('POST', `/workspaces/${owner.workspaceId}/invitations`, owner.headers, { email, roleId: await roleId(owner.headers, owner.workspaceId, 'member'), days: 2 }))).toBe('validation');
+  });
+
   it('are for owners and admins, and not for people already in the workspace', async () => {
     const { owner, other, ws } = await team();
     const asMember = await roleId(owner.headers, ws, 'member');
@@ -174,6 +184,18 @@ describe('roles', () => {
     expect(list.map(r => [r.key, r.members])).toEqual([['owner', 1], ['admin', 0], ['member', 1], ['viewer', 0]]);
     expect(list.find(r => r.key === 'owner')!.permissions).toContain('team.manage');
     expect(list.find(r => r.key === 'viewer')!.permissions).toEqual(['profiles.view', 'proxies.view']);
+    // What a built-in role starts with stays known after it is changed, so it can be put back.
+    const viewer = list.find(r => r.key === 'viewer') as unknown as { id: string };
+    const changed = (await call('PATCH', `/roles/${viewer.id}`, owner.headers, { permissions: ['profiles.view'] })).json();
+    expect(changed).toMatchObject({ permissions: ['profiles.view'], defaults: ['profiles.view', 'proxies.view'] });
+    expect((await call('POST', `/workspaces/${ws}/roles`, owner.headers, { name: 'Ops', permissions: [] })).json().defaults).toBeNull();
+  });
+
+  it('say when each person last used Folio', async () => {
+    const { owner, other, ws } = await team();
+    const members = (await call('GET', `/workspaces/${ws}/members`, owner.headers)).json().members as { userId: string; lastActiveAt: string | null }[];
+    expect(members.every(m => m.lastActiveAt && !Number.isNaN(Date.parse(m.lastActiveAt)))).toBe(true);
+    expect(members.map(m => m.userId)).toContain(other.userId);
   });
 
   it('decide what someone may do: taking an action away stops it, giving it back allows it', async () => {
@@ -254,6 +276,20 @@ describe('group authorisation', () => {
     expect(g).toMatchObject({ name: 'Sales', description: 'Storefronts', memberIds: [] });
     expect(await code(call('PATCH', `/groups/${g.id}`, owner.headers, { memberIds: [] }))).toBe('plan_required');
     expect(await code(call('POST', `/workspaces/${ws}/groups`, owner.headers, { name: 'Ops', memberIds: [] }))).toBe('plan_required');
+  });
+
+  it('can be set from the person’s side: their groups are replaced, on the Company plan', async () => {
+    const { owner, other, ws } = await team('company');
+    const a = (await call('POST', `/workspaces/${ws}/groups`, owner.headers, { name: 'A', memberIds: [other.userId] })).json();
+    const b = (await call('POST', `/workspaces/${ws}/groups`, owner.headers, { name: 'B' })).json();
+    expect((await call('PATCH', `/workspaces/${ws}/members/${other.userId}`, owner.headers, { groupIds: [b.id], roleId: await roleId(owner.headers, ws, 'viewer') })).statusCode).toBe(204);
+    const groups = (await call('GET', `/workspaces/${ws}/groups`, owner.headers)).json().groups as { name: string; memberIds: string[] }[];
+    expect(groups.map(g => [g.name, g.memberIds])).toEqual([['A', []], ['B', [other.userId]]]);
+    const me = ((await call('GET', `/workspaces/${ws}/members`, owner.headers)).json().members as { userId: string; groupIds: string[]; role: { key: string } }[]).find(m => m.userId === other.userId)!;
+    expect(me).toMatchObject({ groupIds: [b.id], role: { key: 'viewer' } });
+    expect(await code(call('PATCH', `/workspaces/${ws}/members/${other.userId}`, owner.headers, {}))).toBe('validation');
+    const studio = await team('studio');
+    expect(await code(call('PATCH', `/workspaces/${studio.ws}/members/${studio.other.userId}`, studio.owner.headers, { groupIds: [] }))).toBe('plan_required');
   });
 
   it('can be given with a new group, which says what it holds', async () => {

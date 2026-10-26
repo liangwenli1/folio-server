@@ -4,7 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { and, asc, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
-import { groupMembers, groups, invitations, memberships, profiles, roles, users, workspaces } from '../db/schema.js';
+import { groupMembers, groups, invitations, memberships, profiles, roles, sessions, users, workspaces } from '../db/schema.js';
 import { ApiError, notFound } from '../errors.js';
 import { publish } from '../events.js';
 import { record } from '../activity/service.js';
@@ -16,13 +16,12 @@ import { sha256 } from '../auth/session.js';
 import { assertOwned } from '../profiles/service.js';
 import { Invitation, InvitationPreview, Member, MyInvitation, Role, WorkspaceSummary } from '../views.js';
 import { membership, requirePermission } from '../workspaces/service.js';
-import { MANAGE, PERMISSIONS, type Permission } from '../permissions.js';
+import { BUILT_IN, MANAGE, PERMISSIONS, type BuiltInRole, type Permission } from '../permissions.js';
 import { assertSeat, removeMember, requireCompany } from './service.js';
 
 const params = z.object({ id: z.uuid() });
 const memberParams = z.object({ id: z.uuid(), userId: z.uuid() });
 const name = z.string().trim().min(1).max(80);
-const INVITE_DAYS = 7;
 const DAY = 86_400_000;
 
 export function teamRoutes(app: FastifyInstance, deps: Deps){
@@ -64,20 +63,48 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
       .innerJoin(groups, eq(groups.id, groupMembers.groupId)).where(eq(groups.workspaceId, req.params.id));
     const counts = await db.select({ ownerId: profiles.ownerId, n: sql<number>`count(*)::int` }).from(profiles)
       .where(and(eq(profiles.workspaceId, req.params.id), isNull(profiles.deletedAt))).groupBy(profiles.ownerId);
+    const seen = rows.length ? await db.select({ userId: sessions.userId, at: sql<Date>`max(${sessions.lastUsedAt})` }).from(sessions)
+      .where(inArray(sessions.userId, rows.map(m => m.userId))).groupBy(sessions.userId) : [];
     return {
-      members: rows.map(m => ({
-        userId: m.userId, email: m.email, role: roleRef({ id: m.roleId, key: m.key, name: m.roleName }), joinedAt: m.joinedAt.toISOString(),
-        groupIds: grants.filter(g => g.userId === m.userId).map(g => g.id), profiles: counts.find(c => c.ownerId === m.userId)?.n ?? 0
-      }))
+      members: rows.map(m => {
+        const at = seen.find(x => x.userId === m.userId)?.at;
+        return {
+          userId: m.userId, email: m.email, role: roleRef({ id: m.roleId, key: m.key, name: m.roleName }), joinedAt: m.joinedAt.toISOString(),
+          groupIds: grants.filter(g => g.userId === m.userId).map(g => g.id), profiles: counts.find(c => c.ownerId === m.userId)?.n ?? 0,
+          lastActiveAt: at ? new Date(at).toISOString() : null
+        };
+      })
     };
   });
 
-  r.patch('/workspaces/:id/members/:userId', { schema: { params: memberParams, body: z.object({ roleId: z.uuid() }), response: { 204: z.null() } } }, async (req, reply) => {
+  // Someone's role, and (Company) the groups they are authorised for, which replace the ones they had.
+  r.patch('/workspaces/:id/members/:userId', {
+    schema: {
+      params: memberParams,
+      body: z.object({ roleId: z.uuid().optional(), groupIds: z.array(z.uuid()).max(500).optional() }).refine(b => b.roleId || b.groupIds, 'Nothing to change'),
+      response: { 204: z.null() }
+    }
+  }, async (req, reply) => {
     const s = await manager(req, req.params.id);
     await target(req.params.id, req.params.userId);
-    const role = await assignableRole(req.params.id, req.body.roleId);
-    await db.update(memberships).set({ roleId: role.id }).where(and(eq(memberships.workspaceId, req.params.id), eq(memberships.userId, req.params.userId)));
-    await record(db, { workspaceId: req.params.id, actor: s, at: clock.now(), action: 'member.role', detail: { email: await emailOf(req.params.userId), role: role.name } });
+    const email = await emailOf(req.params.userId), now = clock.now();
+    if (req.body.roleId){
+      const role = await assignableRole(req.params.id, req.body.roleId);
+      await db.update(memberships).set({ roleId: role.id }).where(and(eq(memberships.workspaceId, req.params.id), eq(memberships.userId, req.params.userId)));
+      await record(db, { workspaceId: req.params.id, actor: s, at: now, action: 'member.role', detail: { email, role: role.name } });
+    }
+    if (req.body.groupIds){
+      const wanted = [...new Set(req.body.groupIds)];
+      await requireCompany(db, req.params.id);
+      await assertOwned(db, req.params.id, { groupIds: wanted });
+      await db.transaction(async tx => {
+        const mine = tx.select({ id: groups.id }).from(groups).where(eq(groups.workspaceId, req.params.id));
+        await tx.delete(groupMembers).where(and(eq(groupMembers.userId, req.params.userId), inArray(groupMembers.groupId, mine)));
+        if (wanted.length) await tx.insert(groupMembers).values(wanted.map(groupId => ({ groupId, userId: req.params.userId })));
+      });
+      await record(db, { workspaceId: req.params.id, actor: s, at: now, action: 'member.groups', detail: { email, groups: wanted.length } });
+      publish(req.params.id, { kind: 'groups' });
+    }
     publish(req.params.id, { kind: 'members' }); publish(req.params.id, { kind: 'profiles' });
     return reply.code(204).send(null);
   });
@@ -127,7 +154,11 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
   // passed on another way. A new invitation to the same address replaces the earlier one and its link.
   r.post('/workspaces/:id/invitations', {
     schema: {
-      params, body: z.object({ email: z.email(), roleId: z.uuid(), groupIds: z.array(z.uuid()).max(50).default([]), notify: z.boolean().default(true) }),
+      params, body: z.object({
+        email: z.email(), roleId: z.uuid(), groupIds: z.array(z.uuid()).max(50).default([]), notify: z.boolean().default(true),
+        // How long the link works.
+        days: z.union([z.literal(1), z.literal(3), z.literal(7), z.literal(30)]).default(7)
+      }),
       response: { 201: z.object({ invitation: Invitation, link: z.string(), emailed: z.boolean() }) }
     }
   }, async (req, reply) => {
@@ -149,7 +180,7 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
       await assertSeat(tx, req.params.id, now);
       const [i] = await tx.insert(invitations).values({
         workspaceId: req.params.id, email, roleId: role.id, groupIds: req.body.groupIds, tokenHash: sha256(token),
-        invitedBy: s.userId, createdAt: now, expiresAt: new Date(now.getTime() + INVITE_DAYS * DAY)
+        invitedBy: s.userId, createdAt: now, expiresAt: new Date(now.getTime() + req.body.days * DAY)
       }).returning();
       return i;
     });
@@ -157,7 +188,7 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
     const [ws] = await db.select({ name: workspaces.name }).from(workspaces).where(eq(workspaces.id, req.params.id));
     const locale = (existing?.locale ?? me.locale) as Locale;
     const link = `${deps.config.siteUrl}/${locale}/invite/?token=${token}`;
-    const emailed = req.body.notify && await deps.mailer.send(email, inviteMail(locale, { workspace: ws.name, inviter: me.email, role: role.name, url: link }))
+    const emailed = req.body.notify && await deps.mailer.send(email, inviteMail(locale, { workspace: ws.name, inviter: me.email, role: role.name, url: link, days: req.body.days }))
       .then(() => true, err => { req.log.error(err, 'sending the invitation failed'); return false; });
     await record(db, { workspaceId: req.params.id, actor: s, at: now, action: 'member.invite', detail: { email, role: role.name } });
     publish(req.params.id, { kind: 'members' });
@@ -247,10 +278,11 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
       .where(eq(roles.workspaceId, req.params.id)).groupBy(roles.id)
       // The four built-in roles first, in their own order, then the workspace's own by name.
       .orderBy(asc(sql`array_position(ARRAY['owner','admin','member','viewer'], ${roles.key})`), asc(roles.name));
-    return { roles: rows.map(x => ({ ...roleRef(x.r), permissions: x.r.permissions as Permission[], members: x.members })) };
+    return { roles: rows.map(x => ({ ...roleRef(x.r), permissions: x.r.permissions as Permission[], members: x.members, defaults: defaultsOf(x.r.key) })) };
   });
 
   const permissions = z.array(z.enum(PERMISSIONS)).max(PERMISSIONS.length);
+  const defaultsOf = (key: string | null) => (key ? BUILT_IN[key as BuiltInRole].permissions : null);
   const taken = () => new ApiError(409, 'role_exists', 'A role with this name already exists');
 
   r.post('/workspaces/:id/roles', { schema: { params, body: z.object({ name, permissions }), response: { 201: Role } } }, async (req, reply) => {
@@ -261,7 +293,7 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
     if (!r0) throw taken();
     await record(db, { workspaceId: req.params.id, actor: s, at: clock.now(), action: 'role.create', detail: { name: r0.name } });
     publish(req.params.id, { kind: 'members' });
-    return reply.code(201).send({ ...roleRef(r0), permissions: r0.permissions as Permission[], members: 0 });
+    return reply.code(201).send({ ...roleRef(r0), permissions: r0.permissions as Permission[], members: 0, defaults: null });
   });
 
   // A role of the workspace's own can be renamed; any role but the owner's can have its actions changed.
@@ -280,7 +312,7 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
     const [{ members }] = await db.select({ members: sql<number>`count(*)::int` }).from(memberships).where(eq(memberships.roleId, u.id));
     await record(db, { workspaceId: r0.workspaceId, actor: s, at: clock.now(), action: 'role.update', detail: { name: u.name } });
     publish(r0.workspaceId, { kind: 'members' }); publish(r0.workspaceId, { kind: 'profiles' });
-    return { ...roleRef(u), permissions: u.permissions as Permission[], members };
+    return { ...roleRef(u), permissions: u.permissions as Permission[], members, defaults: defaultsOf(u.key) };
   });
 
   // Only a role the workspace made itself, and only while nobody holds it.

@@ -11668,6 +11668,10 @@
                           },
                           "profiles": {
                             "type": "number"
+                          },
+                          "lastActiveAt": {
+                            "nullable": true,
+                            "type": "string"
                           }
                         },
                         "required": [
@@ -11676,7 +11680,8 @@
                           "role",
                           "joinedAt",
                           "groupIds",
-                          "profiles"
+                          "profiles",
+                          "lastActiveAt"
                         ],
                         "additionalProperties": false
                       }
@@ -11706,11 +11711,17 @@
                     "type": "string",
                     "format": "uuid",
                     "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "groupIds": {
+                    "maxItems": 500,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    }
                   }
-                },
-                "required": [
-                  "roleId"
-                ]
+                }
               }
             }
           }
@@ -11968,6 +11979,35 @@
                   "notify": {
                     "default": true,
                     "type": "boolean"
+                  },
+                  "days": {
+                    "default": 7,
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "enum": [
+                          1
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          3
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          7
+                        ]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [
+                          30
+                        ]
+                      }
+                    ]
                   }
                 },
                 "required": [
@@ -12487,6 +12527,28 @@
                           },
                           "members": {
                             "type": "number"
+                          },
+                          "defaults": {
+                            "nullable": true,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "profiles.view",
+                                "profiles.create",
+                                "profiles.edit",
+                                "profiles.open",
+                                "profiles.delete",
+                                "cookies.import",
+                                "cookies.export",
+                                "profiles.export",
+                                "proxies.view",
+                                "proxies.bind",
+                                "proxies.edit",
+                                "team.manage",
+                                "activity.view"
+                              ]
+                            }
                           }
                         },
                         "required": [
@@ -12494,7 +12556,8 @@
                           "key",
                           "name",
                           "permissions",
-                          "members"
+                          "members",
+                          "defaults"
                         ],
                         "additionalProperties": false
                       }
@@ -12613,6 +12676,28 @@
                     },
                     "members": {
                       "type": "number"
+                    },
+                    "defaults": {
+                      "nullable": true,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "profiles.view",
+                          "profiles.create",
+                          "profiles.edit",
+                          "profiles.open",
+                          "profiles.delete",
+                          "cookies.import",
+                          "cookies.export",
+                          "profiles.export",
+                          "proxies.view",
+                          "proxies.bind",
+                          "proxies.edit",
+                          "team.manage",
+                          "activity.view"
+                        ]
+                      }
                     }
                   },
                   "required": [
@@ -12620,7 +12705,8 @@
                     "key",
                     "name",
                     "permissions",
-                    "members"
+                    "members",
+                    "defaults"
                   ],
                   "additionalProperties": false
                 }
@@ -12730,6 +12816,28 @@
                     },
                     "members": {
                       "type": "number"
+                    },
+                    "defaults": {
+                      "nullable": true,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "profiles.view",
+                          "profiles.create",
+                          "profiles.edit",
+                          "profiles.open",
+                          "profiles.delete",
+                          "cookies.import",
+                          "cookies.export",
+                          "profiles.export",
+                          "proxies.view",
+                          "proxies.bind",
+                          "proxies.edit",
+                          "team.manage",
+                          "activity.view"
+                        ]
+                      }
                     }
                   },
                   "required": [
@@ -12737,7 +12845,8 @@
                     "key",
                     "name",
                     "permissions",
-                    "members"
+                    "members",
+                    "defaults"
                   ],
                   "additionalProperties": false
                 }
@@ -12904,6 +13013,7 @@
                               "member.invite",
                               "member.join",
                               "member.role",
+                              "member.groups",
                               "member.remove",
                               "member.leave",
                               "invitation.withdraw",

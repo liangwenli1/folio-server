@@ -16,7 +16,8 @@ export const permission = z.enum(PERMISSIONS);
 export const roleKey = z.enum(BUILT_IN_ROLES);
 export const RoleRef = z.object({ id: z.string(), key: roleKey.nullable(), name: z.string() });
 export const MyRole = RoleRef.extend({ permissions: z.array(permission) });
-export const Role = MyRole.extend({ members: z.number() });
+// `defaults`: what a built-in role starts with (none for the workspace's own), for putting it back.
+export const Role = MyRole.extend({ members: z.number(), defaults: z.array(permission).nullable() });
 export const kernel = z.enum(['chromium', 'firefox']);
 export const locale = z.enum(['en', 'zh']);
 
@@ -189,7 +190,9 @@ export const ProxySecret = z.object({ id: z.string(), type: proxyType, host: z.s
 
 // ---------- team (P3) ----------
 export const Member = z.object({
-  userId: z.string(), email: z.string(), role: RoleRef, joinedAt: z.string(), groupIds: z.array(z.string()), profiles: z.number()
+  userId: z.string(), email: z.string(), role: RoleRef, joinedAt: z.string(), groupIds: z.array(z.string()), profiles: z.number(),
+  // The last time they used Folio anywhere (their newest session).
+  lastActiveAt: z.string().nullable()
 });
 export const Invitation = z.object({
   id: z.string(), email: z.string(), role: RoleRef, groupIds: z.array(z.string()), invitedBy: z.string().nullable(), createdAt: z.string(), expiresAt: z.string()
