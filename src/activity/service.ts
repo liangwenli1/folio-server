@@ -1,6 +1,6 @@
 // The activity log: one place that writes entries, reads them as a person may see them, and forgets them (and task
 // runs) after the plan's retention.
-import { and, desc, eq, gte, inArray, lt, or, type SQL } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, ilike, inArray, lt, or, sql, type SQL } from 'drizzle-orm';
 import type { Db, Tx } from '../db/client.js';
 import { activityLog, profiles, taskRuns, users } from '../db/schema.js';
 import { entitlements } from '../plans.js';
@@ -45,20 +45,30 @@ export async function retentionDays(db: Db | Tx, workspaceId: string){
   return entitlements(toState(await readSub(db, workspaceId))).logDays;
 }
 
-// Newest first, within the retention. `scope` (members) keeps entries about profiles they see and their own actions.
-export async function readLog(db: Db, workspaceId: string, now: Date, q: { scope?: SQL; userId: string; before?: number; limit: number; profileId?: string; actorId?: string; kind?: keyof typeof KINDS }){
+// Within the retention, newest first (or oldest first), a page at a time with how many there are in all. `scope`
+// (members) keeps entries about profiles they see and their own actions. `q` finds a word in the profile, the person,
+// the details, or an entry's number; `from` and `to` bound the time.
+export interface LogQuery {
+  scope?: SQL; userId: string; limit: number; offset?: number; order?: 'asc' | 'desc';
+  profileId?: string; actorId?: string; kind?: keyof typeof KINDS; q?: string; from?: Date; to?: Date;
+}
+export async function readLog(db: Db, workspaceId: string, now: Date, q: LogQuery){
   const days = await retentionDays(db, workspaceId);
   const visible = q.scope
     ? or(eq(activityLog.actorId, q.userId), inArray(activityLog.profileId, db.select({ id: profiles.id }).from(profiles).where(and(eq(profiles.workspaceId, workspaceId), q.scope))))
     : undefined;
-  const rows = await db.select({ e: activityLog, actor: users.email }).from(activityLog).leftJoin(users, eq(users.id, activityLog.actorId))
-    .where(and(
-      eq(activityLog.workspaceId, workspaceId), gte(activityLog.at, new Date(now.getTime() - days * 86_400_000)), visible,
-      q.before ? lt(activityLog.seq, q.before) : undefined, q.profileId ? eq(activityLog.profileId, q.profileId) : undefined,
-      q.actorId ? eq(activityLog.actorId, q.actorId) : undefined, q.kind ? inArray(activityLog.action, KINDS[q.kind]) : undefined
-    ))
-    .orderBy(desc(activityLog.seq)).limit(q.limit);
-  return { days, entries: rows.map(({ e, actor }) => ({
+  const like = q.q ? `%${q.q}%` : null, number = q.q && /^#?\d+$/.test(q.q) ? Number(q.q.replace('#', '')) : null;
+  const where = and(
+    eq(activityLog.workspaceId, workspaceId), gte(activityLog.at, new Date(now.getTime() - days * 86_400_000)), visible,
+    q.profileId ? eq(activityLog.profileId, q.profileId) : undefined,
+    q.actorId ? eq(activityLog.actorId, q.actorId) : undefined, q.kind ? inArray(activityLog.action, KINDS[q.kind]) : undefined,
+    q.from ? gte(activityLog.at, q.from) : undefined, q.to ? lt(activityLog.at, q.to) : undefined,
+    like ? or(ilike(activityLog.profileName, like), ilike(users.email, like), sql`${activityLog.detail}::text ilike ${like}`, number !== null ? eq(activityLog.seq, number) : undefined) : undefined
+  );
+  const [{ total }] = await db.select({ total: count() }).from(activityLog).leftJoin(users, eq(users.id, activityLog.actorId)).where(where);
+  const rows = await db.select({ e: activityLog, actor: users.email }).from(activityLog).leftJoin(users, eq(users.id, activityLog.actorId)).where(where)
+    .orderBy(q.order === 'asc' ? asc(activityLog.seq) : desc(activityLog.seq)).limit(q.limit).offset(q.offset ?? 0);
+  return { days, total, entries: rows.map(({ e, actor }) => ({
     seq: e.seq, at: e.at.toISOString(), actor, deviceName: e.deviceName, action: e.action as Action,
     profile: e.profileName === null ? null : { id: e.profileId, name: e.profileName, number: e.profileNumber! }, detail: e.detail as Record<string, unknown>
   })) };

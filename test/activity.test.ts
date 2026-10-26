@@ -11,7 +11,7 @@ afterAll(async () => { await t.teardown(); });
 type H = Record<string, string>;
 type Entry = { seq: number; action: string; actor: string | null; deviceName: string | null; profile: { name: string; number: number; id: string | null } | null; detail: Record<string, unknown>; at: string };
 const call = (method: 'GET' | 'POST' | 'PATCH' | 'DELETE', url: string, headers: H, payload?: object) => t.app.inject({ method, url, headers, payload });
-const log = async (headers: H, ws: string, query = '') => (await call('GET', `/workspaces/${ws}/activity${query}`, headers)).json() as { entries: Entry[]; retentionDays: number };
+const log = async (headers: H, ws: string, query = '') => (await call('GET', `/workspaces/${ws}/activity${query}`, headers)).json() as { entries: Entry[]; total: number; retentionDays: number };
 const actions = async (headers: H, ws: string, query = '') => (await log(headers, ws, query)).entries.map(e => e.action);
 async function desktop(email: string, deviceName: string): Promise<H> {
   const res = await t.app.inject({ method: 'POST', url: '/auth/login', payload: { email, password: PASSWORD, client: 'desktop', deviceName } });
@@ -83,7 +83,7 @@ describe('the activity log', () => {
     expect(await t.db.select().from(activityLog).where(eq(activityLog.workspaceId, o.workspaceId))).toHaveLength(1);
   });
 
-  it('pages back in time', async () => {
+  it('pages back in time, saying how many there are', async () => {
     const o = await signup(t.app);
     for (const name of ['A', 'B', 'C']){
       await call('POST', `/workspaces/${o.workspaceId}/groups`, o.headers, { name });
@@ -91,8 +91,26 @@ describe('the activity log', () => {
     }
     const first = await log(o.headers, o.workspaceId, '?limit=2');
     expect(first.entries.map(e => e.detail.name)).toEqual(['C', 'B']);
-    const next = await log(o.headers, o.workspaceId, `?limit=2&before=${first.entries[1].seq}`);
+    expect(first.total).toBe(3);
+    const next = await log(o.headers, o.workspaceId, '?limit=2&offset=2');
     expect(next.entries.map(e => e.detail.name)).toEqual(['A']);
+  });
+
+  it('reads oldest first, and finds entries by word, number and time', async () => {
+    const o = await signup(t.app);
+    const start = t.clock.now();
+    for (const name of ['Alpha', 'Beta', 'Gamma']){
+      await call('POST', `/workspaces/${o.workspaceId}/groups`, o.headers, { name });
+      t.clock.advanceDays(1);
+    }
+    const oldest = await log(o.headers, o.workspaceId, '?order=asc&limit=2');
+    expect(oldest.entries.map(e => e.detail.name)).toEqual(['Alpha', 'Beta']);
+    expect((await log(o.headers, o.workspaceId, '?order=asc&limit=2&offset=2')).entries.map(e => e.detail.name)).toEqual(['Gamma']);
+    expect((await log(o.headers, o.workspaceId, '?q=gam')).entries.map(e => e.detail.name)).toEqual(['Gamma']);
+    expect((await log(o.headers, o.workspaceId, `?q=${encodeURIComponent(o.email)}`)).entries).toHaveLength(3);
+    expect((await log(o.headers, o.workspaceId, `?q=%23${oldest.entries[0].seq}`)).entries.map(e => e.detail.name)).toEqual(['Alpha']);
+    const day2 = new Date(start.getTime() + 86_400_000), day3 = new Date(start.getTime() + 2 * 86_400_000);
+    expect((await log(o.headers, o.workspaceId, `?from=${day2.toISOString()}&to=${day3.toISOString()}`)).entries.map(e => e.detail.name)).toEqual(['Beta']);
   });
 
   it('records the team: invitations, joining, roles and removal', async () => {

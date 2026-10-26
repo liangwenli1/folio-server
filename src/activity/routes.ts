@@ -14,24 +14,28 @@ const Entry = z.object({
 });
 const filters = {
   profileId: z.uuid().optional(), actorId: z.uuid().optional(),
-  kind: z.enum(Object.keys(KINDS) as [keyof typeof KINDS, ...(keyof typeof KINDS)[]]).optional()
+  kind: z.enum(Object.keys(KINDS) as [keyof typeof KINDS, ...(keyof typeof KINDS)[]]).optional(),
+  q: z.string().trim().min(1).max(100).optional(), from: z.coerce.date().optional(), to: z.coerce.date().optional()
 };
 
 export function activityRoutes(app: FastifyInstance, deps: Deps){
   const r = app.withTypeProvider<ZodTypeProvider>();
   const { db, clock } = deps;
 
-  // Newest first; pass the last entry's `seq` as `before` for the next page.
+  // Newest first (or oldest first), a page at a time; `total` says how many match.
   r.get('/workspaces/:id/activity', {
     schema: {
-      params, querystring: z.object({ ...filters, before: z.coerce.number().int().optional(), limit: z.coerce.number().int().min(1).max(200).default(50) }),
-      response: { 200: z.object({ entries: z.array(Entry), retentionDays: z.number() }) }
+      params, querystring: z.object({
+        ...filters, order: z.enum(['desc', 'asc']).default('desc'), offset: z.coerce.number().int().min(0).default(0),
+        limit: z.coerce.number().int().min(1).max(200).default(50)
+      }),
+      response: { 200: z.object({ entries: z.array(Entry), total: z.number(), retentionDays: z.number() }) }
     }
   }, async req => {
     const s = await requireSession(req, deps);
     const { scope } = await access(db, req.params.id, s.userId);
-    const { days, entries } = await readLog(db, req.params.id, clock.now(), { ...req.query, scope, userId: s.userId });
-    return { entries, retentionDays: days };
+    const { days, total, entries } = await readLog(db, req.params.id, clock.now(), { ...req.query, scope, userId: s.userId });
+    return { entries, total, retentionDays: days };
   });
 
   // Company: the whole retained log as CSV, for owners and admins.
