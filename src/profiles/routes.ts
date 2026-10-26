@@ -226,6 +226,7 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
     const { version: v, ...patch } = req.body;
     checkFingerprint({ kernel: p.kernel, fingerprint: patch.fingerprint });
     checkWindow({ windowMode: patch.windowMode ?? p.windowMode, windowWidth: patch.windowWidth ?? p.windowWidth, windowHeight: patch.windowHeight ?? p.windowHeight });
+    if (patch.proxyId !== undefined && patch.proxyId !== p.proxyId && !a.can('proxies.bind')) throw forbidden();
     await checkAssignment(db, p.workspaceId, a, [patch]);
     await assertOwned(db, p.workspaceId, { groupIds: [patch.groupId], proxyIds: [patch.proxyId] });
     await checkExtensions(db, p.workspaceId, [{ kernel: p.kernel, extensionIds: patch.extensionIds }]);
@@ -265,6 +266,7 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
     const needed = ['trash', 'restore', 'purge'].includes(action) ? 'profiles.delete' : 'profiles.edit';
     if (!a.can('profiles.view') || !a.can(needed)) throw forbidden();
     if (!a.can(MANAGE) && action === 'assign') throw forbidden();
+    if (action === 'set-proxy' && !a.can('proxies.bind')) throw forbidden();
     const now = clock.now();
     const mine = and(eq(profiles.workspaceId, req.params.id), inArray(profiles.id, ids), scope);
     const bump = { version: sql`${profiles.version} + 1`, updatedAt: now };

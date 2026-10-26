@@ -144,6 +144,8 @@ export async function createProfiles(deps: Deps, workspaceId: string, s: { userI
   const { db, clock } = deps;
   items.forEach(checkFingerprint);
   items.forEach(checkWindow);
+  // Putting a profile on a proxy is its own permission.
+  if (items.some(i => i.proxyId) && !a.can('proxies.bind')) throw forbidden();
   await checkAssignment(db, workspaceId, a, items);
   await assertOwned(db, workspaceId, { groupIds: items.map(i => i.groupId), proxyIds: items.map(i => i.proxyId) });
   await checkExtensions(db, workspaceId, items);

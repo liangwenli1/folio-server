@@ -199,6 +199,22 @@ describe('roles', () => {
     expect((await call('POST', `/workspaces/${ws}/profiles/batch`, other.headers, { ids: [p.id], action: 'trash' })).json().updated).toBe(1);
   });
 
+  it('need proxies.bind to put a profile on a proxy, or take it off one', async () => {
+    const { owner, other, ws } = await team();
+    const proxy = (await call('POST', `/workspaces/${ws}/proxies`, owner.headers, { type: 'http', host: 'p.example.net', port: 3128 })).json();
+    const role = (await call('POST', `/workspaces/${ws}/roles`, owner.headers, { name: 'Editor', permissions: ['profiles.view', 'profiles.create', 'profiles.edit', 'proxies.view'] })).json();
+    await call('PATCH', `/workspaces/${ws}/members/${other.userId}`, owner.headers, { roleId: role.id });
+    const p = await profile(other.headers, ws, 'Mine');
+    expect(await code(call('POST', `/workspaces/${ws}/profiles`, other.headers, chromiumProfile('On-a-proxy', { proxyId: proxy.id })))).toBe('forbidden');
+    expect(await code(call('PATCH', `/profiles/${p.id}`, other.headers, { version: p.version, proxyId: proxy.id }))).toBe('forbidden');
+    expect(await code(call('POST', `/workspaces/${ws}/profiles/batch`, other.headers, { ids: [p.id], action: 'set-proxy', proxyId: proxy.id }))).toBe('forbidden');
+    // Whole forms send the proxy unchanged: that needs nothing more.
+    expect((await call('PATCH', `/profiles/${p.id}`, other.headers, { version: p.version, name: 'Mine 2', proxyId: null })).statusCode).toBe(200);
+
+    await call('PATCH', `/roles/${role.id}`, owner.headers, { permissions: ['profiles.view', 'profiles.edit', 'proxies.view', 'proxies.bind'] });
+    expect((await call('POST', `/workspaces/${ws}/profiles/batch`, other.headers, { ids: [p.id], action: 'set-proxy', proxyId: proxy.id })).json().updated).toBe(1);
+  });
+
   it('can be made, given out and removed; the built-in four stay and the owner’s never changes', async () => {
     const { owner, other, ws } = await team();
     const made = (await call('POST', `/workspaces/${ws}/roles`, owner.headers, { name: 'Operator', permissions: ['profiles.view', 'profiles.open'] })).json();
