@@ -66,6 +66,15 @@ describe('proxies', () => {
     expect(new Set(again.proxies.map((p: { id: string }) => p.id)).size).toBe(2);
   });
 
+  it('numbers and lists what a list adds in the order given, keeping the first of two identical lines', async () => {
+    const { headers, workspaceId } = await signup(t.app);
+    const text = ['a.example.net:1080', 'b.example.net:1080', 'a.example.net:1080', 'c.example.net:1080'].join('\n');
+    const res = (await t.app.inject({ method: 'POST', url: `/workspaces/${workspaceId}/proxies/import`, headers, payload: { text, defaultType: 'http', namePattern: 'Ops-{n}' } })).json();
+    expect(res.proxies.map((p: { name: string }) => p.name)).toEqual(['Ops-1', 'Ops-2', 'Ops-1', 'Ops-3']);
+    const listed = (await t.app.inject({ url: `/workspaces/${workspaceId}/proxies`, headers })).json().proxies;
+    expect(listed.map((p: { name: string; host: string }) => `${p.name} ${p.host}`)).toEqual(['Ops-1 a.example.net', 'Ops-2 b.example.net', 'Ops-3 c.example.net']);
+  });
+
   it('keep notes', async () => {
     const { headers, workspaceId } = await signup(t.app);
     const p = (await t.app.inject({ method: 'POST', url: `/workspaces/${workspaceId}/proxies`, headers, payload: { type: 'http', host: 'n.example.net', port: 3128, notes: 'US storefronts' } })).json();

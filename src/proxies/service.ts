@@ -56,8 +56,10 @@ export async function savedProxies(db: Db, workspaceId: string){
 // them in input order, and how many were new.
 export async function saveProxies(db: Db, workspaceId: string, inputs: ProxyInput[], now: Date, { reuse = true, name }: { reuse?: boolean; name?: (n: number) => string } = {}){
   const known = reuse ? await savedProxies(db, workspaceId) : new Map<string, typeof proxies.$inferSelect>();
-  const fresh = reuse ? [...new Map(inputs.filter(p => !known.has(proxyKey(p))).reverse().map(p => [proxyKey(p), p])).values()].reverse() : inputs;
-  const rows = fresh.length ? await db.insert(proxies).values(fresh.map((p, i) => proxyRow(workspaceId, name ? { ...p, name: name(i + 1) } : p, now))).returning() : [];
+  const seen = new Set<string>();
+  const fresh = reuse ? inputs.filter(p => { const k = proxyKey(p); if (known.has(k) || seen.has(k)) return false; seen.add(k); return true; }) : inputs;
+  // Each one a millisecond after the one above it, so the library lists them in the order given.
+  const rows = fresh.length ? await db.insert(proxies).values(fresh.map((p, i) => proxyRow(workspaceId, name ? { ...p, name: name(i + 1) } : p, new Date(now.getTime() + i)))).returning() : [];
   if (!reuse) return { saved: rows, added: rows.length };
   fresh.forEach((p, i) => known.set(proxyKey(p), rows[i]));
   return { saved: inputs.map(i => known.get(proxyKey(i))!), added: rows.length };
