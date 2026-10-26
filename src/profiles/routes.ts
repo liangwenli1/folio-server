@@ -8,11 +8,11 @@ import { ApiError, forbidden, notFound } from '../errors.js';
 import { publish } from '../events.js';
 import { requireSession, type Deps } from '../http.js';
 import { open } from '../crypto.js';
-import { Extension, Fingerprint, Geo, Group, HealthReport, groupColor, Profile, ProxySecret, extensionView, kernel, os, profileView, searchEngine } from '../views.js';
+import { Extension, Fingerprint, Geo, Group, HealthReport, groupColor, Profile, ProxySecret, extensionView, kernel, os, profileView, searchEngine, windowMode } from '../views.js';
 import { requirePermission } from '../workspaces/service.js';
 import { MANAGE } from '../permissions.js';
 import { requireCompany } from '../team/service.js';
-import { access, assertOwned, checkAssignment, checkExtensions, checkFingerprint, createProfiles, loadProfiles, profileFor, reserve } from './service.js';
+import { access, assertOwned, checkAssignment, checkExtensions, checkFingerprint, checkWindow, createProfiles, loadProfiles, profileFor, reserve } from './service.js';
 
 const wsParams = z.object({ id: z.uuid() });
 const name = z.string().trim().min(1).max(80);
@@ -20,6 +20,11 @@ const tag = z.string().trim().min(1).max(24);
 const version = z.string().regex(/^[\w.-]{1,40}$/);
 const tz = z.string().regex(/^[A-Za-z_]+(\/[A-Za-z0-9_+-]+){0,2}$/).max(64);
 const locale = z.string().regex(/^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/).max(35);
+// How a profile opens: the page it starts on, and the size of its window.
+const opening = {
+  startUrl: z.string().max(2048).regex(/^https?:\/\/\S+$/).nullable().optional(), windowMode: windowMode.optional(),
+  windowWidth: z.number().int().min(400).max(7680).nullable().optional(), windowHeight: z.number().int().min(300).max(4320).nullable().optional()
+};
 
 export const newProfile = z.object({
   name, groupId: z.uuid().nullable().optional(), tags: z.array(tag).max(10).default([]),
@@ -28,7 +33,7 @@ export const newProfile = z.object({
   kernel, kernelVersion: version, os, fingerprint: Fingerprint, proxyId: z.uuid().nullable().optional(),
   timezoneOverride: tz.nullable().optional(), localeOverride: locale.nullable().optional(), notes: z.string().max(2000).nullable().optional(),
   syncMode: z.enum(['cloud', 'local']).optional(), extensionIds: z.array(z.uuid()).max(50).optional(),
-  searchEngine: searchEngine.optional(), restoreTabs: z.boolean().optional()
+  searchEngine: searchEngine.optional(), restoreTabs: z.boolean().optional(), ...opening
 });
 // Firefox fingerprints run to tens of kilobytes each.
 export const BULK_BODY = 64 * 1024 * 1024;
@@ -196,7 +201,7 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
         proxyId: z.uuid().nullable().optional(), kernelVersion: version.optional(), os: os.optional(), fingerprint: Fingerprint.optional(),
         timezoneOverride: tz.nullable().optional(), localeOverride: locale.nullable().optional(), notes: z.string().max(2000).nullable().optional(),
         syncMode: z.enum(['cloud', 'local']).optional(), extensionIds: z.array(z.uuid()).max(50).optional(),
-        searchEngine: searchEngine.optional(), restoreTabs: z.boolean().optional()
+        searchEngine: searchEngine.optional(), restoreTabs: z.boolean().optional(), ...opening
       }),
       response: { 200: Profile }
     }
@@ -204,6 +209,7 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
     const { p, s, a } = await profileFor(deps, req, req.params.id, 'profiles.edit');
     const { version: v, ...patch } = req.body;
     checkFingerprint({ kernel: p.kernel, fingerprint: patch.fingerprint });
+    checkWindow({ windowMode: patch.windowMode ?? p.windowMode, windowWidth: patch.windowWidth ?? p.windowWidth, windowHeight: patch.windowHeight ?? p.windowHeight });
     await checkAssignment(db, p.workspaceId, a, [patch]);
     await assertOwned(db, p.workspaceId, { groupIds: [patch.groupId], proxyIds: [patch.proxyId] });
     await checkExtensions(db, p.workspaceId, [{ kernel: p.kernel, extensionIds: patch.extensionIds }]);
@@ -231,7 +237,7 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
         groupId: z.uuid().nullable().optional(), tag: tag.optional(), proxyId: z.uuid().nullable().optional(),
         ownerId: z.uuid().nullable().optional(), extensionId: z.uuid().optional(),
         kernel: kernel.optional(), kernelVersion: z.string().trim().min(1).max(40).optional(),
-        searchEngine: searchEngine.optional(), restoreTabs: z.boolean().optional()
+        searchEngine: searchEngine.optional(), restoreTabs: z.boolean().optional(), ...opening
       }),
       response: { 200: z.object({ updated: z.number() }) }
     }
@@ -290,11 +296,13 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
         break;
       }
       // The search engine, restoring tabs, or both; whichever is given.
+      // How the profiles open: search engine, tabs, start page, window. Only what is sent changes.
       case 'set-browser': {
-        const { searchEngine: se, restoreTabs } = req.body;
-        if (se === undefined && restoreTabs === undefined) throw new ApiError(400, 'validation', 'A search engine or the tab setting is required');
-        updated = await db.update(profiles).set({ ...bump, ...(se !== undefined ? { searchEngine: se } : {}), ...(restoreTabs !== undefined ? { restoreTabs } : {}) })
-          .where(and(mine, isNull(profiles.deletedAt))).returning(ref);
+        const { searchEngine: se, restoreTabs, startUrl, windowMode: wm, windowWidth, windowHeight } = req.body;
+        const set = Object.fromEntries(Object.entries({ searchEngine: se, restoreTabs, startUrl, windowMode: wm, windowWidth, windowHeight }).filter(([, v]) => v !== undefined));
+        if (!Object.keys(set).length) throw new ApiError(400, 'validation', 'Nothing to change');
+        checkWindow({ windowMode: wm, windowWidth, windowHeight });
+        updated = await db.update(profiles).set({ ...bump, ...set }).where(and(mine, isNull(profiles.deletedAt))).returning(ref);
         break;
       }
       case 'trash':

@@ -68,6 +68,27 @@ describe('creating profiles', () => {
 });
 
 describe('editing profiles', () => {
+  it('keep the page they start on and the size of their window, one at a time or in bulk', async () => {
+    const { headers, workspaceId } = await signup(t.app);
+    const made = (await post(`/workspaces/${workspaceId}/profiles`, headers, chromiumProfile('Opens', {
+      startUrl: 'https://shop.example/account', windowMode: 'custom', windowWidth: 1280, windowHeight: 800
+    }))).json();
+    expect(made).toMatchObject({ startUrl: 'https://shop.example/account', windowMode: 'custom', windowWidth: 1280, windowHeight: 800 });
+    // A window of its own size needs both numbers; a start page is a web address.
+    expect((await post(`/workspaces/${workspaceId}/profiles`, headers, chromiumProfile('Bad', { windowMode: 'custom', windowWidth: 1280 }))).json().error.code).toBe('window_size');
+    expect((await post(`/workspaces/${workspaceId}/profiles`, headers, chromiumProfile('Bad', { startUrl: 'file:///etc/passwd' }))).statusCode).toBe(400);
+
+    const edited = (await t.app.inject({ method: 'PATCH', url: `/profiles/${made.id}`, headers, payload: { version: made.version, windowMode: 'maximized' } })).json();
+    expect(edited).toMatchObject({ windowMode: 'maximized', startUrl: 'https://shop.example/account' });
+
+    const other = (await post(`/workspaces/${workspaceId}/profiles`, headers, chromiumProfile('Other'))).json();
+    expect(other).toMatchObject({ startUrl: null, windowMode: 'default', windowWidth: null });
+    const bulk = await post(`/workspaces/${workspaceId}/profiles/batch`, headers, { ids: [made.id, other.id], action: 'set-browser', startUrl: 'https://shop.example/' });
+    expect(bulk.json().updated).toBe(2);
+    const list = (await t.app.inject({ url: `/workspaces/${workspaceId}/profiles`, headers })).json().profiles as { name: string; startUrl: string; windowMode: string }[];
+    expect(list.map(p => [p.name, p.startUrl, p.windowMode])).toEqual([['Opens', 'https://shop.example/', 'maximized'], ['Other', 'https://shop.example/', 'default']]);
+  });
+
   it('detects edits based on an old version', async () => {
     const { headers, workspaceId } = await signup(t.app);
     const p = (await post(`/workspaces/${workspaceId}/profiles`, headers, chromiumProfile('Old name'))).json();

@@ -5215,6 +5215,26 @@
                           "restoreTabs": {
                             "type": "boolean"
                           },
+                          "startUrl": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "windowMode": {
+                            "type": "string",
+                            "enum": [
+                              "default",
+                              "custom",
+                              "maximized"
+                            ]
+                          },
+                          "windowWidth": {
+                            "nullable": true,
+                            "type": "number"
+                          },
+                          "windowHeight": {
+                            "nullable": true,
+                            "type": "number"
+                          },
                           "lastOpenedAt": {
                             "nullable": true,
                             "type": "string"
@@ -5526,6 +5546,10 @@
                           "notes",
                           "searchEngine",
                           "restoreTabs",
+                          "startUrl",
+                          "windowMode",
+                          "windowWidth",
+                          "windowHeight",
                           "lastOpenedAt",
                           "lastOpenedBy",
                           "createdAt",
@@ -5733,6 +5757,32 @@
                   },
                   "restoreTabs": {
                     "type": "boolean"
+                  },
+                  "startUrl": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 2048,
+                    "pattern": "^https?:\\/\\/\\S+$"
+                  },
+                  "windowMode": {
+                    "type": "string",
+                    "enum": [
+                      "default",
+                      "custom",
+                      "maximized"
+                    ]
+                  },
+                  "windowWidth": {
+                    "nullable": true,
+                    "type": "integer",
+                    "minimum": 400,
+                    "maximum": 7680
+                  },
+                  "windowHeight": {
+                    "nullable": true,
+                    "type": "integer",
+                    "minimum": 300,
+                    "maximum": 4320
                   }
                 },
                 "required": [
@@ -5912,6 +5962,26 @@
                     },
                     "restoreTabs": {
                       "type": "boolean"
+                    },
+                    "startUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "windowMode": {
+                      "type": "string",
+                      "enum": [
+                        "default",
+                        "custom",
+                        "maximized"
+                      ]
+                    },
+                    "windowWidth": {
+                      "nullable": true,
+                      "type": "number"
+                    },
+                    "windowHeight": {
+                      "nullable": true,
+                      "type": "number"
                     },
                     "lastOpenedAt": {
                       "nullable": true,
@@ -6224,6 +6294,10 @@
                     "notes",
                     "searchEngine",
                     "restoreTabs",
+                    "startUrl",
+                    "windowMode",
+                    "windowWidth",
+                    "windowHeight",
                     "lastOpenedAt",
                     "lastOpenedBy",
                     "createdAt",
@@ -6433,6 +6507,32 @@
                         },
                         "restoreTabs": {
                           "type": "boolean"
+                        },
+                        "startUrl": {
+                          "nullable": true,
+                          "type": "string",
+                          "maxLength": 2048,
+                          "pattern": "^https?:\\/\\/\\S+$"
+                        },
+                        "windowMode": {
+                          "type": "string",
+                          "enum": [
+                            "default",
+                            "custom",
+                            "maximized"
+                          ]
+                        },
+                        "windowWidth": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": 400,
+                          "maximum": 7680
+                        },
+                        "windowHeight": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": 300,
+                          "maximum": 4320
                         }
                       },
                       "required": [
@@ -6623,6 +6723,26 @@
                           },
                           "restoreTabs": {
                             "type": "boolean"
+                          },
+                          "startUrl": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "windowMode": {
+                            "type": "string",
+                            "enum": [
+                              "default",
+                              "custom",
+                              "maximized"
+                            ]
+                          },
+                          "windowWidth": {
+                            "nullable": true,
+                            "type": "number"
+                          },
+                          "windowHeight": {
+                            "nullable": true,
+                            "type": "number"
                           },
                           "lastOpenedAt": {
                             "nullable": true,
@@ -6935,6 +7055,10 @@
                           "notes",
                           "searchEngine",
                           "restoreTabs",
+                          "startUrl",
+                          "windowMode",
+                          "windowWidth",
+                          "windowHeight",
                           "lastOpenedAt",
                           "lastOpenedBy",
                           "createdAt",
@@ -7141,6 +7265,32 @@
                   },
                   "restoreTabs": {
                     "type": "boolean"
+                  },
+                  "startUrl": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 2048,
+                    "pattern": "^https?:\\/\\/\\S+$"
+                  },
+                  "windowMode": {
+                    "type": "string",
+                    "enum": [
+                      "default",
+                      "custom",
+                      "maximized"
+                    ]
+                  },
+                  "windowWidth": {
+                    "nullable": true,
+                    "type": "integer",
+                    "minimum": 400,
+                    "maximum": 7680
+                  },
+                  "windowHeight": {
+                    "nullable": true,
+                    "type": "integer",
+                    "minimum": 300,
+                    "maximum": 4320
                   }
                 },
                 "required": [
@@ -7316,6 +7466,26 @@
                     },
                     "restoreTabs": {
                       "type": "boolean"
+                    },
+                    "startUrl": {
+                      "nullable": true,
+                      "type": "string"
+                    },
+                    "windowMode": {
+                      "type": "string",
+                      "enum": [
+                        "default",
+                        "custom",
+                        "maximized"
+                      ]
+                    },
+                    "windowWidth": {
+                      "nullable": true,
+                      "type": "number"
+                    },
+                    "windowHeight": {
+                      "nullable": true,
+                      "type": "number"
                     },
                     "lastOpenedAt": {
                       "nullable": true,
@@ -7628,6 +7798,10 @@
                     "notes",
                     "searchEngine",
                     "restoreTabs",
+                    "startUrl",
+                    "windowMode",
+                    "windowWidth",
+                    "windowHeight",
                     "lastOpenedAt",
                     "lastOpenedBy",
                     "createdAt",
@@ -7742,6 +7916,32 @@
                   },
                   "restoreTabs": {
                     "type": "boolean"
+                  },
+                  "startUrl": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 2048,
+                    "pattern": "^https?:\\/\\/\\S+$"
+                  },
+                  "windowMode": {
+                    "type": "string",
+                    "enum": [
+                      "default",
+                      "custom",
+                      "maximized"
+                    ]
+                  },
+                  "windowWidth": {
+                    "nullable": true,
+                    "type": "integer",
+                    "minimum": 400,
+                    "maximum": 7680
+                  },
+                  "windowHeight": {
+                    "nullable": true,
+                    "type": "integer",
+                    "minimum": 300,
+                    "maximum": 4320
                   }
                 },
                 "required": [
@@ -8213,6 +8413,26 @@
                         "restoreTabs": {
                           "type": "boolean"
                         },
+                        "startUrl": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "windowMode": {
+                          "type": "string",
+                          "enum": [
+                            "default",
+                            "custom",
+                            "maximized"
+                          ]
+                        },
+                        "windowWidth": {
+                          "nullable": true,
+                          "type": "number"
+                        },
+                        "windowHeight": {
+                          "nullable": true,
+                          "type": "number"
+                        },
                         "lastOpenedAt": {
                           "nullable": true,
                           "type": "string"
@@ -8524,6 +8744,10 @@
                         "notes",
                         "searchEngine",
                         "restoreTabs",
+                        "startUrl",
+                        "windowMode",
+                        "windowWidth",
+                        "windowHeight",
                         "lastOpenedAt",
                         "lastOpenedBy",
                         "createdAt",
@@ -12836,6 +13060,32 @@
                           "restoreTabs": {
                             "type": "boolean"
                           },
+                          "startUrl": {
+                            "nullable": true,
+                            "type": "string",
+                            "maxLength": 2048,
+                            "pattern": "^https?:\\/\\/\\S+$"
+                          },
+                          "windowMode": {
+                            "type": "string",
+                            "enum": [
+                              "default",
+                              "custom",
+                              "maximized"
+                            ]
+                          },
+                          "windowWidth": {
+                            "nullable": true,
+                            "type": "integer",
+                            "minimum": 400,
+                            "maximum": 7680
+                          },
+                          "windowHeight": {
+                            "nullable": true,
+                            "type": "integer",
+                            "minimum": 300,
+                            "maximum": 4320
+                          },
                           "ref": {
                             "type": "string",
                             "minLength": 1,
@@ -13178,6 +13428,32 @@
                         },
                         "restoreTabs": {
                           "type": "boolean"
+                        },
+                        "startUrl": {
+                          "nullable": true,
+                          "type": "string",
+                          "maxLength": 2048,
+                          "pattern": "^https?:\\/\\/\\S+$"
+                        },
+                        "windowMode": {
+                          "type": "string",
+                          "enum": [
+                            "default",
+                            "custom",
+                            "maximized"
+                          ]
+                        },
+                        "windowWidth": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": 400,
+                          "maximum": 7680
+                        },
+                        "windowHeight": {
+                          "nullable": true,
+                          "type": "integer",
+                          "minimum": 300,
+                          "maximum": 4320
                         },
                         "ref": {
                           "type": "string",

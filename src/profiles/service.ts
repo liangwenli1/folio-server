@@ -126,8 +126,14 @@ export async function checkAssignment(db: Db, workspaceId: string, a: Access, it
   await assertOwned(db, workspaceId, { ownerIds: items.map(i => i.ownerId) });
 }
 
+// A window of its own size needs both numbers.
+export function checkWindow(p: { windowMode?: string; windowWidth?: number | null; windowHeight?: number | null }){
+  if (p.windowMode === 'custom' && (!p.windowWidth || !p.windowHeight)) throw new ApiError(400, 'window_size', 'A window of its own size needs a width and a height');
+}
+
 export interface NewProfile {
   name: string; groupId?: string | null; tags: string[]; ownerId?: string | null;
+  startUrl?: string | null; windowMode?: 'default' | 'custom' | 'maximized'; windowWidth?: number | null; windowHeight?: number | null;
   kernel: 'chromium' | 'firefox'; kernelVersion: string; os: 'windows' | 'macos' | 'linux'; fingerprint: z.infer<typeof Fingerprint>;
   proxyId?: string | null; timezoneOverride?: string | null; localeOverride?: string | null; notes?: string | null; syncMode?: 'cloud' | 'local';
   extensionIds?: string[]; searchEngine?: z.infer<typeof searchEngine>; restoreTabs?: boolean;
@@ -137,6 +143,7 @@ export interface NewProfile {
 export async function createProfiles(deps: Deps, workspaceId: string, s: { userId: string; deviceName: string | null }, a: Access, items: NewProfile[]){
   const { db, clock } = deps;
   items.forEach(checkFingerprint);
+  items.forEach(checkWindow);
   await checkAssignment(db, workspaceId, a, items);
   await assertOwned(db, workspaceId, { groupIds: items.map(i => i.groupId), proxyIds: items.map(i => i.proxyId) });
   await checkExtensions(db, workspaceId, items);

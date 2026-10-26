@@ -141,6 +141,13 @@
       "when": 1793001352016,
       "tag": "0019_workspace_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793006124355,
+      "tag": "0020_profile_start_window",
+      "breakpoints": true
     }
   ]
 }

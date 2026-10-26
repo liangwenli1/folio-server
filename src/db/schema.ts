@@ -201,6 +201,13 @@ export const profiles = pgTable('profiles', {
   // it was closed with.
   searchEngine: text().notNull().default('none'),
   restoreTabs: boolean().notNull().default(true),
+  // The page it opens on when there are no tabs to bring back (before the search engine's home page).
+  startUrl: text(),
+  // The window it opens in: the engine's own size, a size of its own (`windowWidth` × `windowHeight`), or the
+  // whole screen. The screen size websites see is part of the fingerprint and separate from this.
+  windowMode: text().notNull().default('default'),
+  windowWidth: integer(),
+  windowHeight: integer(),
   // 'cloud': sign-in state is saved to Folio and follows the profile; 'local': it stays on the computer that uses it.
   syncMode: text().notNull().default('cloud'),
   // Extensions from the workspace's library installed in this profile.

@@ -108,6 +108,7 @@ export const Fingerprint = z.discriminatedUnion('kind', [
 ]);
 export const os = z.enum(['windows', 'macos', 'linux']);
 export const searchEngine = z.enum(['none', 'google', 'bing', 'baidu', 'duckduckgo', 'yahoo', 'yandex']);
+export const windowMode = z.enum(['default', 'custom', 'maximized']);
 
 // The latest saved sign-in state: counts for display, and which computer saved it.
 export const SavedData = z.object({
@@ -133,6 +134,7 @@ export const Profile = z.object({
   id: z.string(), workspaceId: z.string(), number: z.number(), name: z.string(), groupId: z.string().nullable(),
   ownerId: z.string().nullable(), tags: z.array(z.string()), kernel, kernelVersion: z.string(), os, fingerprint: Fingerprint, proxyId: z.string().nullable(),
   timezoneOverride: z.string().nullable(), localeOverride: z.string().nullable(), notes: z.string().nullable(), searchEngine, restoreTabs: z.boolean(),
+  startUrl: z.string().nullable(), windowMode, windowWidth: z.number().nullable(), windowHeight: z.number().nullable(),
   lastOpenedAt: iso, lastOpenedBy: z.string().nullable(), createdAt: z.string(), updatedAt: z.string(), deletedAt: iso, deletedBy: z.string().nullable(), version: z.number(),
   syncMode: z.enum(['cloud', 'local']), extensionIds: z.array(z.string()), data: SavedData.nullable(), lock: LockHolder.nullable(),
   lastExit: ProfileExit.nullable(), prevExit: ProfileExit.nullable(), report: HealthReport.nullable(), starred: z.boolean()
@@ -147,6 +149,7 @@ export function profileView(p: typeof profiles.$inferSelect, state: { data: type
     fingerprint: p.fingerprint as z.infer<typeof Fingerprint>, proxyId: p.proxyId,
     timezoneOverride: p.timezoneOverride, localeOverride: p.localeOverride, notes: p.notes,
     searchEngine: p.searchEngine as z.infer<typeof searchEngine>, restoreTabs: p.restoreTabs,
+    startUrl: p.startUrl, windowMode: p.windowMode as z.infer<typeof windowMode>, windowWidth: p.windowWidth, windowHeight: p.windowHeight,
     lastOpenedAt: p.lastOpenedAt?.toISOString() ?? null, lastOpenedBy: p.lastOpenedBy,
     createdAt: p.createdAt.toISOString(), updatedAt: p.updatedAt.toISOString(), deletedAt: p.deletedAt?.toISOString() ?? null, deletedBy: p.deletedBy, version: p.version,
     syncMode: p.syncMode as 'cloud' | 'local', extensionIds: p.extensionIds, data: state?.data ? savedDataView(state.data) : null,
