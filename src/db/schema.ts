@@ -127,13 +127,26 @@ export const payments = pgTable('payments', {
   refundedAt: ts()
 }, t => [index().on(t.workspaceId, t.createdAt)]);
 
+// What people write in through the website's contact form. `number` is the reference they are given; `kind` is
+// what they asked about (product, support, partnership). `company` comes from the earlier sales form.
 export const salesInquiries = pgTable('sales_inquiries', {
   id: uuid().primaryKey().defaultRandom(),
+  number: bigserial({ mode: 'number' }).notNull().unique(),
+  kind: text().notNull().default('product'),
   name: text().notNull(),
   email: text().notNull(),
   company: text(),
   teamSize: text(),
   message: text().notNull(),
+  locale: text().notNull(),
+  createdAt: createdAt()
+});
+
+// Whether a help article helped, as its readers said.
+export const docFeedback = pgTable('doc_feedback', {
+  id: uuid().primaryKey().defaultRandom(),
+  page: text().notNull(),
+  helpful: boolean().notNull(),
   locale: text().notNull(),
   createdAt: createdAt()
 });
