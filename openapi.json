@@ -1195,6 +1195,10 @@
                     "type": "string",
                     "format": "uuid",
                     "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "remember": {
+                    "default": true,
+                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -4693,6 +4697,14 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "product",
+                      "support",
+                      "partner"
+                    ]
+                  },
                   "name": {
                     "type": "string",
                     "minLength": 1,
@@ -4703,10 +4715,6 @@
                     "format": "email",
                     "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
                   },
-                  "company": {
-                    "type": "string",
-                    "maxLength": 120
-                  },
                   "teamSize": {
                     "type": "string",
                     "maxLength": 40
@@ -4714,7 +4722,7 @@
                   "message": {
                     "type": "string",
                     "minLength": 1,
-                    "maxLength": 4000
+                    "maxLength": 500
                   },
                   "locale": {
                     "default": "en",
@@ -4726,9 +4734,68 @@
                   }
                 },
                 "required": [
+                  "kind",
                   "name",
                   "email",
+                  "teamSize",
                   "message"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "number": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "number"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/doc-feedback": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "page": {
+                    "type": "string",
+                    "maxLength": 60,
+                    "pattern": "^[a-z0-9-]+$"
+                  },
+                  "helpful": {
+                    "type": "boolean"
+                  },
+                  "locale": {
+                    "default": "en",
+                    "type": "string",
+                    "enum": [
+                      "en",
+                      "zh"
+                    ]
+                  }
+                },
+                "required": [
+                  "page",
+                  "helpful"
                 ]
               }
             }
