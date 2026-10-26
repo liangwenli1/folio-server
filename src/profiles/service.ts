@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, isNotNull, isNull, lt, or, sql, type SQL } from 'drizzle-orm';
 import type { FastifyRequest } from 'fastify';
 import type { Db, Tx } from '../db/client.js';
 import { extensions, groupMembers, groups, memberships, profileData, profileLocks, profileStars, profiles, proxies, users, workspaces } from '../db/schema.js';
@@ -10,6 +10,7 @@ import { publish } from '../events.js';
 import type { z } from 'zod';
 import { membership, type Access } from '../workspaces/service.js';
 import { entitlements } from '../plans.js';
+import type { Storage } from '../storage.js';
 import { MANAGE, type Permission } from '../permissions.js';
 import { readSub, toState } from '../billing/service.js';
 
@@ -160,4 +161,20 @@ export async function createProfiles(deps: Deps, workspaceId: string, s: { userI
   await record(db, { workspaceId, actor: s, at: now, action: 'profile.create', profiles: rows });
   publish(workspaceId, { kind: 'profiles', ids: rows.map(p => p.id) });
   return rows;
+}
+
+// Daily: profiles that have been in the Trash longer than their workspace keeps them are deleted for good, with their
+// saved state. The log says Folio did it.
+export async function purgeExpired(db: Db, storage: Storage, now: Date){
+  const due = await db.select({ id: profiles.id, workspaceId: profiles.workspaceId, name: profiles.name, number: profiles.number, key: profileData.objectKey })
+    .from(profiles).innerJoin(workspaces, eq(workspaces.id, profiles.workspaceId)).leftJoin(profileData, eq(profileData.profileId, profiles.id))
+    .where(and(isNotNull(profiles.deletedAt), lt(profiles.deletedAt, sql`${now.toISOString()}::timestamptz - make_interval(days => ${workspaces.trashDays})`)));
+  for (const ws of new Set(due.map(p => p.workspaceId))){
+    const gone = [...new Map(due.filter(p => p.workspaceId === ws).map(p => [p.id, p])).values()];
+    await record(db, { workspaceId: ws, actor: { userId: null, deviceName: null }, at: now, action: 'profile.purge', profiles: gone, detail: { expired: true } });
+    await db.delete(profiles).where(inArray(profiles.id, gone.map(p => p.id)));
+    publish(ws, { kind: 'profiles', ids: gone.map(p => p.id) });
+  }
+  await Promise.all(due.flatMap(p => (p.key ? [storage.delete(p.key).catch(() => {})] : [])));
+  return due.length;
 }

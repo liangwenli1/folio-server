@@ -16,7 +16,7 @@ describe('workspaces', () => {
     expect(ws).toMatchObject({ name: 'EU & UK stores', role: { key: 'owner' }, subscription: { plan: 'free' }, usage: { profiles: 0, members: 1 } });
     expect(ws.settings).toEqual({
       defaultKernel: null, defaultKernelVersion: null, defaultGroupId: null, defaultProxyId: null,
-      openDetailAfterLaunch: false, stopOnWindowClose: true, expiryReminder: true
+      openDetailAfterLaunch: false, stopOnWindowClose: true, expiryReminder: true, trashDays: 30
     });
     expect((await t.app.inject({ url: '/me', headers })).json().workspaces).toHaveLength(2);
   });

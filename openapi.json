@@ -1876,6 +1876,40 @@
                         },
                         "expiryReminder": {
                           "type": "boolean"
+                        },
+                        "trashDays": {
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "enum": [
+                                7
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                15
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                30
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                60
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                90
+                              ]
+                            }
+                          ]
                         }
                       },
                       "required": [
@@ -1885,7 +1919,8 @@
                         "defaultProxyId",
                         "openDetailAfterLaunch",
                         "stopOnWindowClose",
-                        "expiryReminder"
+                        "expiryReminder",
+                        "trashDays"
                       ],
                       "additionalProperties": false
                     },
@@ -1966,6 +2001,40 @@
                       },
                       "expiryReminder": {
                         "type": "boolean"
+                      },
+                      "trashDays": {
+                        "anyOf": [
+                          {
+                            "type": "number",
+                            "enum": [
+                              7
+                            ]
+                          },
+                          {
+                            "type": "number",
+                            "enum": [
+                              15
+                            ]
+                          },
+                          {
+                            "type": "number",
+                            "enum": [
+                              30
+                            ]
+                          },
+                          {
+                            "type": "number",
+                            "enum": [
+                              60
+                            ]
+                          },
+                          {
+                            "type": "number",
+                            "enum": [
+                              90
+                            ]
+                          }
+                        ]
                       }
                     }
                   }
@@ -2031,6 +2100,40 @@
                         },
                         "expiryReminder": {
                           "type": "boolean"
+                        },
+                        "trashDays": {
+                          "anyOf": [
+                            {
+                              "type": "number",
+                              "enum": [
+                                7
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                15
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                30
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                60
+                              ]
+                            },
+                            {
+                              "type": "number",
+                              "enum": [
+                                90
+                              ]
+                            }
+                          ]
                         }
                       },
                       "required": [
@@ -2040,7 +2143,8 @@
                         "defaultProxyId",
                         "openDetailAfterLaunch",
                         "stopOnWindowClose",
-                        "expiryReminder"
+                        "expiryReminder",
+                        "trashDays"
                       ],
                       "additionalProperties": false
                     }

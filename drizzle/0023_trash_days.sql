@@ -1,0 +1,1 @@
+ALTER TABLE "workspaces" ADD COLUMN "trash_days" integer DEFAULT 30 NOT NULL;

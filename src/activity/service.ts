@@ -29,7 +29,8 @@ export const KINDS = {
   automation: ['flow.create', 'flow.update', 'flow.delete', 'task.create', 'task.update', 'task.delete', 'run.start', 'run.finish']
 } satisfies Record<string, Action[]>;
 
-export interface Actor { userId: string; deviceName: string | null }
+// Who did it: a person (on a computer), or nobody for what Folio does by itself.
+export interface Actor { userId: string | null; deviceName: string | null }
 type ProfileRef = { id: string; name: string; number: number };
 
 // One entry, or one per profile when profiles are given.

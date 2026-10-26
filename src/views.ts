@@ -47,17 +47,19 @@ export function subscriptionView(r: SubRow): z.infer<typeof Subscription> {
 export const WorkspaceSummary = z.object({ id: z.string(), name: z.string(), role: MyRole, plan, status: z.enum(['active', 'trialing']) });
 // What a workspace starts new profiles with, and how it behaves when one is opened. The defaults only reach
 // profiles made after they are set.
+export const trashDays = z.union([z.literal(7), z.literal(15), z.literal(30), z.literal(60), z.literal(90)]);
 export const WorkspaceSettings = z.object({
   defaultKernel: kernel.nullable(), defaultKernelVersion: z.string().nullable(),
   defaultGroupId: z.string().nullable(), defaultProxyId: z.string().nullable(),
-  openDetailAfterLaunch: z.boolean(), stopOnWindowClose: z.boolean(), expiryReminder: z.boolean()
+  openDetailAfterLaunch: z.boolean(), stopOnWindowClose: z.boolean(), expiryReminder: z.boolean(), trashDays
 });
 export const workspaceSettingsView = (w: {
   defaultKernel: string | null; defaultKernelVersion: string | null; defaultGroupId: string | null; defaultProxyId: string | null;
-  openDetailAfterLaunch: boolean; stopOnWindowClose: boolean; expiryReminder: boolean;
+  openDetailAfterLaunch: boolean; stopOnWindowClose: boolean; expiryReminder: boolean; trashDays: number;
 }): z.infer<typeof WorkspaceSettings> => ({
   defaultKernel: w.defaultKernel as 'chromium' | 'firefox' | null, defaultKernelVersion: w.defaultKernelVersion,
-  defaultGroupId: w.defaultGroupId, defaultProxyId: w.defaultProxyId, openDetailAfterLaunch: w.openDetailAfterLaunch, stopOnWindowClose: w.stopOnWindowClose, expiryReminder: w.expiryReminder
+  defaultGroupId: w.defaultGroupId, defaultProxyId: w.defaultProxyId, openDetailAfterLaunch: w.openDetailAfterLaunch, stopOnWindowClose: w.stopOnWindowClose, expiryReminder: w.expiryReminder,
+  trashDays: w.trashDays as z.infer<typeof trashDays>
 });
 
 export const Workspace = z.object({

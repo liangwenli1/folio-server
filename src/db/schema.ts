@@ -49,12 +49,13 @@ export const workspaces = pgTable('workspaces', {
   defaultKernelVersion: text(),
   defaultGroupId: uuid().references((): AnyPgColumn => groups.id, { onDelete: 'set null' }),
   defaultProxyId: uuid().references((): AnyPgColumn => proxies.id, { onDelete: 'set null' }),
-  // Fetch the recommended engine version without being asked.
   // Opening a profile also opens its details; closing its last window stops it.
   openDetailAfterLaunch: boolean().notNull().default(false),
   stopOnWindowClose: boolean().notNull().default(true),
   // Say in the app when the plan is close to its end.
   expiryReminder: boolean().notNull().default(true),
+  // How many days a profile stays in the Trash before it is deleted for good.
+  trashDays: integer().notNull().default(30),
   createdAt: createdAt()
 });
 

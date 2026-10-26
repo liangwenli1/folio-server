@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { purgeExpired } from '../src/profiles/service.js';
 import { buy, chromiumProfile, setup, signup } from './helpers.js';
 
 let t: Awaited<ReturnType<typeof setup>>;
@@ -125,6 +126,21 @@ describe('editing profiles', () => {
     expect((await list(headers, workspaceId)).map(p => (p as { deletedBy?: string | null }).deletedBy)).toEqual([null]);
     expect((await batch(headers, workspaceId, { ids, action: 'purge' })).json().updated).toBe(1);
     expect((await list(headers, workspaceId)).map(p => p.name)).toEqual(['A']);
+  });
+
+  it('leave the Trash for good once the workspace’s days are up, and the log says Folio did it', async () => {
+    const { headers, workspaceId } = await signup(t.app);
+    const ids = (await post(`/workspaces/${workspaceId}/profiles/bulk`, headers, { profiles: [chromiumProfile('Old'), chromiumProfile('Recent')] })).json().profiles.map((p: { id: string }) => p.id);
+    expect((await t.app.inject({ method: 'PATCH', url: `/workspaces/${workspaceId}`, headers, payload: { settings: { trashDays: 7 } } })).json().settings.trashDays).toBe(7);
+    expect((await t.app.inject({ method: 'PATCH', url: `/workspaces/${workspaceId}`, headers, payload: { settings: { trashDays: 8 } } })).statusCode).toBe(400);
+    await batch(headers, workspaceId, { ids: [ids[0]], action: 'trash' });
+    t.clock.advanceDays(5);
+    await batch(headers, workspaceId, { ids: [ids[1]], action: 'trash' });
+    t.clock.advanceDays(3);
+    expect(await purgeExpired(t.db, t.storage, t.clock.now())).toBe(1);
+    expect((await list(headers, workspaceId, true)).map(p => p.name)).toEqual(['Recent']);
+    const log = (await t.app.inject({ url: `/workspaces/${workspaceId}/activity`, headers })).json().entries as { action: string; actor: string | null; detail: object }[];
+    expect(log[0]).toMatchObject({ action: 'profile.purge', actor: null, detail: { expired: true } });
   });
 
   it('keeps the fingerprint choices made in the app, and refuses others', async () => {

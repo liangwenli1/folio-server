@@ -162,6 +162,13 @@
       "when": 1793021022624,
       "tag": "0022_batch_jobs",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1793022004550,
+      "tag": "0023_trash_days",
+      "breakpoints": true
     }
   ]
 }

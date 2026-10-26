@@ -40,8 +40,8 @@ export function workspaceRoutes(app: FastifyInstance, deps: Deps){
     });
   });
 
-  // The name, what new profiles start with, and how opening one behaves. Settings arrive one at a time or
-  // together; the group and the proxy must be the workspace's own.
+  // The name, what new profiles start with, how opening one behaves, and how long the Trash keeps profiles.
+  // Settings arrive one at a time or together; the group and the proxy must be the workspace's own.
   const settings = WorkspaceSettings.extend({ defaultKernel: kernel.nullable(), defaultKernelVersion: z.string().regex(/^[\w.-]{1,40}$/).nullable() }).partial();
   r.patch('/workspaces/:id', {
     schema: { params, body: z.object({ name: name.optional(), settings: settings.optional() }), response: { 200: z.object({ id: z.string(), name: z.string(), settings: WorkspaceSettings }) } }
