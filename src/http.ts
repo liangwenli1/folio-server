@@ -25,9 +25,10 @@ export async function requireSession(req: FastifyRequest, deps: Deps){
   return session;
 }
 
-export function setSessionCookie(reply: FastifyReply, token: string, config: Config){
+// Kept for 30 days, or (`remember` off) until the browser closes.
+export function setSessionCookie(reply: FastifyReply, token: string, config: Config, remember = true){
   reply.setCookie(SESSION_COOKIE, token, {
-    httpOnly: true, sameSite: 'lax', secure: config.cookieSecure, domain: config.cookieDomain, path: '/', maxAge: 30 * 86400
+    httpOnly: true, sameSite: 'lax', secure: config.cookieSecure, domain: config.cookieDomain, path: '/', ...(remember ? { maxAge: 30 * 86400 } : {})
   });
 }
 

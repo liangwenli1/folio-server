@@ -56,6 +56,17 @@ describe('register and log in', () => {
     expect(me.json().user.email).toBe(email);
   });
 
+  it('keeps a web sign-in for 30 days, or only until the browser closes when asked not to remember it', async () => {
+    const { email } = await signup(t.app);
+    const kept = await t.app.inject({ method: 'POST', url: '/auth/login', payload: { email, password: PASSWORD } });
+    expect(kept.cookies.find(c => c.name === 'folio_session')!.maxAge).toBe(30 * 86400);
+    const brief = await t.app.inject({ method: 'POST', url: '/auth/login', payload: { email, password: PASSWORD, remember: false } });
+    const cookie = brief.cookies.find(c => c.name === 'folio_session')!;
+    expect(cookie.maxAge).toBeUndefined();
+    expect(cookie.expires).toBeUndefined();
+    expect((await t.app.inject({ url: '/me', headers: { cookie: `folio_session=${cookie.value}` } })).json().user.email).toBe(email);
+  });
+
   it('ends the session on logout', async () => {
     const { headers } = await signup(t.app);
     expect((await t.app.inject({ method: 'POST', url: '/auth/logout', headers })).statusCode).toBe(204);

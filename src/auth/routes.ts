@@ -54,7 +54,11 @@ export function authRoutes(app: FastifyInstance, deps: Deps){
   r.post('/auth/login', {
     config: limited,
     schema: {
-      body: z.object({ email: z.email(), password: z.string().max(200), client: z.enum(['web', 'desktop']).default('web'), deviceName: z.string().max(100).optional(), deviceId: z.uuid().optional() }),
+      body: z.object({
+        email: z.email(), password: z.string().max(200), client: z.enum(['web', 'desktop']).default('web'), deviceName: z.string().max(100).optional(), deviceId: z.uuid().optional(),
+        // The site's "keep me signed in": off, the session ends with the browser.
+        remember: z.boolean().default(true)
+      }),
       response: { 200: z.object({ user: User, token: z.string().optional() }) }
     }
   }, async (req, reply) => {
@@ -64,7 +68,7 @@ export function authRoutes(app: FastifyInstance, deps: Deps){
     const u = await verifiedWhenOff(found);
     const token = await createSession(db, { userId: u.id, client: req.body.client, deviceName: req.body.deviceName ?? null, deviceId: req.body.deviceId ?? null, now: clock.now() });
     if (req.body.client === 'desktop') return { user: userView(u), token };
-    setSessionCookie(reply, token, deps.config);
+    setSessionCookie(reply, token, deps.config, req.body.remember);
     return { user: userView(u) };
   });
 
