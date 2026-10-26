@@ -214,6 +214,10 @@ describe('launch details', () => {
     const launch = (await t.app.inject({ url: `/profiles/${p.id}/launch`, headers })).json();
     expect(launch.proxy).toMatchObject({ type: 'socks5', host: 'a.example.net', username: 'u1', password: 'p@ss:word' });
     expect(launch.backup).toMatchObject({ host: 'b.example.net', password: null });
+    // Closing its last window stops it, unless the workspace says it keeps running.
+    expect(launch.stopOnWindowClose).toBe(true);
+    await t.app.inject({ method: 'PATCH', url: `/workspaces/${workspaceId}`, headers, payload: { settings: { stopOnWindowClose: false } } });
+    expect((await t.app.inject({ url: `/profiles/${p.id}/launch`, headers })).json().stopOnWindowClose).toBe(false);
 
     await batch(headers, workspaceId, { ids: [p.id], action: 'trash' });
     expect((await t.app.inject({ url: `/profiles/${p.id}/launch`, headers })).json().error.code).toBe('in_trash');

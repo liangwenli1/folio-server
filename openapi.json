@@ -8927,13 +8927,17 @@
                         ],
                         "additionalProperties": false
                       }
+                    },
+                    "stopOnWindowClose": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
                     "profile",
                     "proxy",
                     "backup",
-                    "extensions"
+                    "extensions",
+                    "stopOnWindowClose"
                   ],
                   "additionalProperties": false
                 }

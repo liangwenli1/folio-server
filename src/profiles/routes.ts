@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { and, asc, eq, inArray, isNotNull, isNull, ne, sql } from 'drizzle-orm';
-import { extensions, groupMembers, groups, profileData, profileStars, profiles, proxies, users } from '../db/schema.js';
+import { extensions, groupMembers, groups, profileData, profileStars, profiles, proxies, users, workspaces } from '../db/schema.js';
 import { record } from '../activity/service.js';
 import { ApiError, forbidden, notFound } from '../errors.js';
 import { publish } from '../events.js';
@@ -374,7 +374,7 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
   // Everything the desktop app needs to launch a profile, including proxy passwords.
   // The desktop refuses to pass this route through to its renderer.
   r.get('/profiles/:id/launch', {
-    schema: { params: wsParams, response: { 200: z.object({ profile: Profile, proxy: ProxySecret.nullable(), backup: ProxySecret.nullable(), extensions: z.array(Extension) }) } }
+    schema: { params: wsParams, response: { 200: z.object({ profile: Profile, proxy: ProxySecret.nullable(), backup: ProxySecret.nullable(), extensions: z.array(Extension), stopOnWindowClose: z.boolean() }) } }
   }, async req => {
     const { p, s } = await profileFor(deps, req, req.params.id, 'profiles.open');
     if (p.deletedAt) throw new ApiError(409, 'in_trash', 'Restore this profile from the trash before opening it');
@@ -385,6 +385,8 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
     const [backup] = proxy?.backupId ? await db.select().from(proxies).where(eq(proxies.id, proxy.backupId)) : [];
     // The extensions it opens with, to fetch and check against their signatures.
     const exts = p.extensionIds.length ? await db.select().from(extensions).where(inArray(extensions.id, p.extensionIds)) : [];
-    return { profile: (await loadProfiles(db, eq(profiles.id, p.id), s, clock.now()))[0], proxy: secret(proxy), backup: secret(backup), extensions: exts.map(e => extensionView(e, 0)) };
+    // Whether closing its last window stops it (the workspace's choice), or it keeps running without one.
+    const [ws] = await db.select({ stop: workspaces.stopOnWindowClose }).from(workspaces).where(eq(workspaces.id, p.workspaceId));
+    return { profile: (await loadProfiles(db, eq(profiles.id, p.id), s, clock.now()))[0], proxy: secret(proxy), backup: secret(backup), extensions: exts.map(e => extensionView(e, 0)), stopOnWindowClose: ws.stop };
   });
 }
