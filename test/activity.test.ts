@@ -71,6 +71,24 @@ describe('the activity log', () => {
     expect(await actions(m.headers, o.workspaceId, `?actorId=${m.userId}`)).toEqual(['profile.create']);
   });
 
+  it('reads whole only for a role that may view the log, whatever else it may do', async () => {
+    const o = await signup(t.app);
+    await buy(t.app, o.headers, o.workspaceId, { plan: 'studio', period: 'monthly', addonPacks: 0 });
+    const ws = o.workspaceId, m = await signup(t.app);
+    await join(t.db, ws, m.userId, 'member');
+    await call('POST', `/workspaces/${ws}/groups`, o.headers, { name: 'EU stores' });
+    await call('POST', `/workspaces/${ws}/profiles`, o.headers, chromiumProfile('Owner-1'));
+    const role = (await call('POST', `/workspaces/${ws}/roles`, o.headers, { name: 'Auditor', permissions: ['activity.view'] })).json();
+    await call('PATCH', `/workspaces/${ws}/members/${m.userId}`, o.headers, { roleId: role.id });
+    // Sees none of the profiles, yet the whole log.
+    expect(await actions(m.headers, ws)).toEqual(['member.role', 'role.create', 'profile.create', 'group.create']);
+    // Manages members without viewing the log: their own actions and what was done to the profiles (all of them).
+    await call('PATCH', `/roles/${role.id}`, o.headers, { permissions: ['team.manage'] });
+    await call('POST', `/workspaces/${ws}/groups`, m.headers, { name: 'US stores' });
+    expect(await actions(m.headers, ws)).toEqual(['group.create', 'profile.create']);
+    expect((await call('GET', `/workspaces/${ws}/activity.csv`, m.headers)).statusCode).toBe(403);
+  });
+
   it('keeps entries for the plan’s retention and forgets older ones', async () => {
     const o = await signup(t.app);
     await call('POST', `/workspaces/${o.workspaceId}/groups`, o.headers, { name: 'Old' });

@@ -219,6 +219,10 @@ describe('roles', () => {
     await call('PATCH', `/roles/${member}`, owner.headers, { permissions: ['profiles.view', 'profiles.open', 'profiles.delete'] });
     expect((await call('GET', `/profiles/${p.id}/launch`, other.headers)).statusCode).toBe(200);
     expect((await call('POST', `/workspaces/${ws}/profiles/batch`, other.headers, { ids: [p.id], action: 'trash' })).json().updated).toBe(1);
+    // Without profiles.view there is no list of them to read, nor of the Trash.
+    await call('PATCH', `/roles/${member}`, owner.headers, { permissions: ['proxies.view'] });
+    expect(await code(call('GET', `/workspaces/${ws}/profiles`, other.headers))).toBe('forbidden');
+    expect(await code(call('GET', `/workspaces/${ws}/profiles?trash=1`, other.headers))).toBe('forbidden');
   });
 
   it('need proxies.bind to put a profile on a proxy, or take it off one', async () => {

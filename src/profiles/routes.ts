@@ -184,7 +184,8 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
   r.get('/workspaces/:id/profiles', {
     schema: { params: wsParams, querystring: z.object({ trash: z.enum(['0', '1']).default('0') }), response: { 200: z.object({ profiles: z.array(Profile) }) } }
   }, async req => {
-    const { s, scope } = await member(req, req.params.id);
+    const { s, a, scope } = await member(req, req.params.id);
+    if (!a.can('profiles.view')) throw forbidden();
     const where = and(eq(profiles.workspaceId, req.params.id), req.query.trash === '1' ? isNotNull(profiles.deletedAt) : isNull(profiles.deletedAt), scope);
     return { profiles: await loadProfiles(db, where, s, clock.now()) };
   });

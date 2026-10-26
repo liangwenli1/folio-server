@@ -22,7 +22,8 @@ export function activityRoutes(app: FastifyInstance, deps: Deps){
   const r = app.withTypeProvider<ZodTypeProvider>();
   const { db, clock } = deps;
 
-  // Newest first (or oldest first), a page at a time; `total` says how many match.
+  // Newest first (or oldest first), a page at a time; `total` says how many match. All of it for a role that may read
+  // the log; anyone else sees their own actions and what was done to the profiles they see.
   r.get('/workspaces/:id/activity', {
     schema: {
       params, querystring: z.object({
@@ -33,17 +34,17 @@ export function activityRoutes(app: FastifyInstance, deps: Deps){
     }
   }, async req => {
     const s = await requireSession(req, deps);
-    const { scope } = await access(db, req.params.id, s.userId);
-    const { days, total, entries } = await readLog(db, req.params.id, clock.now(), { ...req.query, scope, userId: s.userId });
+    const { a, scope } = await access(db, req.params.id, s.userId);
+    const { days, total, entries } = await readLog(db, req.params.id, clock.now(), { ...req.query, whole: a.can('activity.view'), scope, userId: s.userId });
     return { entries, total, retentionDays: days };
   });
 
-  // Company: the whole retained log as CSV, for owners and admins.
+  // Company: the whole retained log as CSV, for roles that may read it.
   r.get('/workspaces/:id/activity.csv', { schema: { params, querystring: z.object(filters) } }, async (req, reply) => {
     const s = await requireSession(req, deps);
     await requirePermission(db, req.params.id, s.userId, 'activity.view');
     await requireCompany(db, req.params.id);
-    const { entries } = await readLog(db, req.params.id, clock.now(), { ...req.query, userId: s.userId, limit: 100_000 });
+    const { entries } = await readLog(db, req.params.id, clock.now(), { ...req.query, whole: true, userId: s.userId, limit: 100_000 });
     const lines = [['time', 'person', 'computer', 'action', 'profile number', 'profile', 'details'].join(',')]
       .concat(entries.map(e => [e.at, e.actor, e.deviceName, e.action, e.profile?.number, e.profile?.name, Object.keys(e.detail).length ? e.detail : ''].map(csvField).join(',')));
     return reply.header('content-type', 'text/csv; charset=utf-8').send(lines.join('\n') + '\n');
