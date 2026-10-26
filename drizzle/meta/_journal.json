@@ -134,6 +134,13 @@
       "when": 1792993330690,
       "tag": "0018_groups_merge_departments",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793001352016,
+      "tag": "0019_workspace_settings",
+      "breakpoints": true
     }
   ]
 }

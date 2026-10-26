@@ -17,6 +17,7 @@ export const roleKey = z.enum(BUILT_IN_ROLES);
 export const RoleRef = z.object({ id: z.string(), key: roleKey.nullable(), name: z.string() });
 export const MyRole = RoleRef.extend({ permissions: z.array(permission) });
 export const Role = MyRole.extend({ members: z.number() });
+export const kernel = z.enum(['chromium', 'firefox']);
 export const locale = z.enum(['en', 'zh']);
 
 export const ErrorBody = z.object({ error: z.object({ code: z.string(), message: z.string() }) });
@@ -43,8 +44,25 @@ export function subscriptionView(r: SubRow): z.infer<typeof Subscription> {
 }
 
 export const WorkspaceSummary = z.object({ id: z.string(), name: z.string(), role: MyRole, plan, status: z.enum(['active', 'trialing']) });
+// What a workspace starts new profiles with, and how it behaves when one is opened. The defaults only reach
+// profiles made after they are set.
+export const WorkspaceSettings = z.object({
+  defaultKernel: kernel.nullable(), defaultKernelVersion: z.string().nullable(),
+  defaultGroupId: z.string().nullable(), defaultProxyId: z.string().nullable(),
+  autoDownloadKernels: z.boolean(), openDetailAfterLaunch: z.boolean(),
+  stopOnWindowClose: z.boolean(), expiryReminder: z.boolean()
+});
+export const workspaceSettingsView = (w: {
+  defaultKernel: string | null; defaultKernelVersion: string | null; defaultGroupId: string | null; defaultProxyId: string | null;
+  autoDownloadKernels: boolean; openDetailAfterLaunch: boolean; stopOnWindowClose: boolean; expiryReminder: boolean;
+}): z.infer<typeof WorkspaceSettings> => ({
+  defaultKernel: w.defaultKernel as 'chromium' | 'firefox' | null, defaultKernelVersion: w.defaultKernelVersion,
+  defaultGroupId: w.defaultGroupId, defaultProxyId: w.defaultProxyId, autoDownloadKernels: w.autoDownloadKernels,
+  openDetailAfterLaunch: w.openDetailAfterLaunch, stopOnWindowClose: w.stopOnWindowClose, expiryReminder: w.expiryReminder
+});
+
 export const Workspace = z.object({
-  id: z.string(), name: z.string(), role: MyRole, subscription: Subscription,
+  id: z.string(), name: z.string(), role: MyRole, subscription: Subscription, settings: WorkspaceSettings,
   usage: z.object({ profiles: z.number(), members: z.number() })
 });
 
@@ -88,7 +106,6 @@ export const Fingerprint = z.discriminatedUnion('kind', [
   }),
   z.object({ kind: z.literal('firefox'), config: z.record(z.string(), z.unknown()), webrtc: z.enum(['replace', 'block']).optional() })
 ]);
-export const kernel = z.enum(['chromium', 'firefox']);
 export const os = z.enum(['windows', 'macos', 'linux']);
 export const searchEngine = z.enum(['none', 'google', 'bing', 'baidu', 'duckduckgo', 'yahoo', 'yandex']);
 

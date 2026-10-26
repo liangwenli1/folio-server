@@ -44,6 +44,18 @@ export const workspaces = pgTable('workspaces', {
   name: text().notNull(),
   // Last profile number handed out; profiles show as #0001, #0002, ... within a workspace.
   profileSeq: integer().notNull().default(0),
+  // What a new profile starts with. They only apply to profiles made after they are set.
+  defaultKernel: text(),
+  defaultKernelVersion: text(),
+  defaultGroupId: uuid().references((): AnyPgColumn => groups.id, { onDelete: 'set null' }),
+  defaultProxyId: uuid().references((): AnyPgColumn => proxies.id, { onDelete: 'set null' }),
+  // Fetch the recommended engine version without being asked.
+  autoDownloadKernels: boolean().notNull().default(false),
+  // Opening a profile also opens its details; closing its last window stops it.
+  openDetailAfterLaunch: boolean().notNull().default(false),
+  stopOnWindowClose: boolean().notNull().default(true),
+  // Say in the app when the plan is close to its end.
+  expiryReminder: boolean().notNull().default(true),
   createdAt: createdAt()
 });
 

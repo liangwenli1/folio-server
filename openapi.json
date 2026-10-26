@@ -1845,6 +1845,54 @@
                       ],
                       "additionalProperties": false
                     },
+                    "settings": {
+                      "type": "object",
+                      "properties": {
+                        "defaultKernel": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "chromium",
+                            "firefox"
+                          ]
+                        },
+                        "defaultKernelVersion": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "defaultGroupId": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "defaultProxyId": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "autoDownloadKernels": {
+                          "type": "boolean"
+                        },
+                        "openDetailAfterLaunch": {
+                          "type": "boolean"
+                        },
+                        "stopOnWindowClose": {
+                          "type": "boolean"
+                        },
+                        "expiryReminder": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "defaultKernel",
+                        "defaultKernelVersion",
+                        "defaultGroupId",
+                        "defaultProxyId",
+                        "autoDownloadKernels",
+                        "openDetailAfterLaunch",
+                        "stopOnWindowClose",
+                        "expiryReminder"
+                      ],
+                      "additionalProperties": false
+                    },
                     "usage": {
                       "type": "object",
                       "properties": {
@@ -1867,6 +1915,7 @@
                     "name",
                     "role",
                     "subscription",
+                    "settings",
                     "usage"
                   ],
                   "additionalProperties": false
@@ -1888,11 +1937,46 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 80
+                  },
+                  "settings": {
+                    "type": "object",
+                    "properties": {
+                      "defaultKernel": {
+                        "nullable": true,
+                        "type": "string",
+                        "enum": [
+                          "chromium",
+                          "firefox"
+                        ]
+                      },
+                      "defaultKernelVersion": {
+                        "nullable": true,
+                        "type": "string",
+                        "pattern": "^[\\w.-]{1,40}$"
+                      },
+                      "defaultGroupId": {
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "defaultProxyId": {
+                        "nullable": true,
+                        "type": "string"
+                      },
+                      "autoDownloadKernels": {
+                        "type": "boolean"
+                      },
+                      "openDetailAfterLaunch": {
+                        "type": "boolean"
+                      },
+                      "stopOnWindowClose": {
+                        "type": "boolean"
+                      },
+                      "expiryReminder": {
+                        "type": "boolean"
+                      }
+                    }
                   }
-                },
-                "required": [
-                  "name"
-                ]
+                }
               }
             }
           }
@@ -1922,11 +2006,60 @@
                     },
                     "name": {
                       "type": "string"
+                    },
+                    "settings": {
+                      "type": "object",
+                      "properties": {
+                        "defaultKernel": {
+                          "nullable": true,
+                          "type": "string",
+                          "enum": [
+                            "chromium",
+                            "firefox"
+                          ]
+                        },
+                        "defaultKernelVersion": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "defaultGroupId": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "defaultProxyId": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "autoDownloadKernels": {
+                          "type": "boolean"
+                        },
+                        "openDetailAfterLaunch": {
+                          "type": "boolean"
+                        },
+                        "stopOnWindowClose": {
+                          "type": "boolean"
+                        },
+                        "expiryReminder": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "defaultKernel",
+                        "defaultKernelVersion",
+                        "defaultGroupId",
+                        "defaultProxyId",
+                        "autoDownloadKernels",
+                        "openDetailAfterLaunch",
+                        "stopOnWindowClose",
+                        "expiryReminder"
+                      ],
+                      "additionalProperties": false
                     }
                   },
                   "required": [
                     "id",
-                    "name"
+                    "name",
+                    "settings"
                   ],
                   "additionalProperties": false
                 }
@@ -10593,10 +10726,6 @@
                             "type": "string",
                             "maxLength": 4096
                           },
-                          "value": {
-                            "type": "string",
-                            "maxLength": 16384
-                          },
                           "domain": {
                             "type": "string",
                             "minLength": 1,
@@ -10631,7 +10760,6 @@
                         },
                         "required": [
                           "name",
-                          "value",
                           "domain",
                           "path",
                           "expires",
@@ -10649,6 +10777,109 @@
                   "required": [
                     "cookies",
                     "savedAt"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "cookies": {
+                    "minItems": 1,
+                    "maxItems": 5000,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "maxLength": 4096
+                        },
+                        "domain": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 253
+                        },
+                        "path": {
+                          "default": "/",
+                          "type": "string",
+                          "maxLength": 1024
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "domain"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "cookies"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "type": "number"
+                    },
+                    "size": {
+                      "type": "number"
+                    },
+                    "cookies": {
+                      "type": "number"
+                    },
+                    "storageBytes": {
+                      "type": "number"
+                    },
+                    "origins": {
+                      "type": "number"
+                    },
+                    "savedAt": {
+                      "type": "string"
+                    },
+                    "deviceName": {
+                      "nullable": true,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "version",
+                    "size",
+                    "cookies",
+                    "storageBytes",
+                    "origins",
+                    "savedAt",
+                    "deviceName"
                   ],
                   "additionalProperties": false
                 }
@@ -10778,6 +11009,129 @@
                     "origins",
                     "savedAt",
                     "deviceName"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/profiles/{id}/cookies/values": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 4096
+            },
+            "in": "query",
+            "name": "name",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 253
+            },
+            "in": "query",
+            "name": "domain",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 1024
+            },
+            "in": "query",
+            "name": "path",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "cookies": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "maxLength": 4096
+                          },
+                          "value": {
+                            "type": "string",
+                            "maxLength": 16384
+                          },
+                          "domain": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 253
+                          },
+                          "path": {
+                            "default": "/",
+                            "type": "string",
+                            "maxLength": 1024
+                          },
+                          "expires": {
+                            "default": -1,
+                            "type": "number"
+                          },
+                          "httpOnly": {
+                            "default": false,
+                            "type": "boolean"
+                          },
+                          "secure": {
+                            "default": false,
+                            "type": "boolean"
+                          },
+                          "sameSite": {
+                            "default": "Lax",
+                            "type": "string",
+                            "enum": [
+                              "Strict",
+                              "Lax",
+                              "None"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "value",
+                          "domain",
+                          "path",
+                          "expires",
+                          "httpOnly",
+                          "secure",
+                          "sameSite"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "savedAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "cookies",
+                    "savedAt"
                   ],
                   "additionalProperties": false
                 }
@@ -12102,6 +12456,7 @@
                               "role.delete",
                               "cookies.export",
                               "cookies.import",
+                              "cookies.delete",
                               "workspace.export",
                               "workspace.import",
                               "flow.create",

@@ -1,11 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { eq } from 'drizzle-orm';
-import { workspaces } from '../db/schema.js';
+import { and, eq } from 'drizzle-orm';
+import { groups, proxies, workspaces } from '../db/schema.js';
 import { requireSession, type Deps } from '../http.js';
+import { ApiError } from '../errors.js';
 import { readSub } from '../billing/service.js';
-import { Workspace, WorkspaceSummary, subscriptionView } from '../views.js';
+import { Workspace, WorkspaceSettings, WorkspaceSummary, kernel, subscriptionView, workspaceSettingsView } from '../views.js';
 import { createWorkspace, memberCount, membership, requirePermission, roleByKey } from './service.js';
 import { MANAGE } from '../permissions.js';
 import { activeCount } from '../profiles/service.js';
@@ -22,7 +23,11 @@ export function workspaceRoutes(app: FastifyInstance, deps: Deps){
     const s = await requireSession(req, deps);
     const a = await membership(db, req.params.id, s.userId);
     const [ws] = await db.select().from(workspaces).where(eq(workspaces.id, req.params.id));
-    return { id: ws.id, name: ws.name, role: { id: a.roleId, key: a.key, name: a.name, permissions: a.permissions }, subscription: subscriptionView(await readSub(db, ws.id)), usage: { profiles: await activeCount(db, ws.id), members: await memberCount(db, ws.id) } };
+    return {
+      id: ws.id, name: ws.name, role: { id: a.roleId, key: a.key, name: a.name, permissions: a.permissions },
+      subscription: subscriptionView(await readSub(db, ws.id)), settings: workspaceSettingsView(ws),
+      usage: { profiles: await activeCount(db, ws.id), members: await memberCount(db, ws.id) }
+    };
   });
 
   r.post('/workspaces', { schema: { body: z.object({ name }), response: { 201: WorkspaceSummary } } }, async (req, reply) => {
@@ -35,11 +40,23 @@ export function workspaceRoutes(app: FastifyInstance, deps: Deps){
     });
   });
 
-  r.patch('/workspaces/:id', { schema: { params, body: z.object({ name }), response: { 200: z.object({ id: z.string(), name: z.string() }) } } }, async req => {
+  // The name, what new profiles start with, and how opening one behaves. Settings arrive one at a time or
+  // together; the group and the proxy must be the workspace's own.
+  const settings = WorkspaceSettings.extend({ defaultKernel: kernel.nullable(), defaultKernelVersion: z.string().regex(/^[\w.-]{1,40}$/).nullable() }).partial();
+  r.patch('/workspaces/:id', {
+    schema: { params, body: z.object({ name: name.optional(), settings: settings.optional() }), response: { 200: z.object({ id: z.string(), name: z.string(), settings: WorkspaceSettings }) } }
+  }, async req => {
     const s = await requireSession(req, deps);
     await requirePermission(db, req.params.id, s.userId, MANAGE);
-    const [ws] = await db.update(workspaces).set({ name: req.body.name }).where(eq(workspaces.id, req.params.id)).returning();
+    const set = req.body.settings ?? {};
+    for (const [table, id] of [[groups, set.defaultGroupId], [proxies, set.defaultProxyId]] as const){
+      if (!id) continue;
+      const [row] = await db.select({ id: table.id }).from(table).where(and(eq(table.id, id), eq(table.workspaceId, req.params.id)));
+      if (!row) throw new ApiError(400, 'bad_reference', 'Unknown group or proxy');
+    }
+    const [ws] = await db.update(workspaces).set({ ...(req.body.name ? { name: req.body.name } : {}), ...set })
+      .where(eq(workspaces.id, req.params.id)).returning();
     publish(ws.id, { kind: 'workspace' });
-    return { id: ws.id, name: ws.name };
+    return { id: ws.id, name: ws.name, settings: workspaceSettingsView(ws) };
   });
 }
