@@ -10,10 +10,10 @@ import { membership } from '../workspaces/service.js';
 export function netRoutes(app: FastifyInstance, deps: Deps){
   const r = app.withTypeProvider<ZodTypeProvider>();
 
-  // Called through a proxy: the address we see is the proxy's exit IP.
-  r.get('/net/echo', { schema: { response: { 200: z.object({ ip: z.string(), geo: Geo.nullable() }) } } }, async req => {
+  // Where a proxy's exit IP is. The desktop app learns the IP through the proxy from a public echo, then asks here.
+  r.get('/net/locate', { schema: { querystring: z.object({ ip: z.union([z.ipv4(), z.ipv6()]) }), response: { 200: z.object({ geo: Geo.nullable() }) } } }, async req => {
     await requireSession(req, deps);
-    return { ip: req.ip, geo: await locate(req.ip, deps.config) };
+    return { geo: await locate(req.query.ip, deps.config) };
   });
 
   // Server-sent events: "something of this kind changed in the workspace". Desktop apps re-fetch on each event.

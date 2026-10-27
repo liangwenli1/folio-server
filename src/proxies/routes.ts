@@ -134,12 +134,17 @@ export function proxyRoutes(app: FastifyInstance, deps: Deps){
     const { p, s } = await proxyFor(req, req.params.id, 'proxies.edit');
     await assertBackup(p.workspaceId, req.body.backupId, p.id);
     const { password, ...rest } = req.body;
+    // What really changes (the desktop sends the whole form); a password is new unless it is the saved one.
+    const changed: string[] = (Object.keys(rest) as (keyof typeof rest)[]).filter(k => rest[k] !== p[k]);
+    const newPassword = password !== undefined && (password ? !p.passwordEnc || open(p.passwordEnc) !== password : p.passwordEnc !== null);
+    if (newPassword) changed.push('password');
+    // Reached another way, it is another line: its checks start over (a new name or notes keep them).
+    const moved = changed.some(k => ['type', 'host', 'port', 'username', 'password'].includes(k));
     const [u] = await db.update(proxies).set({
-      ...rest, ...(password === undefined ? {} : { passwordEnc: password ? seal(password) : null }), updatedAt: clock.now(),
-      // A changed address is a different line: its checks start over.
-      ...(rest.host || rest.port || rest.type ? { lastCheck: null, history: [], lastExit: null } : {})
+      ...rest, ...(newPassword ? { passwordEnc: password ? seal(password) : null } : {}), updatedAt: clock.now(),
+      ...(moved ? { lastCheck: null, history: [], lastExit: null } : {})
     }).where(eq(proxies.id, p.id)).returning();
-    await record(db, { workspaceId: p.workspaceId, actor: s, at: u.updatedAt, action: 'proxy.update', detail: { name: u.name, fields: Object.keys(req.body) } });
+    await record(db, { workspaceId: p.workspaceId, actor: s, at: u.updatedAt, action: 'proxy.update', detail: { name: u.name, fields: changed } });
     publish(p.workspaceId, { kind: 'proxies', ids: [p.id] });
     return proxyView(u, await count(p.id));
   });

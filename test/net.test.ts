@@ -6,18 +6,21 @@ let t: Awaited<ReturnType<typeof setup>>;
 beforeAll(async () => { t = await setup(); });
 afterAll(async () => { await t.teardown(); });
 
-describe('echo', () => {
-  it('reports the address the request came from, with its location', async () => {
+describe('locate', () => {
+  it('places an exit IP for a signed-in app', async () => {
     const { headers } = await signup(t.app);
-    const res = (await t.app.inject({ url: '/net/echo', headers })).json();
-    // Loopback in tests; DEV_PRIVATE_GEO places private addresses in Seattle.
-    expect(res).toMatchObject({ ip: '127.0.0.1', geo: { city: 'Seattle', timezone: 'America/Los_Angeles', locale: 'en-US' } });
+    const at = async (ip: string) => (await t.app.inject({ url: `/net/locate?ip=${encodeURIComponent(ip)}`, headers })).json();
+    // DEV_PRIVATE_GEO places private addresses in Seattle; in dev the demo's documentation addresses have their own places.
+    expect(await at('127.0.0.1')).toMatchObject({ geo: { city: 'Seattle', timezone: 'America/Los_Angeles', locale: 'en-US' } });
+    expect(await at('203.0.113.71')).toMatchObject({ geo: { city: 'New York', timezone: 'America/New_York' } });
+    expect(await at('192.0.2.200')).toEqual({ geo: null });
+    expect((await t.app.inject({ url: '/net/locate?ip=not-an-ip', headers })).statusCode).toBe(400);
+    expect((await t.app.inject({ url: '/net/locate?ip=127.0.0.1' })).statusCode).toBe(401);
   });
 
-  it('does not trust a forged X-Forwarded-For', async () => {
-    const { headers } = await signup(t.app);
-    const res = (await t.app.inject({ url: '/net/echo', headers: { ...headers, 'x-forwarded-for': '8.8.8.8' } })).json();
-    expect(res.ip).toBe('127.0.0.1');
+  it('has a stand-in for the public echo in dev, which does not trust a forged X-Forwarded-For', async () => {
+    const res = await t.app.inject({ url: '/dev/echo', headers: { 'x-forwarded-for': '8.8.8.8' } });
+    expect(res.body).toBe('ip=127.0.0.1\n');
   });
 });
 

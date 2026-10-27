@@ -21,4 +21,7 @@ export function devRoutes(app: FastifyInstance, deps: Deps){
     await deps.storage.put(e.objectKey, bytes);
     return reply.code(204).send(null);
   });
+  // The public echo's stand-in for proxy checks in tests (the desktop's FOLIO_ECHO_URLS): the caller's address, in the
+  // format of Cloudflare's trace.
+  r.get('/dev/echo', { schema: { hide: true } }, async (req, reply) => reply.type('text/plain').send(`ip=${req.ip.replace(/^::ffff:/, '')}\n`));
 }

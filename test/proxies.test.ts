@@ -113,6 +113,23 @@ describe('proxies', () => {
     expect(moved.json()).toMatchObject({ lastCheck: null, history: [], lastExit: null });
   });
 
+  it('forget their checks only when they are reached another way, and log what really changed', async () => {
+    const { headers, workspaceId } = await signup(t.app);
+    const form = { name: 'US-1', type: 'socks5', host: 'x.example.net', port: 1080, username: 'u', password: 'p1', backupId: null, notes: null };
+    const p = (await t.app.inject({ method: 'POST', url: `/workspaces/${workspaceId}/proxies`, headers, payload: form })).json();
+    const check = () => t.app.inject({ method: 'POST', url: `/proxies/${p.id}/check`, headers, payload: { ok: true, ms: 90, ip: '172.58.1.2', geo: null, error: null } });
+    const edit = async (body: object) => (await t.app.inject({ method: 'PATCH', url: `/proxies/${p.id}`, headers, payload: { ...form, ...body } })).json();
+    await check();
+    // The desktop sends the whole form: a new name and notes, the same password typed again.
+    expect(await edit({ name: 'US-1 main', notes: 'storefront', password: 'p1' })).toMatchObject({ name: 'US-1 main', lastCheck: { ok: true }, history: [{ ok: true }] });
+    expect(await edit({ name: 'US-1 main', notes: 'storefront', username: 'v' })).toMatchObject({ lastCheck: null, history: [] });
+    await check();
+    expect(await edit({ name: 'US-1 main', notes: 'storefront', username: 'v', password: 'p2' })).toMatchObject({ lastCheck: null, history: [] });
+    const { entries } = (await t.app.inject({ url: `/workspaces/${workspaceId}/activity`, headers })).json();
+    expect(entries.filter((e: { action: string }) => e.action === 'proxy.update').map((e: { detail: { fields: string[] } }) => e.detail.fields))
+      .toEqual([['password'], ['username'], ['name', 'notes']]);
+  });
+
   it('cannot back themselves up, and leave profiles without a proxy when deleted', async () => {
     const { headers, workspaceId } = await signup(t.app);
     const p = (await t.app.inject({ method: 'POST', url: `/workspaces/${workspaceId}/proxies`, headers, payload: { type: 'http', host: 'x.example.net', port: 80 } })).json();
