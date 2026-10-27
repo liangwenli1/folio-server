@@ -181,6 +181,23 @@ describe('cookies', () => {
     expect((await importing(p.id, b, [cookie('sid', 'three')])).json().error.code).toBe('locked');
     expect((await importing(p.id, a, [cookie('sid', 'three')])).statusCode).toBe(200);
   });
+
+  it('are changed one at a time, keeping the saved value unless a new one is given', async () => {
+    const { owner, p } = await profileWithTwoComputers();
+    await importing(p.id, owner.headers, [cookie('sid', 'one'), cookie('pref', 'dark')]);
+    const edit = (from: object, c: object) => t.app.inject({ method: 'PATCH', url: `/profiles/${p.id}/cookies`, headers: owner.headers, payload: { from, cookie: c } });
+    const values = async () => (await req('GET', `/profiles/${p.id}/cookies/values`, owner.headers)).json().cookies.map((c: { name: string; path: string; value: string; secure: boolean }) => `${c.name}${c.path}=${c.value}${c.secure ? ' secure' : ''}`).sort();
+    const sid = { name: 'sid', domain: '.shop.example', path: '/' };
+    const { value: _, ...withoutValue } = cookie('sid', '', { secure: false });
+    expect((await edit(sid, withoutValue)).statusCode).toBe(200);
+    expect(await values()).toEqual(['pref/=dark secure', 'sid/=one']);
+    // Moved to another path with a new value: the old one goes.
+    expect((await edit(sid, cookie('sid', 'two', { path: '/app' }))).json()).toMatchObject({ cookies: 2 });
+    expect(await values()).toEqual(['pref/=dark secure', 'sid/app=two secure']);
+    expect((await edit(sid, withoutValue)).json().error.code).toBe('not_found');
+    const log = (await req('GET', `/workspaces/${owner.workspaceId}/activity?kind=cookies`, owner.headers)).json().entries;
+    expect(log.filter((e: { action: string }) => e.action === 'cookies.edit')).toHaveLength(2);
+  });
 });
 
 describe('profiles kept on one computer', () => {

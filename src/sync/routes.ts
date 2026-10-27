@@ -168,6 +168,26 @@ export function syncRoutes(app: FastifyInstance, deps: Deps){
     return { cookies, savedAt: d.savedAt.toISOString() };
   });
 
+  // Changes one cookie (v2 28). Without a new value it keeps the saved one, so its other properties can be changed
+  // without reading it; a new name, domain or path replaces the old cookie.
+  r.patch('/profiles/:id/cookies', {
+    schema: { params, body: z.object({ from: CookieKey, cookie: Cookie.extend({ value: Cookie.shape.value.optional() }) }), response: { 200: SavedData } }
+  }, async req => {
+    const { p, s } = await profileFor(deps, req, req.params.id, 'cookies.import');
+    if (p.syncMode === 'local') throw localOnly();
+    const now = clock.now();
+    await notOpenElsewhere(p, s, now);
+    const { state } = await saved(p);
+    const old = state.cookies.find(c => key(c) === key(req.body.from));
+    if (!old) throw notFound('Cookie');
+    const next = { ...req.body.cookie, value: req.body.cookie.value ?? old.value };
+    state.cookies = [...state.cookies.filter(c => key(c) !== key(old) && key(c) !== key(next)), next];
+    const body = gzipSync(JSON.stringify(state));
+    const row = await store(p, s, body, { cookies: state.cookies.length, storageBytes: Buffer.byteLength(JSON.stringify(state.origins)), origins: state.origins.length });
+    await record(db, { workspaceId: p.workspaceId, actor: s, at: now, action: 'cookies.edit', profiles: [p], detail: { name: next.name, domain: next.domain } });
+    return savedDataView(row);
+  });
+
   // Drops the named cookies from the saved state, unless another computer has the profile open.
   r.delete('/profiles/:id/cookies', {
     schema: { params, body: z.object({ cookies: z.array(CookieKey).min(1).max(5000) }), response: { 200: SavedData } }

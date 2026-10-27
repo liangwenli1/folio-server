@@ -239,9 +239,10 @@ export function profileRoutes(app: FastifyInstance, deps: Deps){
       const [gone] = await db.delete(profileData).where(eq(profileData.profileId, p.id)).returning();
       if (gone) await storage.delete(gone.objectKey).catch(err => req.log.error(err, 'deleting saved state failed'));
     }
-    // Clients send whole forms; the entry names only what actually changed.
+    // Clients send whole forms; the entry names only what actually changed, with the values before and after (v2 40).
     const fields = (Object.keys(patch) as (keyof typeof patch)[]).filter(k => JSON.stringify(patch[k] ?? null) !== JSON.stringify(p[k] ?? null));
-    if (fields.length) await record(db, { workspaceId: p.workspaceId, actor: s, at: u.updatedAt, action: 'profile.update', profiles: [u], detail: { fields } });
+    const changes = fields.map(k => ({ field: k, from: p[k] ?? null, to: patch[k] ?? null }));
+    if (fields.length) await record(db, { workspaceId: p.workspaceId, actor: s, at: u.updatedAt, action: 'profile.update', profiles: [u], detail: { fields, changes } });
     publish(p.workspaceId, { kind: 'profiles', ids: [p.id] });
     return (await loadProfiles(db, eq(profiles.id, u.id), s, clock.now()))[0];
   });

@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, ne } from 'drizzle-orm';
 import type { Db } from '../db/client.js';
 import { sessions } from '../db/schema.js';
 import { addDays } from '../plans.js';
@@ -32,6 +32,6 @@ export async function revokeSession(db: Db, id: string, now: Date){
   await db.update(sessions).set({ revokedAt: now }).where(eq(sessions.id, id));
 }
 
-export async function revokeAllSessions(db: Db, userId: string, now: Date){
-  await db.update(sessions).set({ revokedAt: now }).where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)));
+export async function revokeAllSessions(db: Db, userId: string, now: Date, except?: string){
+  await db.update(sessions).set({ revokedAt: now }).where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt), except ? ne(sessions.id, except) : undefined));
 }

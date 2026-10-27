@@ -306,8 +306,9 @@ describe('group authorisation', () => {
   it('lets someone see the profiles of the groups they are in, and of those groups’ children', async () => {
     const { owner, other, ws } = await team('company');
     const sales = (await call('POST', `/workspaces/${ws}/groups`, owner.headers, { name: 'Sales' })).json();
-    const east = (await call('POST', `/workspaces/${ws}/groups`, owner.headers, { name: 'Sales East', parentId: sales.id })).json();
-    const west = (await call('POST', `/workspaces/${ws}/groups`, owner.headers, { name: 'Sales West', parentId: sales.id, inheritMembers: false })).json();
+    // Taking in the parent's members is asked for (it is off by default, v2 12).
+    const east = (await call('POST', `/workspaces/${ws}/groups`, owner.headers, { name: 'Sales East', parentId: sales.id, inheritMembers: true })).json();
+    const west = (await call('POST', `/workspaces/${ws}/groups`, owner.headers, { name: 'Sales West', parentId: sales.id })).json();
     const shared = await profile(owner.headers, ws, 'Sales-1', { groupId: sales.id });
     const below = await profile(owner.headers, ws, 'East-1', { groupId: east.id });
     await profile(owner.headers, ws, 'West-1', { groupId: west.id });
@@ -316,9 +317,9 @@ describe('group authorisation', () => {
     await call('PATCH', `/groups/${sales.id}`, owner.headers, { memberIds: [other.userId] });
     // Sales East takes in whoever Sales lets in; Sales West does not.
     expect((await visible(other.headers, ws)).map(p => p.id).sort()).toEqual([shared.id, below.id].sort());
-    expect((await call('GET', `/workspaces/${ws}/members`, owner.headers)).json().members[1].groupIds).toEqual([sales.id]);
+    expect((await call('GET', `/workspaces/${ws}/members`, owner.headers)).json().members[1]).toMatchObject({ displayName: other.email.split('@')[0], groupIds: [sales.id] });
     expect((await call('GET', `/workspaces/${ws}/groups`, other.headers)).json().groups.find((g: { id: string }) => g.id === sales.id))
-      .toMatchObject({ name: 'Sales', parentId: null, inheritMembers: true, memberIds: [other.userId], profiles: 1 });
+      .toMatchObject({ name: 'Sales', parentId: null, inheritMembers: false, memberIds: [other.userId], profiles: 1 });
 
     // Deleting a group says where its profiles go; the groups under it move up.
     await call('DELETE', `/groups/${sales.id}`, owner.headers);

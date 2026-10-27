@@ -183,6 +183,13 @@
       "when": 1793036066827,
       "tag": "0025_codes_by_email_and_news",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1793094022535,
+      "tag": "0026_user_profile",
+      "breakpoints": true
     }
   ]
 }

@@ -23,9 +23,12 @@ export const locale = z.enum(['en', 'zh']);
 
 export const ErrorBody = z.object({ error: z.object({ code: z.string(), message: z.string() }) });
 
-export const User = z.object({ id: z.string(), email: z.string(), emailVerified: z.boolean(), locale });
+// Which notices the desktop app gives (v2 38): a batch done, a batch with failures, a proxy that stopped answering, a new
+// version.
+export const Notify = z.object({ taskDone: z.boolean(), taskFailed: z.boolean(), proxyDown: z.boolean(), productUpdate: z.boolean() });
+export const User = z.object({ id: z.string(), email: z.string(), emailVerified: z.boolean(), locale, displayName: z.string(), note: z.string().nullable(), notify: Notify });
 export const userView = (u: typeof users.$inferSelect): z.infer<typeof User> =>
-  ({ id: u.id, email: u.email, emailVerified: !!u.emailVerifiedAt, locale: u.locale as 'en' | 'zh' });
+  ({ id: u.id, email: u.email, emailVerified: !!u.emailVerifiedAt, locale: u.locale as 'en' | 'zh', displayName: u.displayName, note: u.note, notify: u.notify });
 
 export const Subscription = z.object({
   plan, period: period.nullable(), status: z.enum(['active', 'trialing']), addonPacks: z.number(),
@@ -204,7 +207,7 @@ export const ProxySecret = z.object({ id: z.string(), type: proxyType, host: z.s
 
 // ---------- team (P3) ----------
 export const Member = z.object({
-  userId: z.string(), email: z.string(), role: RoleRef, joinedAt: z.string(), groupIds: z.array(z.string()), profiles: z.number(),
+  userId: z.string(), email: z.string(), displayName: z.string(), role: RoleRef, joinedAt: z.string(), groupIds: z.array(z.string()), profiles: z.number(),
   // The last time they used Folio anywhere (their newest session).
   lastActiveAt: z.string().nullable()
 });

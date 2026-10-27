@@ -6,7 +6,7 @@ import { asc, eq } from 'drizzle-orm';
 import { memberships, roles, subscriptions, users, workspaces } from '../db/schema.js';
 import { ApiError } from '../errors.js';
 import { clearSessionCookie, requireSession, setSessionCookie, type Deps } from '../http.js';
-import { User, WorkspaceSummary, locale, userView } from '../views.js';
+import { Notify, User, WorkspaceSummary, locale, userView } from '../views.js';
 import { createWorkspace } from '../workspaces/service.js';
 import { checkCode, consumeCode, issueCode, type CodePurpose } from './codes.js';
 import { codeMail, type Locale } from '../mail.js';
@@ -76,7 +76,7 @@ export function authRoutes(app: FastifyInstance, deps: Deps){
     }
     const passwordHash = await hash(req.body.password);
     const user = await db.transaction(async tx => {
-      const [u] = await tx.insert(users).values({ email, passwordHash, locale: req.body.locale, createdAt: now, emailVerifiedAt: now }).onConflictDoNothing().returning();
+      const [u] = await tx.insert(users).values({ email, passwordHash, displayName: email.split('@')[0], locale: req.body.locale, createdAt: now, emailVerifiedAt: now }).onConflictDoNothing().returning();
       if (!u) throw taken();
       await createWorkspace(tx, u.id, email.split('@')[0], now);
       return u;
@@ -186,9 +186,23 @@ export function authRoutes(app: FastifyInstance, deps: Deps){
     return { user: userView(u), workspaces: list as z.infer<typeof WorkspaceSummary>[], admin: deps.config.admins.includes(u.email) };
   });
 
-  r.patch('/me', { schema: { body: z.object({ locale }), response: { 200: z.object({ user: User }) } } }, async req => {
+  // The person's own settings: language, the name colleagues see, a note, which notices they get (v2 32, 38).
+  r.patch('/me', {
+    schema: { body: z.object({ locale: locale.optional(), displayName: z.string().trim().min(1).max(40).optional(), note: z.string().trim().max(200).nullable().optional(), notify: Notify.optional() }), response: { 200: z.object({ user: User }) } }
+  }, async req => {
     const s = await requireSession(req, deps);
-    const [u] = await db.update(users).set({ locale: req.body.locale }).where(eq(users.id, s.userId)).returning();
+    const { note, ...rest } = req.body;
+    const [u] = await db.update(users).set({ ...rest, ...(note === undefined ? {} : { note: note || null }) }).where(eq(users.id, s.userId)).returning();
     return { user: userView(u) };
+  });
+
+  // A new password, given the current one (v2 33). Every other sign-in ends; this one stays.
+  r.post('/auth/password/change', { schema: { body: z.object({ current: z.string().max(200), password }) } }, async (req, reply) => {
+    const s = await requireSession(req, deps);
+    const [u] = await db.select().from(users).where(eq(users.id, s.userId));
+    if (!(await verify(u.passwordHash, req.body.current))) throw new ApiError(400, 'wrong_password', 'The current password is not right.');
+    await db.update(users).set({ passwordHash: await hash(req.body.password) }).where(eq(users.id, u.id));
+    await revokeAllSessions(db, u.id, clock.now(), s.id);
+    return reply.code(204).send(null);
   });
 }

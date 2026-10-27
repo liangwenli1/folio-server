@@ -9,7 +9,7 @@ beforeAll(async () => { t = await setup(); });
 afterAll(async () => { await t.teardown(); });
 
 type H = Record<string, string>;
-type Entry = { seq: number; action: string; actor: string | null; deviceName: string | null; profile: { name: string; number: number; id: string | null } | null; detail: Record<string, unknown>; at: string };
+type Entry = { seq: number; action: string; actor: string | null; actorName?: string | null; deviceName: string | null; profile: { name: string; number: number; id: string | null } | null; detail: Record<string, unknown>; at: string };
 const call = (method: 'GET' | 'POST' | 'PATCH' | 'DELETE', url: string, headers: H, payload?: object) => t.app.inject({ method, url, headers, payload });
 const log = async (headers: H, ws: string, query = '') => (await call('GET', `/workspaces/${ws}/activity${query}`, headers)).json() as { entries: Entry[]; total: number; retentionDays: number };
 const actions = async (headers: H, ws: string, query = '') => (await log(headers, ws, query)).entries.map(e => e.action);
@@ -33,10 +33,23 @@ describe('the activity log', () => {
     await batch({ action: 'purge' });
     const { entries } = await log(o.headers, ws);
     expect(entries.map(e => e.action)).toEqual(['profile.purge', 'profile.trash', 'profile.tag', 'profile.move', 'profile.update', 'profile.create', 'group.create']);
-    expect(entries[0]).toMatchObject({ actor: o.email, profile: { id: null, name: 'Shop Berlin', number: 1 } });
-    expect(entries.find(e => e.action === 'profile.update')!.detail).toEqual({ fields: ['name', 'notes'] });
+    expect(entries[0]).toMatchObject({ actor: o.email, actorName: o.email.split('@')[0], profile: { id: null, name: 'Shop Berlin', number: 1 } });
+    // What changed, from what to what (v2 40).
+    expect(entries.find(e => e.action === 'profile.update')!.detail).toEqual({
+      fields: ['name', 'notes'], changes: [{ field: 'name', from: 'Shop, Berlin', to: 'Shop Berlin' }, { field: 'notes', from: null, to: 'x' }]
+    });
     expect(entries.find(e => e.action === 'profile.move')!.detail).toEqual({ group: 'EU stores' });
     expect(entries.find(e => e.action === 'profile.create')!.profile!.name).toBe('Shop, Berlin');
+  });
+
+  it('says what changed in a proxy, and only that a password did', async () => {
+    const o = await signup(t.app);
+    const form = { name: 'US-1', type: 'http', host: 'x.example.net', port: 8080, username: null, password: 'p1', backupId: null, notes: null };
+    const px = (await call('POST', `/workspaces/${o.workspaceId}/proxies`, o.headers, form)).json();
+    await call('PATCH', `/proxies/${px.id}`, o.headers, { ...form, port: 8081, password: 'p2' });
+    const { entries } = await log(o.headers, o.workspaceId);
+    expect(entries[0]).toMatchObject({ action: 'proxy.update', detail: { name: 'US-1', fields: ['port', 'password'], changes: [{ field: 'port', from: 8080, to: 8081 }, { field: 'password', secret: true }] } });
+    expect(JSON.stringify(entries[0])).not.toContain('p2');
   });
 
   it('records opening, closing and takeovers with the computer, once per opening', async () => {

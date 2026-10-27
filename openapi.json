@@ -1216,13 +1216,47 @@
                             "en",
                             "zh"
                           ]
+                        },
+                        "displayName": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "notify": {
+                          "type": "object",
+                          "properties": {
+                            "taskDone": {
+                              "type": "boolean"
+                            },
+                            "taskFailed": {
+                              "type": "boolean"
+                            },
+                            "proxyDown": {
+                              "type": "boolean"
+                            },
+                            "productUpdate": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "taskDone",
+                            "taskFailed",
+                            "proxyDown",
+                            "productUpdate"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "required": [
                         "id",
                         "email",
                         "emailVerified",
-                        "locale"
+                        "locale",
+                        "displayName",
+                        "note",
+                        "notify"
                       ],
                       "additionalProperties": false
                     }
@@ -1312,13 +1346,47 @@
                             "en",
                             "zh"
                           ]
+                        },
+                        "displayName": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "notify": {
+                          "type": "object",
+                          "properties": {
+                            "taskDone": {
+                              "type": "boolean"
+                            },
+                            "taskFailed": {
+                              "type": "boolean"
+                            },
+                            "proxyDown": {
+                              "type": "boolean"
+                            },
+                            "productUpdate": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "taskDone",
+                            "taskFailed",
+                            "proxyDown",
+                            "productUpdate"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "required": [
                         "id",
                         "email",
                         "emailVerified",
-                        "locale"
+                        "locale",
+                        "displayName",
+                        "note",
+                        "notify"
                       ],
                       "additionalProperties": false
                     },
@@ -1404,13 +1472,47 @@
                             "en",
                             "zh"
                           ]
+                        },
+                        "displayName": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "notify": {
+                          "type": "object",
+                          "properties": {
+                            "taskDone": {
+                              "type": "boolean"
+                            },
+                            "taskFailed": {
+                              "type": "boolean"
+                            },
+                            "proxyDown": {
+                              "type": "boolean"
+                            },
+                            "productUpdate": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "taskDone",
+                            "taskFailed",
+                            "proxyDown",
+                            "productUpdate"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "required": [
                         "id",
                         "email",
                         "emailVerified",
-                        "locale"
+                        "locale",
+                        "displayName",
+                        "note",
+                        "notify"
                       ],
                       "additionalProperties": false
                     }
@@ -1610,13 +1712,47 @@
                             "en",
                             "zh"
                           ]
+                        },
+                        "displayName": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "notify": {
+                          "type": "object",
+                          "properties": {
+                            "taskDone": {
+                              "type": "boolean"
+                            },
+                            "taskFailed": {
+                              "type": "boolean"
+                            },
+                            "proxyDown": {
+                              "type": "boolean"
+                            },
+                            "productUpdate": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "taskDone",
+                            "taskFailed",
+                            "proxyDown",
+                            "productUpdate"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "required": [
                         "id",
                         "email",
                         "emailVerified",
-                        "locale"
+                        "locale",
+                        "displayName",
+                        "note",
+                        "notify"
                       ],
                       "additionalProperties": false
                     },
@@ -1736,11 +1872,41 @@
                       "en",
                       "zh"
                     ]
+                  },
+                  "displayName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "note": {
+                    "nullable": true,
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "notify": {
+                    "type": "object",
+                    "properties": {
+                      "taskDone": {
+                        "type": "boolean"
+                      },
+                      "taskFailed": {
+                        "type": "boolean"
+                      },
+                      "proxyDown": {
+                        "type": "boolean"
+                      },
+                      "productUpdate": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "taskDone",
+                      "taskFailed",
+                      "proxyDown",
+                      "productUpdate"
+                    ]
                   }
-                },
-                "required": [
-                  "locale"
-                ]
+                }
               }
             }
           }
@@ -1771,13 +1937,47 @@
                             "en",
                             "zh"
                           ]
+                        },
+                        "displayName": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "notify": {
+                          "type": "object",
+                          "properties": {
+                            "taskDone": {
+                              "type": "boolean"
+                            },
+                            "taskFailed": {
+                              "type": "boolean"
+                            },
+                            "proxyDown": {
+                              "type": "boolean"
+                            },
+                            "productUpdate": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "taskDone",
+                            "taskFailed",
+                            "proxyDown",
+                            "productUpdate"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "required": [
                         "id",
                         "email",
                         "emailVerified",
-                        "locale"
+                        "locale",
+                        "displayName",
+                        "note",
+                        "notify"
                       ],
                       "additionalProperties": false
                     }
@@ -1789,6 +1989,40 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/auth/password/change": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "current": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 64
+                  }
+                },
+                "required": [
+                  "current",
+                  "password"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response"
           }
         }
       }
@@ -11688,6 +11922,153 @@
           }
         }
       },
+      "patch": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "from": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "maxLength": 4096
+                      },
+                      "domain": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 253
+                      },
+                      "path": {
+                        "default": "/",
+                        "type": "string",
+                        "maxLength": 1024
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "domain"
+                    ]
+                  },
+                  "cookie": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "maxLength": 4096
+                      },
+                      "value": {
+                        "type": "string",
+                        "maxLength": 16384
+                      },
+                      "domain": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 253
+                      },
+                      "path": {
+                        "default": "/",
+                        "type": "string",
+                        "maxLength": 1024
+                      },
+                      "expires": {
+                        "default": -1,
+                        "type": "number"
+                      },
+                      "httpOnly": {
+                        "default": false,
+                        "type": "boolean"
+                      },
+                      "secure": {
+                        "default": false,
+                        "type": "boolean"
+                      },
+                      "sameSite": {
+                        "default": "Lax",
+                        "type": "string",
+                        "enum": [
+                          "Strict",
+                          "Lax",
+                          "None"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "domain"
+                    ]
+                  }
+                },
+                "required": [
+                  "from",
+                  "cookie"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "id",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "version": {
+                      "type": "number"
+                    },
+                    "size": {
+                      "type": "number"
+                    },
+                    "cookies": {
+                      "type": "number"
+                    },
+                    "storageBytes": {
+                      "type": "number"
+                    },
+                    "origins": {
+                      "type": "number"
+                    },
+                    "savedAt": {
+                      "type": "string"
+                    },
+                    "deviceName": {
+                      "nullable": true,
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "version",
+                    "size",
+                    "cookies",
+                    "storageBytes",
+                    "origins",
+                    "savedAt",
+                    "deviceName"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      },
       "delete": {
         "requestBody": {
           "required": true,
@@ -12077,6 +12458,9 @@
                           "email": {
                             "type": "string"
                           },
+                          "displayName": {
+                            "type": "string"
+                          },
                           "role": {
                             "type": "object",
                             "properties": {
@@ -12124,6 +12508,7 @@
                         "required": [
                           "userId",
                           "email",
+                          "displayName",
                           "role",
                           "joinedAt",
                           "groupIds",
@@ -13465,6 +13850,10 @@
                             "nullable": true,
                             "type": "string"
                           },
+                          "actorName": {
+                            "nullable": true,
+                            "type": "string"
+                          },
                           "deviceName": {
                             "nullable": true,
                             "type": "string"
@@ -13505,6 +13894,7 @@
                               "role.delete",
                               "cookies.export",
                               "cookies.import",
+                              "cookies.edit",
                               "cookies.delete",
                               "workspace.export",
                               "workspace.import",
@@ -13556,6 +13946,7 @@
                           "seq",
                           "at",
                           "actor",
+                          "actorName",
                           "deviceName",
                           "action",
                           "profile",

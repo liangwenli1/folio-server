@@ -56,7 +56,7 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
   r.get('/workspaces/:id/members', { schema: { params, response: { 200: z.object({ members: z.array(Member) }) } } }, async req => {
     const s = await requireSession(req, deps);
     await membership(db, req.params.id, s.userId);
-    const rows = await db.select({ userId: memberships.userId, email: users.email, roleId: roles.id, key: roles.key, roleName: roles.name, joinedAt: memberships.createdAt })
+    const rows = await db.select({ userId: memberships.userId, email: users.email, displayName: users.displayName, roleId: roles.id, key: roles.key, roleName: roles.name, joinedAt: memberships.createdAt })
       .from(memberships).innerJoin(users, eq(users.id, memberships.userId)).innerJoin(roles, eq(roles.id, memberships.roleId))
       .where(eq(memberships.workspaceId, req.params.id)).orderBy(asc(memberships.createdAt));
     const grants = await db.select({ userId: groupMembers.userId, id: groupMembers.groupId }).from(groupMembers)
@@ -69,7 +69,7 @@ export function teamRoutes(app: FastifyInstance, deps: Deps){
       members: rows.map(m => {
         const at = seen.find(x => x.userId === m.userId)?.at;
         return {
-          userId: m.userId, email: m.email, role: roleRef({ id: m.roleId, key: m.key, name: m.roleName }), joinedAt: m.joinedAt.toISOString(),
+          userId: m.userId, email: m.email, displayName: m.displayName, role: roleRef({ id: m.roleId, key: m.key, name: m.roleName }), joinedAt: m.joinedAt.toISOString(),
           groupIds: grants.filter(g => g.userId === m.userId).map(g => g.id), profiles: counts.find(c => c.ownerId === m.userId)?.n ?? 0,
           lastActiveAt: at ? new Date(at).toISOString() : null
         };

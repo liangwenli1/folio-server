@@ -12,7 +12,7 @@ export const ACTIONS = [
   'proxy.create', 'proxy.import', 'proxy.update', 'proxy.delete', 'group.create', 'group.rename', 'group.delete', 'group.members',
   'member.invite', 'member.join', 'member.role', 'member.groups', 'member.remove', 'member.leave', 'invitation.withdraw',
   'role.create', 'role.update', 'role.delete',
-  'cookies.export', 'cookies.import', 'cookies.delete', 'workspace.export', 'workspace.import',
+  'cookies.export', 'cookies.import', 'cookies.edit', 'cookies.delete', 'workspace.export', 'workspace.import',
   'flow.create', 'flow.update', 'flow.delete', 'task.create', 'task.update', 'task.delete', 'run.start', 'run.finish',
   'extension.add', 'extension.update', 'extension.delete', 'profile.add-extension', 'profile.remove-extension', 'profile.set-kernel', 'profile.set-browser'
 ] as const;
@@ -23,7 +23,7 @@ export const KINDS = {
   profiles: ['profile.create', 'profile.update', 'profile.move', 'profile.tag', 'profile.untag', 'profile.set-proxy', 'profile.assign', 'profile.add-extension', 'profile.remove-extension', 'profile.set-kernel', 'profile.set-browser'],
   trash: ['profile.trash', 'profile.restore', 'profile.purge'],
   proxies: ['proxy.create', 'proxy.import', 'proxy.update', 'proxy.delete', 'group.create', 'group.rename', 'group.delete', 'group.members'],
-  cookies: ['cookies.export', 'cookies.import', 'cookies.delete', 'workspace.export', 'workspace.import'],
+  cookies: ['cookies.export', 'cookies.import', 'cookies.edit', 'cookies.delete', 'workspace.export', 'workspace.import'],
   team: ['member.invite', 'member.join', 'member.role', 'member.groups', 'member.remove', 'member.leave', 'invitation.withdraw', 'role.create', 'role.update', 'role.delete'],
   extensions: ['extension.add', 'extension.update', 'extension.delete'],
   automation: ['flow.create', 'flow.update', 'flow.delete', 'task.create', 'task.update', 'task.delete', 'run.start', 'run.finish']
@@ -65,13 +65,13 @@ export async function readLog(db: Db, workspaceId: string, now: Date, q: LogQuer
     q.profileId ? eq(activityLog.profileId, q.profileId) : undefined,
     q.actorId ? eq(activityLog.actorId, q.actorId) : undefined, q.kind ? inArray(activityLog.action, KINDS[q.kind]) : undefined,
     q.from ? gte(activityLog.at, q.from) : undefined, q.to ? lt(activityLog.at, q.to) : undefined,
-    like ? or(ilike(activityLog.profileName, like), ilike(users.email, like), sql`${activityLog.detail}::text ilike ${like}`, number !== null ? eq(activityLog.seq, number) : undefined) : undefined
+    like ? or(ilike(activityLog.profileName, like), ilike(users.email, like), ilike(users.displayName, like), sql`${activityLog.detail}::text ilike ${like}`, number !== null ? eq(activityLog.seq, number) : undefined) : undefined
   );
   const [{ total }] = await db.select({ total: count() }).from(activityLog).leftJoin(users, eq(users.id, activityLog.actorId)).where(where);
-  const rows = await db.select({ e: activityLog, actor: users.email }).from(activityLog).leftJoin(users, eq(users.id, activityLog.actorId)).where(where)
+  const rows = await db.select({ e: activityLog, actor: users.email, actorName: users.displayName }).from(activityLog).leftJoin(users, eq(users.id, activityLog.actorId)).where(where)
     .orderBy(q.order === 'asc' ? asc(activityLog.seq) : desc(activityLog.seq)).limit(q.limit).offset(q.offset ?? 0);
-  return { days, total, entries: rows.map(({ e, actor }) => ({
-    seq: e.seq, at: e.at.toISOString(), actor, deviceName: e.deviceName, action: e.action as Action,
+  return { days, total, entries: rows.map(({ e, actor, actorName }) => ({
+    seq: e.seq, at: e.at.toISOString(), actor, actorName, deviceName: e.deviceName, action: e.action as Action,
     profile: e.profileName === null ? null : { id: e.profileId, name: e.profileName, number: e.profileNumber! }, detail: e.detail as Record<string, unknown>
   })) };
 }

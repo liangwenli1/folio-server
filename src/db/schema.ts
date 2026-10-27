@@ -9,6 +9,13 @@ export const users = pgTable('users', {
   passwordHash: text().notNull(),
   emailVerifiedAt: ts(),
   locale: text().notNull().default('en'),
+  // What colleagues see for this person (members, the log, owners of profiles): the part of the email before the @
+  // until they change it. `note` is their own line about themselves.
+  displayName: text().notNull(),
+  note: text(),
+  // Which notices the desktop app gives this person, wherever they sign in.
+  notify: jsonb().$type<{ taskDone: boolean; taskFailed: boolean; proxyDown: boolean; productUpdate: boolean }>().notNull()
+    .default({ taskDone: true, taskFailed: true, proxyDown: true, productUpdate: false }),
   createdAt: createdAt()
 });
 
@@ -174,7 +181,8 @@ export const groups = pgTable('groups', {
   name: text().notNull(),
   color: text({ enum: GROUP_COLORS }).notNull().default('gray'),
   parentId: uuid().references((): AnyPgColumn => groups.id, { onDelete: 'set null' }),
-  inheritMembers: boolean().notNull().default(true),
+  // Off unless asked for (v2 12): a group's members are only those authorised for it.
+  inheritMembers: boolean().notNull().default(false),
   description: text(),
   createdAt: createdAt()
 }, t => [uniqueIndex().on(t.workspaceId, t.name), index().on(t.parentId)]);

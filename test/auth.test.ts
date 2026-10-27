@@ -202,3 +202,29 @@ describe('password reset', () => {
     expect((await check({ email, code: next })).json().error.code).toBe('too_many_attempts');
   });
 });
+
+describe('the person’s own profile', () => {
+  it('starts with the name before the @, and keeps a name, a note and which notices to give', async () => {
+    const { headers, email } = await signup(t.app);
+    const me = async () => (await t.app.inject({ url: '/me', headers })).json().user;
+    expect(await me()).toMatchObject({ displayName: email.split('@')[0], note: null, notify: { taskDone: true, taskFailed: true, proxyDown: true, productUpdate: false } });
+    const patch = (payload: object) => t.app.inject({ method: 'PATCH', url: '/me', headers, payload });
+    expect((await patch({ displayName: ' 林晓 ', note: '工作空间所有者', notify: { taskDone: false, taskFailed: true, proxyDown: true, productUpdate: true } })).statusCode).toBe(200);
+    expect(await me()).toMatchObject({ displayName: '林晓', note: '工作空间所有者', notify: { taskDone: false, productUpdate: true }, locale: 'en' });
+    // A blank name is refused; a blank note clears it; the language changes on its own.
+    expect((await patch({ displayName: '  ' })).json().error.code).toBe('validation');
+    expect((await (await patch({ note: '', locale: 'zh' })).json()).user).toMatchObject({ displayName: '林晓', note: null, locale: 'zh' });
+  });
+
+  it('changes the password given the current one, and ends every other sign-in', async () => {
+    const { headers, email } = await signup(t.app);
+    const desktop = (await t.app.inject({ method: 'POST', url: '/auth/login', payload: { email, password: PASSWORD, client: 'desktop' } })).json().token;
+    const change = (payload: object) => t.app.inject({ method: 'POST', url: '/auth/password/change', headers, payload });
+    expect((await change({ current: 'not it at all', password: 'a new long password' })).json().error.code).toBe('wrong_password');
+    expect((await change({ current: PASSWORD, password: 'short' })).json().error.code).toBe('validation');
+    expect((await change({ current: PASSWORD, password: 'a new long password' })).statusCode).toBe(204);
+    expect((await t.app.inject({ url: '/me', headers })).statusCode).toBe(200);
+    expect((await t.app.inject({ url: '/me', headers: { authorization: `Bearer ${desktop}` } })).statusCode).toBe(401);
+    expect((await t.app.inject({ method: 'POST', url: '/auth/login', payload: { email, password: 'a new long password', client: 'desktop' } })).statusCode).toBe(200);
+  });
+});

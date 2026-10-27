@@ -9,7 +9,7 @@ import { ACTIONS, KINDS, csvField, readLog } from './service.js';
 
 const params = z.object({ id: z.uuid() });
 const Entry = z.object({
-  seq: z.number(), at: z.string(), actor: z.string().nullable(), deviceName: z.string().nullable(), action: z.enum(ACTIONS),
+  seq: z.number(), at: z.string(), actor: z.string().nullable(), actorName: z.string().nullable(), deviceName: z.string().nullable(), action: z.enum(ACTIONS),
   profile: z.object({ id: z.string().nullable(), name: z.string(), number: z.number() }).nullable(), detail: z.record(z.string(), z.unknown())
 });
 const filters = {

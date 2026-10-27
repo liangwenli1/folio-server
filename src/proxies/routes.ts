@@ -144,7 +144,9 @@ export function proxyRoutes(app: FastifyInstance, deps: Deps){
       ...rest, ...(newPassword ? { passwordEnc: password ? seal(password) : null } : {}), updatedAt: clock.now(),
       ...(moved ? { lastCheck: null, history: [], lastExit: null } : {})
     }).where(eq(proxies.id, p.id)).returning();
-    await record(db, { workspaceId: p.workspaceId, actor: s, at: u.updatedAt, action: 'proxy.update', detail: { name: u.name, fields: changed } });
+    // The values before and after (v2 40); a password is only said to have changed.
+    const changes = changed.map(k => (k === 'password' ? { field: k, secret: true } : { field: k, from: p[k as keyof typeof rest] ?? null, to: rest[k as keyof typeof rest] ?? null }));
+    await record(db, { workspaceId: p.workspaceId, actor: s, at: u.updatedAt, action: 'proxy.update', detail: { name: u.name, fields: changed, changes } });
     publish(p.workspaceId, { kind: 'proxies', ids: [p.id] });
     return proxyView(u, await count(p.id));
   });
