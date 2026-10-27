@@ -182,6 +182,19 @@ describe('cookies', () => {
     expect((await importing(p.id, a, [cookie('sid', 'three')])).statusCode).toBe(200);
   });
 
+  it('are exported all, by site or as picked, each read recorded with how many', async () => {
+    const { owner, p } = await profileWithTwoComputers();
+    await importing(p.id, owner.headers, [cookie('sid', 'one'), cookie('pref', 'dark'), cookie('cart', 'x', { domain: '.other.example' })]);
+    const names = (r: { json(): { cookies: { name: string }[] } }) => r.json().cookies.map(c => c.name).sort();
+    expect(names(await req('GET', `/profiles/${p.id}/cookies/values?domain=.other.example`, owner.headers))).toEqual(['cart']);
+    const picked = await t.app.inject({ method: 'POST', url: `/profiles/${p.id}/cookies/values`, headers: owner.headers,
+      payload: { cookies: [{ name: 'sid', domain: '.shop.example', path: '/' }, { name: 'gone', domain: '.shop.example', path: '/' }] } });
+    expect(names(picked)).toEqual(['sid']);
+    expect(names(await req('GET', `/profiles/${p.id}/cookies/values`, owner.headers))).toEqual(['cart', 'pref', 'sid']);
+    const log = (await req('GET', `/workspaces/${owner.workspaceId}/activity?kind=cookies`, owner.headers)).json().entries;
+    expect(log.filter((e: { action: string }) => e.action === 'cookies.export').map((e: { detail: { count: number } }) => e.detail.count)).toEqual([3, 1, 1]);
+  });
+
   it('are changed one at a time, keeping the saved value unless a new one is given', async () => {
     const { owner, p } = await profileWithTwoComputers();
     await importing(p.id, owner.headers, [cookie('sid', 'one'), cookie('pref', 'dark')]);

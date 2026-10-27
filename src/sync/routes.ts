@@ -3,7 +3,7 @@
 // browser closes, then releases the lock. Only the session holding the lock can upload.
 import { createHash } from 'node:crypto';
 import { gunzipSync, gzipSync } from 'node:zlib';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { ZodTypeProvider } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { and, eq, gt, lte, ne, or } from 'drizzle-orm';
@@ -153,19 +153,28 @@ export function syncRoutes(app: FastifyInstance, deps: Deps){
     return { cookies: state.cookies.map(({ value: _value, ...rest }) => rest), savedAt: d.savedAt.toISOString() };
   });
 
-  // The values as well, for exporting or for showing one. Taking sign-ins away is its own permission, and
-  // every read of the values is recorded.
-  r.get('/profiles/:id/cookies/values', {
-    schema: { params, querystring: z.object({ name: z.string().max(4096).optional(), domain: z.string().max(253).optional(), path: z.string().max(1024).optional() }),
-      response: { 200: z.object({ cookies: z.array(Cookie), savedAt: z.string() }) } }
-  }, async req => {
+  // The values as well, for exporting or for showing one: all of them, one site's (`domain` alone), one cookie, or
+  // (POST) those picked. Taking sign-ins away is its own permission, and every read of the values is recorded with
+  // how many were read.
+  const values = z.object({ cookies: z.array(Cookie), savedAt: z.string() });
+  async function readValues(req: FastifyRequest<{ Params: { id: string } }>, pick: (c: z.infer<typeof Cookie>) => boolean){
     const { p, s } = await profileFor(deps, req, req.params.id, 'cookies.export');
     const { d, state } = await saved(p);
-    const { name, domain, path } = req.query;
-    const cookies = name === undefined ? state.cookies
-      : state.cookies.filter(c => c.name === name && c.domain === domain && c.path === path);
+    const cookies = state.cookies.filter(pick);
     await record(db, { workspaceId: p.workspaceId, actor: s, at: clock.now(), action: 'cookies.export', profiles: [p], detail: { count: cookies.length } });
     return { cookies, savedAt: d.savedAt.toISOString() };
+  }
+  r.get('/profiles/:id/cookies/values', {
+    schema: { params, querystring: z.object({ name: z.string().max(4096).optional(), domain: z.string().max(253).optional(), path: z.string().max(1024).optional() }), response: { 200: values } }
+  }, req => {
+    const { name, domain, path } = req.query;
+    return readValues(req, c => (name !== undefined ? c.name === name && c.domain === domain && c.path === path : domain === undefined || c.domain === domain));
+  });
+  r.post('/profiles/:id/cookies/values', {
+    schema: { params, body: z.object({ cookies: z.array(CookieKey).min(1).max(5000) }), response: { 200: values } }
+  }, req => {
+    const keys = new Set(req.body.cookies.map(k => JSON.stringify([k.name, k.domain, k.path])));
+    return readValues(req, c => keys.has(JSON.stringify([c.name, c.domain, c.path])));
   });
 
   // Changes one cookie (v2 28). Without a new value it keeps the saved one, so its other properties can be changed
