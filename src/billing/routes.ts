@@ -10,7 +10,7 @@ import { Payment, Quote, Subscription, paymentView, subscriptionView } from '../
 import { requirePermission } from '../workspaces/service.js';
 import { MANAGE } from '../permissions.js';
 import { publish } from '../events.js';
-import { latestPaidId, payCheckout, readSub, refundPayment, setCancel, startCheckout, startTrial, toState } from './service.js';
+import { latestPaidId, payCheckout, readSub, refundPayment, setCancel, startCheckout, startTrial, toState, trialOpen, type SubRow } from './service.js';
 
 const wsParams = z.object({ id: z.uuid() });
 const changeBody = z.object({ plan: z.enum(['studio', 'company']), period: z.enum(['monthly', 'yearly']), addonPacks: z.number().int().min(0).max(30) });
@@ -18,6 +18,7 @@ const changeBody = z.object({ plan: z.enum(['studio', 'company']), period: z.enu
 export function billingRoutes(app: FastifyInstance, deps: Deps){
   const r = app.withTypeProvider<ZodTypeProvider>();
   const { db, clock, config } = deps;
+  const view = async (sub: SubRow) => subscriptionView(sub, await trialOpen(db, sub.workspaceId));
 
   async function requireVerified(userId: string){
     const [u] = await db.select({ v: users.emailVerifiedAt }).from(users).where(eq(users.id, userId));
@@ -64,7 +65,7 @@ export function billingRoutes(app: FastifyInstance, deps: Deps){
     const res = await startCheckout(db, { workspaceId: req.params.id, userId: s.userId, req: req.body, now });
     if (!res.checkoutId) publish(req.params.id, { kind: 'workspace' });
     const { next: _next, ...q } = res.quote;
-    return { checkoutId: res.checkoutId, quote: q, subscription: subscriptionView(res.subscription) };
+    return { checkoutId: res.checkoutId, quote: q, subscription: await view(res.subscription) };
   });
 
   r.get('/billing/checkouts/:id', {
@@ -89,7 +90,7 @@ export function billingRoutes(app: FastifyInstance, deps: Deps){
     if (!config.mockPayments) throw new ApiError(503, 'payments_unavailable', 'Payments are not available yet');
     const res = await payCheckout(db, { checkoutId: req.params.id, userId: s.userId, card: req.body.card, now: clock.now() });
     publish(res.payment.workspaceId, { kind: 'workspace' });
-    return { subscription: subscriptionView(res.subscription), payment: paymentView(res.payment, true) };
+    return { subscription: await view(res.subscription), payment: paymentView(res.payment, true) };
   });
 
   r.post('/workspaces/:id/billing/trial', { schema: { params: wsParams, response: { 200: z.object({ subscription: Subscription }) } } }, async req => {
@@ -98,7 +99,7 @@ export function billingRoutes(app: FastifyInstance, deps: Deps){
     await requireVerified(s.userId);
     const sub = await startTrial(db, req.params.id, clock.now());
     publish(req.params.id, { kind: 'workspace' });
-    return { subscription: subscriptionView(sub) };
+    return { subscription: await view(sub) };
   });
 
   for (const [path, cancel] of [['cancel', true], ['resume', false]] as const){
@@ -107,7 +108,7 @@ export function billingRoutes(app: FastifyInstance, deps: Deps){
       await requirePermission(db, req.params.id, s.userId, MANAGE);
       const sub = await setCancel(db, req.params.id, cancel, clock.now());
       publish(req.params.id, { kind: 'workspace' });
-      return { subscription: subscriptionView(sub) };
+      return { subscription: await view(sub) };
     });
   }
 
@@ -141,6 +142,6 @@ export function billingRoutes(app: FastifyInstance, deps: Deps){
     await requirePermission(db, p.workspaceId, s.userId, MANAGE);
     const res = await refundPayment(db, req.params.id, clock.now());
     publish(p.workspaceId, { kind: 'workspace' });
-    return { payment: paymentView(res.payment, false), subscription: subscriptionView(res.subscription) };
+    return { payment: paymentView(res.payment, false), subscription: await view(res.subscription) };
   });
 }

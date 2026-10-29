@@ -5,7 +5,7 @@ import { and, eq } from 'drizzle-orm';
 import { groups, proxies, workspaces } from '../db/schema.js';
 import { requireSession, type Deps } from '../http.js';
 import { ApiError } from '../errors.js';
-import { readSub } from '../billing/service.js';
+import { readSub, trialOpen } from '../billing/service.js';
 import { Workspace, WorkspaceSettings, WorkspaceSummary, kernel, subscriptionView, workspaceSettingsView } from '../views.js';
 import { createWorkspace, memberCount, membership, requirePermission, roleByKey } from './service.js';
 import { MANAGE } from '../permissions.js';
@@ -25,7 +25,7 @@ export function workspaceRoutes(app: FastifyInstance, deps: Deps){
     const [ws] = await db.select().from(workspaces).where(eq(workspaces.id, req.params.id));
     return {
       id: ws.id, name: ws.name, role: { id: a.roleId, key: a.key, name: a.name, permissions: a.permissions },
-      subscription: subscriptionView(await readSub(db, ws.id)), settings: workspaceSettingsView(ws),
+      subscription: subscriptionView(await readSub(db, ws.id), await trialOpen(db, ws.id)), settings: workspaceSettingsView(ws),
       usage: { profiles: await activeCount(db, ws.id), members: await memberCount(db, ws.id) }
     };
   });

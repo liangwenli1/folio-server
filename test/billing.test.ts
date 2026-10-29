@@ -119,6 +119,22 @@ describe('trial', () => {
     const again = await t.app.inject({ method: 'POST', url: `/workspaces/${workspaceId}/billing/trial`, headers });
     expect(again.json().error.code).toBe('trial_used');
   });
+
+  it('is the account\'s, once: a workspace made afterwards has none', async () => {
+    const { headers, workspaceId } = await signup(t.app);
+    await t.app.inject({ method: 'POST', url: `/workspaces/${workspaceId}/billing/trial`, headers });
+    const made = await t.app.inject({ method: 'POST', url: '/workspaces', headers, payload: { name: 'Second' } });
+    const second = made.json().id as string;
+    expect(await sub(headers, second)).toMatchObject({ plan: 'free', trialAvailable: false });
+    const res = await t.app.inject({ method: 'POST', url: `/workspaces/${second}/billing/trial`, headers });
+    expect(res.json().error.code).toBe('trial_used');
+  });
+
+  it('is open on a new workspace while the account hasn\'t had it', async () => {
+    const { headers } = await signup(t.app);
+    const made = await t.app.inject({ method: 'POST', url: '/workspaces', headers, payload: { name: 'Second' } });
+    expect(await sub(headers, made.json().id)).toMatchObject({ plan: 'free', trialAvailable: true });
+  });
 });
 
 describe('refunds', () => {

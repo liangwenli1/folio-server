@@ -16,6 +16,8 @@ export const users = pgTable('users', {
   // Which notices the desktop app gives this person, wherever they sign in.
   notify: jsonb().$type<{ taskDone: boolean; taskFailed: boolean; proxyDown: boolean; productUpdate: boolean }>().notNull()
     .default({ taskDone: true, taskFailed: true, proxyDown: true, productUpdate: false }),
+  // The seven-day trial is the account's, once: it was started on a workspace this person owns.
+  trialUsed: boolean().notNull().default(false),
   createdAt: createdAt()
 });
 
@@ -92,7 +94,6 @@ export const subscriptions = pgTable('subscriptions', {
   period: text(),
   status: text().notNull().default('active'),
   addonPacks: integer().notNull().default(0),
-  trialUsed: boolean().notNull().default(false),
   trialEndsAt: ts(),
   currentPeriodStart: ts(),
   currentPeriodEnd: ts(),

@@ -190,6 +190,13 @@
       "when": 1793094022535,
       "tag": "0026_user_profile",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1793262727780,
+      "tag": "0027_trial_per_account",
+      "breakpoints": true
     }
   ]
 }

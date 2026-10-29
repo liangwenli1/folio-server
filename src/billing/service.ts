@@ -1,6 +1,6 @@
 import { and, desc, eq, lte, ne, or, sql } from 'drizzle-orm';
 import type { Db, Tx } from '../db/client.js';
-import { checkouts, payments, subscriptions } from '../db/schema.js';
+import { checkouts, memberships, payments, roles, subscriptions, users } from '../db/schema.js';
 import { ApiError, notFound } from '../errors.js';
 import {
   DAY, FREE, REFUND_DAYS, TRIAL_DAYS, addDays, addPeriod, cyclePrice, isPaid, quote,
@@ -14,7 +14,7 @@ export type PaymentRow = typeof payments.$inferSelect;
 
 export const toState = (r: SubRow): SubState => ({
   plan: r.plan as SubState['plan'], period: r.period as Period | null, status: r.status as SubState['status'],
-  addonPacks: r.addonPacks, trialUsed: r.trialUsed, trialEndsAt: r.trialEndsAt,
+  addonPacks: r.addonPacks, trialEndsAt: r.trialEndsAt,
   currentPeriodStart: r.currentPeriodStart, currentPeriodEnd: r.currentPeriodEnd, cancelAtPeriodEnd: r.cancelAtPeriodEnd,
   scheduledPlan: r.scheduledPlan as PaidPlan | null, scheduledPeriod: r.scheduledPeriod as Period | null
 });
@@ -107,7 +107,7 @@ export async function applyPaymentEvent(tx: Tx, e: PaymentEvent, now: Date){
       const prev = revive<SubState>(p.previous as Record<string, unknown>);
       // A previous state that has already run out cannot come back; the workspace falls to Free instead.
       const ranOut = (prev.status === 'trialing' && prev.trialEndsAt! <= now) || (isPaid(prev) && prev.currentPeriodEnd! <= now);
-      const { trialUsed: _keep, ...restore } = ranOut ? { ...FREE, trialUsed: true } : prev;
+      const restore = ranOut ? FREE : prev;
       const [payment] = await tx.update(payments).set({ status: 'refunded', refundedAt: now }).where(eq(payments.id, p.id)).returning();
       return { payment, subscription: await writeSub(tx, p.workspaceId, restore, now) };
     }
@@ -151,12 +151,25 @@ export async function refundPayment(db: Db, paymentId: string, now: Date){
   return db.transaction(tx => applyPaymentEvent(tx, { type: 'payment.refunded', paymentId }, now));
 }
 
+// The trial is the owner's, once across every workspace they own (the user, 10-29), so a new workspace doesn't bring
+// another one.
+const ownerOf = (db: Db | Tx, workspaceId: string) => db.select({ id: users.id, trialUsed: users.trialUsed }).from(memberships)
+  .innerJoin(roles, eq(roles.id, memberships.roleId)).innerJoin(users, eq(users.id, memberships.userId))
+  .where(and(eq(memberships.workspaceId, workspaceId), eq(roles.key, 'owner')));
+
+export async function trialOpen(db: Db | Tx, workspaceId: string){
+  const [owner] = await ownerOf(db, workspaceId);
+  return !!owner && !owner.trialUsed;
+}
+
 export async function startTrial(db: Db, workspaceId: string, now: Date){
   return db.transaction(async tx => {
     const s = toState(await lockSub(tx, workspaceId));
     if (s.plan !== 'free') throw new ApiError(409, 'already_subscribed', 'This workspace already has a plan');
-    if (s.trialUsed) throw new ApiError(409, 'trial_used', 'The free trial has already been used for this workspace');
-    return writeSub(tx, workspaceId, { plan: 'studio', status: 'trialing', trialUsed: true, trialEndsAt: addDays(now, TRIAL_DAYS) }, now);
+    const [owner] = await ownerOf(tx, workspaceId).for('update', { of: users });
+    if (!owner || owner.trialUsed) throw new ApiError(409, 'trial_used', "The free trial has already been used by this workspace's owner");
+    await tx.update(users).set({ trialUsed: true }).where(eq(users.id, owner.id));
+    return writeSub(tx, workspaceId, { plan: 'studio', status: 'trialing', trialEndsAt: addDays(now, TRIAL_DAYS) }, now);
   });
 }
 

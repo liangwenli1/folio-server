@@ -22,7 +22,6 @@ export interface SubState {
   period: Period | null;
   status: 'active' | 'trialing';
   addonPacks: number;
-  trialUsed: boolean;
   trialEndsAt: Date | null;
   currentPeriodStart: Date | null;
   currentPeriodEnd: Date | null;
@@ -31,7 +30,7 @@ export interface SubState {
   scheduledPeriod: Period | null;
 }
 
-export const FREE: Omit<SubState, 'trialUsed'> = {
+export const FREE: SubState = {
   plan: 'free', period: null, status: 'active', addonPacks: 0, trialEndsAt: null,
   currentPeriodStart: null, currentPeriodEnd: null, cancelAtPeriodEnd: false, scheduledPlan: null, scheduledPeriod: null
 };

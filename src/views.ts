@@ -36,13 +36,14 @@ export const Subscription = z.object({
   scheduledPlan: paidPlan.nullable(), scheduledPeriod: period.nullable(), trialAvailable: z.boolean(),
   entitlements: z.object({ profiles: z.number(), members: z.number().nullable(), logDays: z.number() })
 });
-export function subscriptionView(r: SubRow): z.infer<typeof Subscription> {
+// `trialOpen`: the owner hasn't had the trial yet (billing/service.ts trialOpen).
+export function subscriptionView(r: SubRow, trialOpen: boolean): z.infer<typeof Subscription> {
   const s = toState(r);
   return {
     plan: s.plan, period: s.period, status: s.status, addonPacks: s.addonPacks,
     trialEndsAt: s.trialEndsAt?.toISOString() ?? null, currentPeriodStart: s.currentPeriodStart?.toISOString() ?? null,
     currentPeriodEnd: s.currentPeriodEnd?.toISOString() ?? null, cancelAtPeriodEnd: s.cancelAtPeriodEnd,
-    scheduledPlan: s.scheduledPlan, scheduledPeriod: s.scheduledPeriod, trialAvailable: s.plan === 'free' && !s.trialUsed,
+    scheduledPlan: s.scheduledPlan, scheduledPeriod: s.scheduledPeriod, trialAvailable: s.plan === 'free' && trialOpen,
     entitlements: entitlements(s)
   };
 }

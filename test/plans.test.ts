@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { FREE, addPeriod, entitlements, quote, type SubState } from '../src/plans.js';
 
 const now = new Date('2026-11-01T00:00:00Z');
-const free: SubState = { ...FREE, trialUsed: false };
+const free: SubState = FREE;
 const studioMonthly = (start: string, packs = 0): SubState => ({
   ...free, plan: 'studio', period: 'monthly', addonPacks: packs,
   currentPeriodStart: new Date(start), currentPeriodEnd: addPeriod(new Date(start), 'monthly')
